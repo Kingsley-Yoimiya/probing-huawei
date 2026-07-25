@@ -145,8 +145,8 @@
 
 | 工具 | 状态 | 备注 |
 |---|---|---|
-| Greyhound | **S4_DETECT** | **yysong-worker-1**；P3-EXT-A 对照 `yjr-as-b-gh-s4-20260725_002805/`；dose_OK(1.94) 但自主 no_bite（coll=1.058 / n_cp=0） |
-| XPUTimer | **S4_DETECT** | **yysong-worker-2**；P3-EXT-A 对照 `yjr-as-b-xpu-s4-20260724_233105/`；coll C1/C0=1.032 **无咬合**（autonomous）；`collect_ok=yes` |
+| Greyhound | **S4_DETECT** | **yysong-worker-1**；P3-EXT-A 对照 `yjr-as-b-gh-s4-20260725_002805/`；dose_OK(1.94) 但自主 no_bite（coll=1.058 / n_cp=0）。Rbeast 已升级喂**真实 per-rank 序列**+C0 假阳性对照（`collect_seq.py`），acf_period≈8，待 pod 重跑刷新产物 |
+| XPUTimer | **S4_DETECT** | **yysong-worker-2**；P3-EXT-A 对照 `yjr-as-b-xpu-s4-20260724_233105/`；**自主 flags=0**（hang/slow 在 C0/C1 均 0）；跨-run 中位比 C1/C0=1.032 **无咬合**；`detect_mode=cross_run_contrast`（原误标 autonomous 已纠）；公平性：SLOW 阈按 C0 p99.9 冻结仍 0.99×，host CPU 抢占结构性不可见 |
 | Dynolog | PENDING | |
 | Flight Recorder | PENDING | |
 | StragglerAnalysis | PENDING | |
@@ -200,3 +200,4 @@ Case 本阶段只跑 Probing；Baseline 未达 S2 **不阻塞** 27-case。对照
 | 2026-07-25 | Greyhound **S4_DETECT**：dose_OK(1.94) 自主 no_bite；证据 `yjr-as-b-gh-s4-20260725_002805/` |
 | 2026-07-25 | P1-EXT-B INLINE Loud **SCORED D3**：`20260725_014350` dose=512×48 C1/C0=2.02 PASS；C2×16；SQL attach 失败→D4 未升；dose calibrated；未走外挂 sidecar |
 | 2026-07-25 | P3-EXT-C Loud **SCORED D3**：`20260725_021906` stress_vm 96×6G C1/C0=**1.59** PASS；C2×16；PSI_UNAVAIL + SQL attach 失败不升 D4；dose calibrated；hold_exec 接线 stress_vm |
+| 2026-07-25 | **Baseline 公平性修正（审查后）**：① XPUTimer S4 `autonomous`→`cross_run_contrast`——它自主 flags(hang/slow)=0，中位比需外部 C0，非 run 内自主；`≥1.5×C0med` 计数降为噪声诊断（C0 自身 10327 误报）；公平性核验 SLOW 按 C0 p99.9 冻结仍 0.99×，host CPU 抢占结构性不可见。② Greyhound ACF 从人造 call_id(i%4/恒0) 改喂**真实 per-rank 序列**（`collect_seq.py`：pid 分 rank、(op,count)→call_id、真实 t0）+ C0 假阳性对照；本机验证 period≈8。均为「给对手它自己最佳算法」的公平性修工具，**不改对手判据阈值、不写 case 答案**（rules §三·五A / 红线2）；结论方向不变（两者 P3-EXT-A 仍无咬合） |

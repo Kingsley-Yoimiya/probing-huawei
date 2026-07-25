@@ -5,6 +5,7 @@
 
 | 文件 | 作用 |
 |------|------|
+| [`SHARE.md`](SHARE.md) | **对外入口**：三仓链接、台账、竞品代码、结果路径、最小配置 |
 | [`rules.md`](rules.md) | 不变的方法论（红线 / 控变 / 三阶段 / D0–D5） |
 | [`ledger.md`](ledger.md) | 华为环境门禁、剂量、已跑 case 速览（Agent 边跑边改） |
 | [`CASE_QUEUE.md`](CASE_QUEUE.md) | 27-case 排期与权限跳过表 |
