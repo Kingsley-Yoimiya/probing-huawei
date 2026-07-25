@@ -63,7 +63,8 @@ probing-test/scripts/fail-slow/platform/ascend/
 
 | 位置 | 默认 | 说明 |
 |------|------|------|
-| 本机备份 | `$FS_HUAWEI_ROOT/results/ascend-ais/` | `source scripts/fail-slow/env.sh` 后 `LOCAL_RESULT_ROOT_BASE` |
+| **对外终态包（给人看）** | `probing-test/results/ascend-ais/` | 14 SCORED 全量 + 对照瘦身 VERDICT；**不要只放 myportal** |
+| 本机/编排备份 | `$FS_HUAWEI_ROOT/results/ascend-ais/` | `source scripts/fail-slow/env.sh` 后 `LOCAL_RESULT_ROOT_BASE`（默认本仓） |
 | Pod 真盘 | `/data/yinjinrun.p-huawei/results/ascend-ais/` | hold-exec 写入；回拉到本机 |
 | AFS 前缀 | `/afs-a3-weight-share/yinjinrun.p-huawei/` | 部分节点假挂载，以 pod `/data` 为准 |
 

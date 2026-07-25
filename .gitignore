@@ -32,3 +32,9 @@ python/probing/probing
 docs/site/
 .venv/
 .coverage
+
+# Fail-Slow 昇腾：对照原始大 dump 不入库（对外瘦身在 probing-test）
+results/ascend-ais/_prep/
+results/ascend-ais/baseline/**/ascend_trace*
+results/ascend-ais/baseline/**/collect_*.bin
+results/ascend-ais/baseline/**/*.so

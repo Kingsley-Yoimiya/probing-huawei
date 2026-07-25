@@ -11,6 +11,28 @@ defaults:
   note: "未在 Ascend 上标定；accept_min_ratio 先沿用沐曦，咬空再抬剂量"
 
 cases:
+  P1-SW-A:
+    inject_kind: "2a"
+    mode: gpu_bound
+    loud:   { args: "chunks=12,stall_mb=768,stall_s=0.25", accept_min_ratio: 1.3, status: calibrated, note: "INLINE@114556 C1/C0=4.20 PASS; chunks=12 stall_mb=768 stall_s=0.25" }
+    quiet:  { args: "chunks=3,stall_mb=128,stall_s=0.05", accept_min_ratio: 1.15 }
+    masked: { args: "chunks=1,stall_mb=64,stall_s=0.02", accept_min_ratio: 1.05 }
+
+  P1-SW-B:
+    inject_kind: "2b"
+    mode: gpu_bound
+    loud:   { args: "rare_seq=1536,every=1", accept_min_ratio: 1.15, status: calibrated, note: "INLINE@115732 C1/C0=1.36 PASS; rare_seq=1536 every=1; SCORED D3" }
+    quiet:  { args: "rare_seq=1280,every=4", accept_min_ratio: 1.15 }
+    masked: { args: "rare_seq=1152,every=8", accept_min_ratio: 1.05 }
+
+  P1-SW-C:
+    inject_kind: "2c"
+    mode: gpu_bound
+    # tip 叙事：median 盲、max 可见；闸门 med≥1.3|p99≥1.5|max≥2.5
+    loud:   { args: "n=1024,every=1,fallback_s=0.25", accept_min_ratio: 1.3, status: calibrated, note: "INLINE@121105 tip max=4.63 PASS; SPIKE_OK×200; SCORED D3; median盲=1.02" }
+    quiet:  { args: "n=768,every=4,fallback_s=0.1", accept_min_ratio: 1.15 }
+    masked: { args: "n=512,every=8,fallback_s=0.05", accept_min_ratio: 1.05 }
+
   P1-EXT-A:
     inject_kind: inline_cube
     mode: gpu_bound
@@ -24,6 +46,14 @@ cases:
     loud:   { args: "inline_hbm_mb=512,inline_hbm_copies=48", accept_min_ratio: 1.6, status: calibrated, note: "INLINE@014350 C1/C0=2.02 PASS; SCORED D3; SQL attach fail no D4" }
     quiet:  { args: "inline_hbm_mb=128,inline_hbm_copies=3", accept_min_ratio: 1.15 }
     masked: { args: "inline_hbm_mb=64,inline_hbm_copies=1", accept_min_ratio: 1.05 }
+
+  P1-HW-B:
+    inject_kind: "1b"
+    mode: gpu_bound
+    # OUTLINE 1B：渐进 HBM（非改频）。移植自隔离仓 p1hwb_p3swc；Ascend INLINE ramp copies 6→48
+    loud:   { args: "inline_hbm_mb=512,inline_hbm_copies=6,inline_hbm_copies_max=48,ramp=1", accept_min_ratio: 1.3, status: calibrated, note: "INLINE_RAMP@142359 C1/C0=1.57 PASS; SCORED D3; SQL_NO_EXT_EVIDENCE no D4; pilot141406 copies48 flat C1/C0=2.04 retained" }
+    quiet:  { args: "inline_hbm_mb=256,inline_hbm_copies=4,inline_hbm_copies_max=24,ramp=1", accept_min_ratio: 1.15 }
+    masked: { args: "inline_hbm_mb=128,inline_hbm_copies=2,inline_hbm_copies_max=12,ramp=1", accept_min_ratio: 1.05 }
 
   P3-EXT-A:
     inject_kind: stress_cpu
@@ -53,7 +83,37 @@ cases:
   P3-SW-B:
     inject_kind: "8b"
     mode: host_bound
-    loud:   { args: "", accept_min_ratio: 1.3, status: uncalibrated }
+    # INLINE 8b：进程内 leak MB/step + data_stall；首轮 loud 即咬合
+    loud:   { args: "mb=16,stall_s=0.25", accept_min_ratio: 1.3, status: calibrated, note: "INLINE@125558 C1/C0=2.06 PASS; SCORED D4; mb=16 stall_s=0.25" }
+    quiet:  { args: "mb=8,stall_s=0.1", accept_min_ratio: 1.15 }
+    masked: { args: "mb=4,stall_s=0.05", accept_min_ratio: 1.05 }
+
+  P3-SW-C:
+    inject_kind: "8c"
+    mode: host_bound
+    # 监控泄漏：stress-ng CPU(nproc@90) + 主进程 1MB/s RSS；pilot1 pure-busy×128 咬空
+    loud:   { args: "cpu_n=nproc,cpu_load=90,mb=1,leak_every=1.0,max_chunks=64", accept_min_ratio: 1.3, status: calibrated, note: "jump@135238 C1/C0=2.49 PASS; stress-ng nproc@90 + 1MB/s leak; host_bound" }
+    quiet:  { args: "cpu_n=80,cpu_load=70,mb=1,leak_every=2.0,max_chunks=32", accept_min_ratio: 1.15 }
+    masked: { args: "cpu_n=32,cpu_load=30,mb=1,leak_every=3.0,max_chunks=16", accept_min_ratio: 1.05 }
+
+
+  P2-SW-B:
+    inject_kind: hccl_algo
+    mode: gpu_bound
+    # 移植自沐曦 mccl_algo；单机 ring-only 咬空 → loud=ring+stress512+buffsize8
+    # 主证=comm_ms（step≈1.13 不 FAIL）；accept 走 accept_p2swb_comm.py
+    loud:   { args: "algo=ring,stress_mb=512,buffsize=8", accept_min_ratio: 1.3, status: calibrated, note: "HCCL@122911 C1/C0_comm=1.82 PASS; step=1.13; SCORED D3" }
+    quiet:  { args: "algo=ring,stress_mb=256,buffsize=32", accept_min_ratio: 1.15 }
+    masked: { args: "algo=NHR,stress_mb=128", accept_min_ratio: 1.05 }
+
+  P2-SW-C:
+    inject_kind: topo_5c
+    mode: gpu_bound
+    # 移植沐曦 5c：device_rev（ASCEND_VISIBLE 逆序）+ TOPO_EXTRA_AR；禁 P2P_DISABLE
+    # Ascend 主证优先 comm_ms（EXTRA_AR 落 comm 窗）；step 亦强咬（≥5）
+    loud:   { args: "device_rev=1,topo_extra_ar=512,topo_ar_elems=262144", accept_min_ratio: 1.15, status: calibrated, note: "topo@124102 C1/C0_comm=49.86 step=5.06 PASS; SCORED D3; raised from muxi AR256" }
+    quiet:  { args: "device_rev=1,topo_extra_ar=4,topo_ar_elems=1024", accept_min_ratio: 1.1 }
+    masked: { args: "device_rev=1,topo_extra_ar=1,topo_ar_elems=1024", accept_min_ratio: 1.05 }
 
 scoring:
   d4_requires: probing_sql

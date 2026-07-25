@@ -140,12 +140,20 @@
 | P3-EXT-B | 抢磁盘 IO | **stress_io/fio** | host_bound | **2.13** | **D3** | `20260725_020212` fio nj16+ckpt20+pread；C1/C0=2.13 PASS；SQL attach/PSI 未升 D4；dose calibrated |
 | P3-EXT-C | 抢内存带宽 | **stress_vm** | host_bound | **1.59** | **D3** | `20260725_021906` vm 96×6G；C1/C0=1.59 PASS；PSI_UNAVAIL（无 /proc/pressure）；SQL attach 失败不升 D4；dose calibrated |
 | P3-SW-A | 对象泄漏→GC | 8a inline | host_bound | **2.93** | **D4** | Loud+C2 `20260725_012957-yjr-as-c-p3-sw-a-loud`；证据 `data_ms`/onset + SQL `cpu.utilization_rss`；stall=0.25 calibrated |
+| P3-SW-B | dataloader 泄漏 | 8b inline | host_bound | **2.06** | **D4** | Loud+C2 `20260725_125558-yjr-as-c-p3-sw-b-loud`；证据 `data_ms`/onset + SQL PASS_D4；mb=16 stall=0.25 calibrated |
+| P3-SW-C | 监控自身泄漏 | **sidecar_8c** | host_bound | **2.49** | **D4** | Loud+C2 `20260725_135238-yjr-as-c-p3-sw-c-loud`；stress-ng nproc@90 + 1MB/s leak；offline D3 same_host + SQL PASS_D4（`cpu.utilization_rss`）；dose calibrated |
+| P1-SW-A | 显存碎片化 | **inline_2a** | gpu_bound | **4.20** | **D3** | `20260725_114556` INLINE chunks12/stall768MB/0.25s；C1/C0=4.20 PASS；offline+SQL **D3**（min_compute→rank_7）；gap flat / SQL_NO_EXT_EVIDENCE 不升 D4；dose calibrated |
+| P1-SW-B | 罕见 shape | **inline_2b** | gpu_bound | **1.36** | **D3** | `20260725_115732` INLINE rare_seq=1536/every=1；C1/C0=1.36 PASS；offline+SQL **D3**（shape_seq_rare→rank_7）；SQL_NO_EXT_EVIDENCE 不升 D4；dose calibrated |
+| P1-SW-C | 编译尖刺 | **inline_2c** | gpu_bound | **4.63** tip | **D3** | `20260725_121105` INLINE n=1024/every=1/fallback=0.25；tip max=4.63 PASS（med=1.02 盲）；offline+SQL **D3**（min_compute_at_tip→rank_7）；SQL_NO_EXT_EVIDENCE 不升 D4；dose calibrated |
+| P2-SW-B | 通信算法切换 | **hccl_algo** | gpu_bound | **1.82** comm | **D3** | `20260725_122911` ring+stress512+buffsize8；C1/C0_comm=1.82 PASS（step=1.13 不 FAIL）；offline+SQL **D3**（comm_phase_envwide→rank_7）；SQL_NO_EXT_EVIDENCE 不升 D4；dose calibrated；pilot1`122231` ring-only 咬空 |
+| P2-SW-C | 拓扑映射漂移 | **topo_5c** | gpu_bound | **49.86** comm | **D3** | `20260725_124102` device_rev+AR512×262144；C1/C0_comm=49.86 step=5.06 PASS；offline+SQL **D3**（topo_phase_envwide→rank_7）；SQL_NO_EXT_EVIDENCE 不升 D4；dose calibrated |
+| P1-HW-B | 显存带宽渐进 | **inline_1b_ramp** | gpu_bound | **1.57** | **D3** | Loud+C2 `20260725_142359`；INLINE HBM ramp copies 6→48 mb=512；C1/C0=1.57 PASS；offline **D3**（min_compute→rank_7）；SQL attach/mx-smi 失败不升 D4；dose calibrated |
 
 ## 3.2 baseline 适配态
 
 | 工具 | 状态 | 备注 |
 |---|---|---|
-| Greyhound | **S4_DETECT** | worker-1；公平性：真实序列+C0 假阳性；P3-EXT-A 旧产物待对照重跑 |
+| Greyhound | **S4_DETECT** | worker-1；公平性：真实序列+C0 假阳性；P3-EXT-A 对照 DONE |
 | XPUTimer | **S4_DETECT** | worker-2；`cross_run_contrast`；P3-EXT-A DONE |
 | Dynolog / FR / … | PENDING | **本波不进对照** |
 
@@ -156,14 +164,42 @@
 | case | tool | 状态 | evidence |
 |---|---|---|---|
 | P3-EXT-A | XPUTimer | DONE | `yjr-as-b-xpu-s4-20260724_233105` |
-| P3-EXT-A | Greyhound | PENDING（公平性重跑） | 旧 `yjr-as-b-gh-s4-20260725_002805` |
-| 其余 5×SCORED × GH/XPU | — | PENDING | 见 CONTRAST_QUEUE |
+| P3-EXT-A | Greyhound | DONE | `contrast-p3-ext-a-20260725_114502`；detect_ok=no；旧 S4 保留 |
+| P1-EXT-A | XPUTimer | DONE | `contrast-p1-ext-a-20260725_114546`；自主 hang/slow=0；coll C1/C0=1.036 FAIL；dose_check step_ms=3.955 PASS；detect_mode=cross_run_contrast |
+| P1-EXT-A | Greyhound | DONE | `contrast-p1-ext-a-20260725_120526`@worker-1；coll=1.018 FAIL；Rbeast C1=2/C0=0 hit；step_ms=3.924 dose_OK；detect_ok=yes；detect_mode=autonomous |
+| P1-EXT-B | XPUTimer | DONE | `contrast-p1-ext-b-20260725_115717`；自主 hang/slow=0；coll C1/C0=0.982 FAIL；dose_check step_ms=2.069 PASS；detect_mode=cross_run_contrast；detect_ok=no |
+| P1-EXT-B | Greyhound | DONE | `contrast-p1-ext-b-20260725_121407`@worker-1；coll=1.009 FAIL；Rbeast C1=2/C0=0 hit；step_ms=2.070 dose_OK；detect_ok=yes；detect_mode=autonomous |
+| P3-EXT-B | XPUTimer | DONE | `contrast-p3-ext-b-20260725_120235`；自主 hang/slow=0；coll C1/C0=1.048 FAIL；dose_check step_ms=1.793 PASS；detect_mode=cross_run_contrast；detect_ok=no；stress-ng fallback |
+| P3-EXT-B | Greyhound | DONE | `contrast-p3-ext-b-20260725_122204`@worker-1；coll=1.049 FAIL；Rbeast C1/C0 cp=0/0 miss；step_ms=1.738 dose_OK；detect_ok=no；detect_mode=no_bite；stress-ng fallback |
+| P3-EXT-C | XPUTimer | DONE | `contrast-p3-ext-c-20260725_121535`；自主 hang/slow=0；coll C1/C0=1.184 FAIL；dose_check step_ms=1.780 PASS；detect_mode=cross_run_contrast；detect_ok=no |
+| P3-EXT-C | Greyhound | DONE | `contrast-p3-ext-c-20260725_124257`@worker-1；coll=1.296 FAIL；Rbeast C1/C0 cp=0/0 miss；step_ms=1.063 dose_WEAK；detect_ok=no；detect_mode=no_bite；page-in+6Gi |
+| P3-SW-A | XPUTimer | DONE | `contrast-p3-sw-a-20260725_122733`；自主 hang/slow=0；coll C1/C0=0.953 FAIL；dose_check step_ms=2.633 PASS；detect_mode=cross_run_contrast；detect_ok=no |
+| P3-SW-A | Greyhound | DONE | `contrast-p3-sw-a-20260725_124837`@worker-1；coll=1.000 FAIL；Rbeast C1=2/C0=0 hit；step_ms=5.667 dose_OK；detect_ok=yes；detect_mode=autonomous |
+| P1-SW-A | XPUTimer | DONE | `contrast-p1-sw-a-20260725_123626`；自主 hang/slow=0；coll C1/C0=0.991 FAIL；dose_check step_ms=4.284 PASS；detect_mode=cross_run_contrast；detect_ok=no |
+| P1-SW-A | Greyhound | DONE | `contrast-p1-sw-a-20260725_125949`@worker-1；coll=1.009 FAIL；Rbeast C1=2/C0=0 hit；step_ms=4.283 dose_OK；detect_ok=yes；detect_mode=autonomous |
+| P1-SW-B | XPUTimer | DONE | `contrast-p1-sw-b-20260725_124414`；自主 hang/slow=0；coll C1/C0=0.991 FAIL；dose_check step_ms=1.372 PASS；detect_mode=cross_run_contrast；detect_ok=no |
+| P1-SW-B | Greyhound | DONE | `contrast-p1-sw-b-20260725_132011`@worker-1；coll=1.020 FAIL；Rbeast C1=2/C0=0 hit；step_ms=1.386 dose_OK；detect_ok=yes；detect_mode=autonomous |
+| P1-SW-C | XPUTimer | DONE | `contrast-p1-sw-c-20260725_125656`；自主 hang/slow=0；coll C1/C0=0.991 FAIL；median step_ms=1.006 盲；tip max=4.897 PASS（金标≈4.63）；detect_mode=cross_run_contrast；detect_ok=no |
+| P1-SW-C | Greyhound | DONE | `contrast-p1-sw-c-20260725_132954`@worker-1；coll=1.027 FAIL；Rbeast C1/C0 cp=0/0 miss；median step_ms=1.024 盲；tip max=4.038 PASS（金标≈4.63）；detect_mode=no_bite；detect_ok=no；SPIKE_OK×200 |
+| P2-SW-B | XPUTimer | DONE | `contrast-p2-sw-b-20260725_131251`；自主 hang/slow=0；coll=1.000 FAIL；dose_check **comm=1.875 PASS**（step=1.152 旁证）；detect_mode=cross_run_contrast；detect_ok=no |
+| P2-SW-B | Greyhound | DONE | `contrast-p2-sw-b-20260725_134521`@worker-1；coll=0.982 FAIL；Rbeast C1/C0 cp=0/0 miss；dose_check **comm=1.862 PASS**（step=1.152 旁证）；detect_mode=no_bite；detect_ok=no |
+| P2-SW-C | XPUTimer | DONE | `contrast-p2-sw-c-20260725_132235`；自主 hang/slow=0；coll=0.593 FAIL；dose_check **comm=13.910 PASS**（step=2.119 旁证；金标≈49.86/5.06）；detect_mode=cross_run_contrast；detect_ok=no |
+| P2-SW-C | Greyhound | DONE | `contrast-p2-sw-c-20260725_135623`@worker-1；coll=0.564 FAIL；Rbeast C1/C0 cp=0/0 miss；dose_check **comm=15.016 PASS**（step=2.211 旁证；金标≈49.86）；detect_mode=no_bite；detect_ok=no |
+| P3-SW-B | XPUTimer | DONE | `contrast-p3-sw-b-20260725_133435`；自主 hang/slow=0；跨-run coll=0.992 无咬合；dose_check step_ms=2.047 PASS；detect_mode=cross_run_contrast；detect_ok=no |
+| P3-SW-B | Greyhound | DONE | `contrast-p3-sw-b-20260725_140639`@worker-1；coll=0.984 FAIL；Rbeast C1=2/C0=0 hit；step_ms=3.760 dose_OK（金标≈2.06）；detect_ok=yes；detect_mode=autonomous |
+| P3-SW-C | XPUTimer | DONE | `contrast-p3-sw-c-20260725_141815`@worker-2；自主 hang/slow=0；跨-run coll=0.917 FAIL；dose_check step_ms=2.504 PASS（金标≈2.49）；detect_mode=cross_run_contrast；detect_ok=no |
+| P3-SW-C | Greyhound | DONE | `contrast-p3-sw-c-20260725_143448`@worker-1；coll=1.016 FAIL；Rbeast C1=1/C0=0 hit；step_ms=2.509 dose_OK（金标≈2.49）；detect_ok=yes；detect_mode=autonomous；旁证 `143010` |
+| P1-HW-B | XPUTimer | DONE | `contrast-p1-hw-b-20260725_143531`@worker-2；自主 hang/slow=0；跨-run coll=0.991 FAIL；dose_check step_ms=1.585 PASS（金标≈1.57）；detect_mode=cross_run_contrast；detect_ok=no |
+| P1-HW-B | Greyhound | DONE | `contrast-p1-hw-b-20260725_144607`@worker-1；coll=1.027 FAIL；Rbeast C1=2/C0=0 hit；step_ms=1.609 dose_OK（金标≈1.57）；detect_ok=yes；detect_mode=autonomous；GH 队无 PENDING |
+| 其余 SCORED × GH/XPU | — | — | 见 CONTRAST_QUEUE（本波 GH/XPU 对照格已齐） |
 
 ## 3.3 判分证据口径（探索后填）
 
 | Case 族 | 证据字段（草稿） |
 |---|---|
 | P1-EXT | `gpu.utilization` / `host_npu_smi_*` |
+| P1-SW | `min_compute_ms`（2a）；`shape_seq_rare`（2b）；tip max + `min_compute_at_tip_step`（2c）；SQL 常无升 D4 路径 |
+| P2-SW | `comm_ms` / `comm_phase_envwide`（P2-SW-B hccl_algo）；`topo_phase_envwide`（P2-SW-C topo_5c）；SQL 常无 duration 升 D4 |
 | P3-EXT | `host_psi_*` / `cpu.utilization`（本核常 **PSI_UNAVAIL**；旁证 loadavg + `data_ms`） |
 | P3-SW | `cpu.utilization_rss` 等（对齐沐曦后再定） |
 
@@ -184,6 +220,29 @@ Case 与对照并行；已 SCORED 跳过 Case 直入对照。本波工具仅 GH+
 
 | 日期 | 变更 |
 |---|---|
+| 2026-07-25 | Greyhound 对照 **P1-HW-B DONE**（末格）：`contrast-p1-hw-b-20260725_144607`@worker-1；冻结 dose mb=512,copies=6→48,ramp=1；coll=**1.027** FAIL；Rbeast C1 cp=**2**/C0=**0** hit；dose_check step_ms C1/C0=**1.609** PASS（金标≈1.57）；detect_mode=`autonomous`；detect_ok=yes；collect_seq+C0 FP；MASTER_ADDR=127.0.0.1；未重跑 P3-SW-C`143010`/XPU`143531`；未碰 master-0/XPU；**GH 队无 PENDING** |
+| 2026-07-25 | Greyhound 对照 **P3-SW-C DONE**：`contrast-p3-sw-c-20260725_143448`@worker-1；冻结 dose cpu_n=nproc,cpu_load=90,mb=1,leak_every=1.0,max_chunks=64；coll=**1.016** FAIL；Rbeast C1 cp=**1**/C0=**0** hit；dose_check step_ms C1/C0=**2.509** PASS（金标≈2.49）；detect_mode=`autonomous`；detect_ok=yes；collect_seq+C0 FP；MASTER_ADDR=127.0.0.1；旁证 `143010`；`142010` 无 sidecar 作废；未重跑 P3-SW-B`140639`；未碰 master-0 |
+| 2026-07-25 | Greyhound 对照 **P3-SW-C DONE**：`contrast-p3-sw-c-20260725_143010`@worker-1；冻结 dose cpu_n=nproc,cpu_load=90,mb=1,leak_every=1.0,max_chunks=64；coll=**0.970** FAIL；Rbeast C1 cp=**1**/C0=**0** hit；dose_check step_ms C1/C0=**2.361** PASS（金标≈2.49）；detect_mode=`autonomous`；detect_ok=yes；collect_seq+C0 FP；MASTER_ADDR=127.0.0.1；`142010` 无 sidecar 注入作废；未重跑 XPU`141815`；未碰 master-0 |
+| 2026-07-25 | XPUTimer 对照 **P1-HW-B DONE**：`contrast-p1-hw-b-20260725_143531`@worker-2；冻结 dose mb=512,copies=6→48,ramp=1；自主 hang/slow=**0**；跨-run coll=**0.991** FAIL；dose_check step_ms C1/C0=**1.585** PASS（金标≈1.57）；detect_mode=`cross_run_contrast`；detect_ok=no；MASTER_ADDR=127.0.0.1；未重跑 P3-SW-C`141815`；未碰 worker-1/master-0 |
+| 2026-07-25 | **P1-HW-B SCORED D3**：`142359` C1/C0=**1.57**；dose `mb=512,copies=6→48,ramp=1` calibrated（INLINE 渐进，非改频）；offline D3 min_compute→rank_7；SQL_NO_EXT_EVIDENCE；CONTRAST_QUEUE +GH/XPU PENDING；未改 P3-SW-C`135238` |
+| 2026-07-25 | XPUTimer 对照 **P3-SW-C DONE**：`contrast-p3-sw-c-20260725_141815`@worker-2；冻结 dose cpu_n=nproc,cpu_load=90,mb=1,leak_every=1.0,max_chunks=64；自主 hang/slow=**0**；跨-run coll=**0.917** FAIL；dose_check step_ms C1/C0=**2.504** PASS（金标≈2.49）；detect_mode=`cross_run_contrast`；detect_ok=no；MASTER_ADDR=127.0.0.1；未重跑 P3-SW-B`133435`；未碰 worker-1/master-0 |
+| 2026-07-25 | Greyhound 对照 **P3-SW-B DONE**：`contrast-p3-sw-b-20260725_140639`@worker-1；冻结 dose mb=16,stall_s=0.25（INLINE 8b）；coll=**0.984** FAIL；Rbeast C1 cp=**2**/C0=**0** hit；dose_check step_ms C1/C0=**3.760** PASS（金标≈2.06）；detect_mode=`autonomous`；detect_ok=yes；collect_seq+C0 FP；MASTER_ADDR=127.0.0.1；未重跑 P2-SW-C`135623`；未碰 master-0 |
+| 2026-07-25 | **P3-SW-C SCORED D4**：`135238` C1/C0=**2.49**；dose `cpu_n=nproc,cpu_load=90,mb=1,leak_every=1.0` calibrated（sidecar 8c stress-ng+leak）；SQL PASS_D4；CONTRAST_QUEUE +GH/XPU PENDING；未改 P3-SW-B`125558` / P2-SW-C`124102` |
+| 2026-07-25 | Greyhound 对照 **P2-SW-C DONE**：`contrast-p2-sw-c-20260725_135623`@worker-1；冻结 dose device_rev=1,topo_extra_ar=512,topo_ar_elems=262144；coll=**0.564** FAIL；Rbeast C1/C0 cp=**0/0** miss；dose_check **comm=15.016 PASS**（step=2.211 旁证；金标≈49.86/5.06）；detect_mode=`no_bite`；detect_ok=no；collect_seq+C0 FP；MASTER_ADDR=127.0.0.1；未重跑 P2-SW-B`134521`；未碰 master-0 |
+| 2026-07-25 | Greyhound 对照 **P2-SW-B DONE**：`contrast-p2-sw-b-20260725_134521`@worker-1；冻结 dose algo=ring,stress_mb=512,buffsize=8；coll=**0.982** FAIL；Rbeast C1/C0 cp=**0/0** miss；dose_check **comm=1.862 PASS**（金标≈1.82；step=1.152 旁证不 FAIL）；detect_mode=`no_bite`；detect_ok=no；collect_seq+C0 FP；MASTER_ADDR=127.0.0.1；未重跑 P1-SW-C`132954`；未碰 master-0 |
+| 2026-07-25 | Greyhound 对照 **P1-SW-C DONE**：`contrast-p1-sw-c-20260725_132954`@worker-1；冻结 dose INLINE 2c n=1024/every=1/fallback_s=0.25；coll=**1.027** FAIL；Rbeast C1/C0 cp=**0/0** miss；median step_ms=**1.024** 盲；tip max_ratio=**4.038** PASS（金标 tip max≈4.63）；detect_mode=`no_bite`；detect_ok=no；SPIKE_OK×200；MASTER_ADDR=127.0.0.1；未重跑 P1-SW-B`132011` |
+| 2026-07-25 | XPUTimer 对照 **P2-SW-C DONE**：`contrast-p2-sw-c-20260725_132235`@worker-2；冻结 dose device_rev=1,topo_extra_ar=512,topo_ar_elems=262144；自主 hang/slow=**0**；跨-run coll=**0.593** FAIL；dose_check **comm=13.910 PASS**（step=2.119 旁证；金标 C1/C0_comm≈49.86/step≈5.06）；detect_mode=`cross_run_contrast`；detect_ok=no；MASTER_ADDR=127.0.0.1；未重跑 P2-SW-B`131251` |
+| 2026-07-25 | **P3-SW-B SCORED D4**：`125558` C1/C0=**2.06**；dose `mb=16,stall_s=0.25` calibrated；INLINE 8b；SQL PASS_D4；CONTRAST_QUEUE +GH/XPU PENDING；未改 P2-SW-C`124102` |
+| 2026-07-25 | **P3-SW-B SCORED D4**：`125558` C1/C0=**2.06**；dose `mb=16,stall_s=0.25` calibrated；offline D3 + SQL PASS_D4；CONTRAST_QUEUE +GH/XPU PENDING；未改 P2-SW-C`124102` |
+| 2026-07-25 | XPUTimer 对照 **P1-SW-C DONE**：`contrast-p1-sw-c-20260725_125656`@worker-2；冻结 dose INLINE 2c n=1024/every=1/fallback_s=0.25；自主 hang/slow=**0**；跨-run coll=**0.991** FAIL；median step_ms=**1.006** 盲；tip max_ratio=**4.897** PASS（金标 tip max≈4.63）；detect_mode=`cross_run_contrast`；detect_ok=no；MASTER_ADDR=127.0.0.1；SPIKE_OK；未重跑 P1-SW-B`124414` |
+| 2026-07-25 | Greyhound 对照 **P1-SW-B DONE**：`contrast-p1-sw-b-20260725_132011`@worker-1；冻结 dose INLINE 2b rare_seq=1536/every=1；coll=**1.020** FAIL；Rbeast C1 cp=**2**/C0=**0** hit；dose_check step_ms C1/C0=**1.386** PASS；detect_mode=`autonomous`；detect_ok=yes；collect_seq+C0 FP；未重跑 P1-SW-A`125949` |
+| 2026-07-25 | XPUTimer 对照 **P1-SW-B DONE**：`contrast-p1-sw-b-20260725_124414`@worker-2；冻结 dose INLINE 2b rare_seq=1536/every=1；dose_check step_ms C1/C0=**1.372** PASS；自主 hang/slow=**0**；跨-run coll=**0.991** FAIL（thr1.15）；detect_mode=`cross_run_contrast`；detect_ok=no；MASTER_ADDR=127.0.0.1 未继承 master-0 |
+| 2026-07-25 | Greyhound 对照 **P3-SW-A DONE**：`contrast-p3-sw-a-20260725_124837`@worker-1；冻结 dose inline_gc_every=1,inline_gc_stall_s=0.25；coll=**1.000** FAIL；Rbeast C1 cp=**2**/C0=**0** hit；dose_check step_ms C1/C0=**5.667** PASS；detect_mode=`autonomous`；detect_ok=yes；MASTER_ADDR=127.0.0.1 未继承 master-0 |
+| 2026-07-25 | Greyhound 对照 **P1-SW-A DONE**：`contrast-p1-sw-a-20260725_125949`@worker-1；冻结 dose INLINE 2a chunks=12/stall_mb=768/stall_s=0.25；coll=**1.009** FAIL；Rbeast C1 cp=**2**/C0=**0** hit；dose_check step_ms C1/C0=**4.283** PASS；detect_mode=`autonomous`；detect_ok=yes；collect_seq+C0 FP；未重跑 P3-SW-A`124837` |
+| 2026-07-25 | XPUTimer 对照 **P1-SW-A DONE**：`contrast-p1-sw-a-20260725_123626`@worker-2；冻结 dose INLINE 2a chunks=12/stall_mb=768/stall_s=0.25；dose_check step_ms C1/C0=**4.284** PASS；自主 hang/slow=**0**；跨-run coll=**0.991** FAIL（thr1.3）；detect_mode=`cross_run_contrast`；detect_ok=no；MASTER_ADDR=127.0.0.1 未继承 master-0 |
+| 2026-07-25 | **P2-SW-C SCORED D3**：`124102` C1/C0_comm=**49.86**/step=**5.06**；dose `device_rev=1,topo_extra_ar=512,topo_ar_elems=262144` calibrated（移植沐曦 AR256 后抬剂）；CONTRAST_QUEUE +GH/XPU PENDING |
+| 2026-07-25 | **P2-SW-B SCORED D3**：`122911` C1/C0_comm=**1.82**（step=1.13）；dose `algo=ring,stress_mb=512,buffsize=8` calibrated（ring-only@`122231` 咬空后抬 buff）；CONTRAST_QUEUE +GH/XPU PENDING |
+| 2026-07-25 | **P1-SW-C SCORED D3**：`121105` tip max=4.63（med盲）；dose `n=1024,every=1,fallback_s=0.25` calibrated；CONTRAST_QUEUE +GH/XPU PENDING |
 | 2026-07-25 | **双流水线 Loop**：CONTRAST_QUEUE + BASELINE_CONTRAST；LOOP/PROMPT 改为 Case 扫格 ∥ 竞品对照；第一梯队 6 格入对照队 |
 | 2026-07-24 | 台账初建；SYY 门禁 1–4 绿；卡面 128；目录落在 probing-huawei |
 | 2026-07-24 | 双轨 Agent 边界包；Case=16 卡；Baseline 另池适配 |
@@ -209,3 +268,15 @@ Case 与对照并行；已 SCORED 跳过 Case 直入对照。本波工具仅 GH+
 | 2026-07-25 | P1-EXT-B INLINE Loud **SCORED D3**：`20260725_014350` dose=512×48 C1/C0=2.02 PASS；C2×16；SQL attach 失败→D4 未升；dose calibrated；未走外挂 sidecar |
 | 2026-07-25 | P3-EXT-C Loud **SCORED D3**：`20260725_021906` stress_vm 96×6G C1/C0=**1.59** PASS；C2×16；PSI_UNAVAIL + SQL attach 失败不升 D4；dose calibrated；hold_exec 接线 stress_vm |
 | 2026-07-25 | **Baseline 公平性修正（审查后）**：① XPUTimer S4 `autonomous`→`cross_run_contrast`——它自主 flags(hang/slow)=0，中位比需外部 C0，非 run 内自主；`≥1.5×C0med` 计数降为噪声诊断（C0 自身 10327 误报）；公平性核验 SLOW 按 C0 p99.9 冻结仍 0.99×，host CPU 抢占结构性不可见。② Greyhound ACF 从人造 call_id(i%4/恒0) 改喂**真实 per-rank 序列**（`collect_seq.py`：pid 分 rank、(op,count)→call_id、真实 t0）+ C0 假阳性对照；本机验证 period≈8。均为「给对手它自己最佳算法」的公平性修工具，**不改对手判据阈值、不写 case 答案**（rules §三·五A / 红线2）；结论方向不变（两者 P3-EXT-A 仍无咬合） |
+| 2026-07-25 | Greyhound P3-EXT-A **公平性对照 DONE**：`contrast-p3-ext-a-20260725_114502`；coll C1/C0=1.048；Rbeast acf_period=8、cp=0/0；step_ms=1.922 dose_OK；detect_ok=no；旧 `yjr-as-b-gh-s4-20260725_002805` 保留 |
+| 2026-07-25 | XPUTimer 对照 **P1-EXT-A DONE**：`contrast-p1-ext-a-20260725_114546`@worker-2；冻结 dose INLINE 8192×64；dose_check step_ms C1/C0=**3.955** PASS；自主 hang/slow=**0**；跨-run coll host-wall=**1.036** FAIL（thr1.5）；detect_mode=`cross_run_contrast`（未误标 autonomous）；无咬合如实记；不改 Probing 分 |
+| 2026-07-25 | Greyhound 对照 **P1-EXT-A DONE**：`contrast-p1-ext-a-20260725_120526`@worker-1；冻结 dose INLINE 8192×64；coll=**1.018** FAIL；Rbeast collect_seq C1 cp=2 / C0=0 → **hit**；step_ms=**3.924** dose_OK；detect_ok=**yes**；detect_mode=`autonomous`；不改 Probing 分 |
+| 2026-07-25 | XPUTimer 对照 **P1-EXT-B DONE**：`contrast-p1-ext-b-20260725_115717`@worker-2；冻结 dose INLINE HBM 512×48；dose_check step_ms C1/C0=**2.069** PASS；自主 hang/slow=**0**；跨-run coll host-wall=**0.982** FAIL（thr1.6）；detect_mode=`cross_run_contrast`；detect_ok=no；不改 Probing 分 |
+| 2026-07-25 | Greyhound 对照 **P1-EXT-B DONE**：`contrast-p1-ext-b-20260725_121407`@worker-1；冻结 dose INLINE HBM 512×48；coll=**1.009** FAIL；Rbeast collect_seq C1 cp=2 / C0=0 → **hit**；step_ms=**2.070** dose_OK；detect_ok=**yes**；detect_mode=`autonomous`；不改 Probing 分 |
+| 2026-07-25 | XPUTimer 对照 **P3-EXT-B DONE**：`contrast-p3-ext-b-20260725_120235`@worker-2；冻结 dose fio_nj=16+ckpt20+pread（镜像无 fio→stress-ng hdd32+iomix16）；dose_check step_ms C1/C0=**1.793** PASS；自主 hang/slow=**0**；跨-run coll=**1.048** FAIL（thr1.3）；detect_mode=`cross_run_contrast`；detect_ok=no；MASTER_ADDR=10.119.7.62 未继承 master-0 |
+| 2026-07-25 | Greyhound 对照 **P3-EXT-B DONE**：`contrast-p3-ext-b-20260725_122204`@worker-1；冻结 dose fio_nj=16+ckpt20+pread（镜像无 fio→stress-ng hdd32+iomix16）；coll=**1.049** FAIL；Rbeast collect_seq C1/C0 cp=0/0 → miss；step_ms=**1.738** dose_OK；detect_ok=**no**；detect_mode=`no_bite`；MASTER_ADDR=127.0.0.1 未继承 master-0；能力边界如实记 |
+| 2026-07-25 | XPUTimer 对照 **P3-EXT-C DONE**：`contrast-p3-ext-c-20260725_121535`@worker-2；冻结 dose vm_n=96,vm_bytes=6G；dose_check step_ms C1/C0=**1.780** PASS；自主 hang/slow=**0**；跨-run coll=**1.184** FAIL（thr1.3）；detect_mode=`cross_run_contrast`；detect_ok=no；单机 MASTER_ADDR=127.0.0.1（未继承 master-0） |
+| 2026-07-25 | Greyhound 对照 **P3-EXT-C DONE**：`contrast-p3-ext-c-20260725_124257`@worker-1；冻结 dose vm_n=96,vm_bytes=6G；warmup 预热 page-in（`PAGEIN_PARTIAL +6Gi`）；coll=**1.296** FAIL（thr1.3）；Rbeast collect_seq C1/C0 cp=0/0 → miss；step_ms=**1.063** dose_WEAK；detect_ok=**no**；detect_mode=`no_bite`；MASTER_ADDR=127.0.0.1 未继承 master-0；先轮 `123310` coll=1.144 保留；能力边界如实记 |
+| 2026-07-25 | XPUTimer 对照 **P3-SW-A DONE**：`contrast-p3-sw-a-20260725_122733`@worker-2；冻结 dose inline_gc_every=1,inline_gc_stall_s=0.25；dose_check step_ms C1/C0=**2.633** PASS；自主 hang/slow=**0**；跨-run coll=**0.953** FAIL（thr1.3）；detect_mode=`cross_run_contrast`；detect_ok=no；MASTER_ADDR=127.0.0.1 未继承 master-0 |
+| 2026-07-25 | P1-SW-A Loud **SCORED D3**：`20260725_114556` inline_2a chunks=12/stall_mb=768/stall_s=0.25 C1/C0=**4.20** PASS；C2×16 + SQL DUMP_OK；offline D3 victim=rank_7；SQL_NO_EXT_EVIDENCE（gap flat）不升 D4；dose calibrated；CONTRAST_QUEUE 入队 GH+XPU |
+| 2026-07-25 | P1-SW-B Loud **SCORED D3**：`20260725_115732` inline_2b rare_seq=1536/every=1 C1/C0=**1.36** PASS；C2×16 + SQL DUMP_OK；offline D3=`shape_seq_rare`→rank_7（1536×200）；SQL_NO_EXT_EVIDENCE 不升 D4；dose calibrated；CONTRAST_QUEUE 入队 GH+XPU；未改 P1-SW-A `114556` |

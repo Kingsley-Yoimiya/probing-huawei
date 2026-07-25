@@ -40,8 +40,26 @@ CUBE_SIZE="${CUBE_SIZE:-4096}"
 CUBE_MM="${CUBE_MM:-16}"
 INLINE_GC_EVERY="${INLINE_GC_EVERY:-1}"
 INLINE_GC_STALL_S="${INLINE_GC_STALL_S:-0.25}"
+INLINE_8B_MB="${INLINE_8B_MB:-16}"
+INLINE_8B_STALL_S="${INLINE_8B_STALL_S:-0.25}"
+SIDECAR_8C_PY_LOCAL="${SIDECAR_8C_PY_LOCAL:-${ROOT}/scripts/fail-slow/sidecar_inject_8c.py}"
+SIDECAR_8C_CPU_N="${SIDECAR_8C_CPU_N:-}"
+SIDECAR_8C_CPU_LOAD="${SIDECAR_8C_CPU_LOAD:-90}"
+SIDECAR_8C_MB="${SIDECAR_8C_MB:-1}"
+SIDECAR_8C_LEAK_EVERY="${SIDECAR_8C_LEAK_EVERY:-1.0}"
+SIDECAR_8C_MAX_CHUNKS="${SIDECAR_8C_MAX_CHUNKS:-64}"
 INLINE_HBM_MB="${INLINE_HBM_MB:-512}"
 INLINE_HBM_COPIES="${INLINE_HBM_COPIES:-48}"
+INLINE_HBM_COPIES_MAX="${INLINE_HBM_COPIES_MAX:-48}"
+INLINE_HBM_RAMP="${INLINE_HBM_RAMP:-0}"
+INLINE_2A_CHUNKS="${INLINE_2A_CHUNKS:-12}"
+INLINE_2A_STALL_MB="${INLINE_2A_STALL_MB:-768}"
+INLINE_2A_STALL_S="${INLINE_2A_STALL_S:-0.25}"
+RARE_SHAPE_SEQ="${RARE_SHAPE_SEQ:-1536}"
+RARE_SHAPE_EVERY="${RARE_SHAPE_EVERY:-1}"
+INLINE_2C_N="${INLINE_2C_N:-1024}"
+INLINE_2C_EVERY="${INLINE_2C_EVERY:-1}"
+INLINE_2C_FALLBACK_S="${INLINE_2C_FALLBACK_S:-0.25}"
 CKPT_EVERY="${CKPT_EVERY:-100}"
 FLUSH_EVERY="${FLUSH_EVERY:-5}"
 IO_PAYLOAD="${IO_PAYLOAD:-}"
@@ -95,7 +113,21 @@ case "$CASE_ID" in
     ACCEPT_MIN_RATIO="${ACCEPT_MIN_RATIO:-1.6}"
     INLINE_HBM_MB="${INLINE_HBM_MB:-512}"
     INLINE_HBM_COPIES="${INLINE_HBM_COPIES:-48}"
+    INLINE_HBM_RAMP="${INLINE_HBM_RAMP:-0}"
     INJECT_ARGS="${INJECT_ARGS:-inline_hbm_mb=${INLINE_HBM_MB},inline_hbm_copies=${INLINE_HBM_COPIES}}"
+    ;;
+  P1-HW-B)
+    # OUTLINE 1B：显存带宽渐进衰减。MetaX 外挂 1b 与 pipeline 门闩不齐且常咬空；
+    # Ascend 同 P1-EXT-B：默认 INLINE 渐进 HBM（copies 6→48），非改频。
+    # 注意：顶层已设 INLINE_HBM_* 默认，此处必须无条件覆盖（不能用 :-）
+    INJECT_KIND="${INJECT_KIND:-1b}"
+    MODE="${MODE_OVERRIDE:-gpu_bound}"
+    ACCEPT_MIN_RATIO="${ACCEPT_MIN_RATIO:-1.3}"
+    INLINE_HBM_MB="${INLINE_HBM_MB_OVERRIDE:-512}"
+    INLINE_HBM_COPIES="${INLINE_HBM_COPIES_OVERRIDE:-6}"
+    INLINE_HBM_COPIES_MAX="${INLINE_HBM_COPIES_MAX_OVERRIDE:-48}"
+    INLINE_HBM_RAMP="${INLINE_HBM_RAMP_OVERRIDE:-1}"
+    INJECT_ARGS="${INJECT_ARGS:-inline_hbm_mb=${INLINE_HBM_MB},inline_hbm_copies=${INLINE_HBM_COPIES},inline_hbm_copies_max=${INLINE_HBM_COPIES_MAX},ramp=1}"
     ;;
   P3-SW-A)
     # 对象泄漏→GC：INLINE_INJECT=8a（外挂 GC 无效）；默认 stall=0.25s / every=1
@@ -105,6 +137,60 @@ case "$CASE_ID" in
     INLINE_GC_EVERY="${INLINE_GC_EVERY:-1}"
     INLINE_GC_STALL_S="${INLINE_GC_STALL_S:-0.25}"
     INJECT_ARGS="${INJECT_ARGS:-inline_gc_every=${INLINE_GC_EVERY},inline_gc_stall_s=${INLINE_GC_STALL_S}}"
+    ;;
+  P3-SW-B)
+    # dataloader 泄漏：INLINE_INJECT=8b（外挂 sidecar 大内存机咬空）；沐曦冻结 mb=16 stall=0.25
+    INJECT_KIND="${INJECT_KIND:-8b}"
+    MODE="${MODE_OVERRIDE:-host_bound}"
+    ACCEPT_MIN_RATIO="${ACCEPT_MIN_RATIO:-1.3}"
+    INLINE_8B_MB="${INLINE_8B_MB:-16}"
+    INLINE_8B_STALL_S="${INLINE_8B_STALL_S:-0.25}"
+    INJECT_ARGS="${INJECT_ARGS:-mb=${INLINE_8B_MB},stall_s=${INLINE_8B_STALL_S}}"
+    ;;
+  P3-SW-C)
+    # 监控自身泄漏：sidecar=stress-ng CPU + 主进程 RSS 泄漏
+    # calibrated@135238：cpu_n=nproc（空=sidecar 默认）cpu_load=90 → C1/C0=2.49
+    INJECT_KIND="${INJECT_KIND:-8c}"
+    MODE="${MODE_OVERRIDE:-host_bound}"
+    ACCEPT_MIN_RATIO="${ACCEPT_MIN_RATIO:-1.3}"
+    HOST_BOUND_MATMUL="${HOST_BOUND_MATMUL:-768}"
+    SIDECAR_8C_CPU_N="${SIDECAR_8C_CPU_N:-}"
+    SIDECAR_8C_CPU_LOAD="${SIDECAR_8C_CPU_LOAD:-90}"
+    SIDECAR_8C_MB="${SIDECAR_8C_MB:-1}"
+    SIDECAR_8C_LEAK_EVERY="${SIDECAR_8C_LEAK_EVERY:-1.0}"
+    SIDECAR_8C_MAX_CHUNKS="${SIDECAR_8C_MAX_CHUNKS:-64}"
+    INJECT_ARGS="${INJECT_ARGS:-cpu_n=${SIDECAR_8C_CPU_N:-nproc},cpu_load=${SIDECAR_8C_CPU_LOAD},mb=${SIDECAR_8C_MB},leak_every=${SIDECAR_8C_LEAK_EVERY},max_chunks=${SIDECAR_8C_MAX_CHUNKS}}"
+    ;;
+  P1-SW-A)
+    # 显存碎片化→骤停：INLINE_INJECT=2a；沐曦 loud=chunks12/stall768MB/0.25s
+    INJECT_KIND="${INJECT_KIND:-2a}"
+    MODE="${MODE_OVERRIDE:-gpu_bound}"
+    ACCEPT_MIN_RATIO="${ACCEPT_MIN_RATIO:-1.3}"
+    INLINE_2A_CHUNKS="${INLINE_2A_CHUNKS:-12}"
+    INLINE_2A_STALL_MB="${INLINE_2A_STALL_MB:-768}"
+    INLINE_2A_STALL_S="${INLINE_2A_STALL_S:-0.25}"
+    INJECT_ARGS="${INJECT_ARGS:-chunks=${INLINE_2A_CHUNKS},stall_mb=${INLINE_2A_STALL_MB},stall_s=${INLINE_2A_STALL_S}}"
+    ;;
+  P1-SW-B)
+    # 动态 shape / 罕见 seq：INLINE_INJECT=2b；沐曦 loud=rare_seq=1536,every=1；accept≥1.15
+    INJECT_KIND="${INJECT_KIND:-2b}"
+    MODE="${MODE_OVERRIDE:-gpu_bound}"
+    ACCEPT_MIN_RATIO="${ACCEPT_MIN_RATIO:-1.15}"
+    RARE_SHAPE_SEQ="${RARE_SHAPE_SEQ:-1536}"
+    RARE_SHAPE_EVERY="${RARE_SHAPE_EVERY:-1}"
+    INJECT_ARGS="${INJECT_ARGS:-rare_seq=${RARE_SHAPE_SEQ},every=${RARE_SHAPE_EVERY}}"
+    ;;
+  P1-SW-C)
+    # 首次编译尖刺：INLINE_INJECT=2c；沐曦 loud=n=1024,every=1,fallback=0.2；tip 用 spike 闸门
+    INJECT_KIND="${INJECT_KIND:-2c}"
+    MODE="${MODE_OVERRIDE:-gpu_bound}"
+    ACCEPT_MIN_RATIO="${ACCEPT_MIN_RATIO:-1.3}"
+    INLINE_2C_N="${INLINE_2C_N:-1024}"
+    INLINE_2C_EVERY="${INLINE_2C_EVERY:-1}"
+    INLINE_2C_FALLBACK_S="${INLINE_2C_FALLBACK_S:-0.25}"
+    INJECT_ARGS="${INJECT_ARGS:-n=${INLINE_2C_N},every=${INLINE_2C_EVERY},fallback_s=${INLINE_2C_FALLBACK_S}}"
+    # median 常盲；默认改用 tip spike accept（可用 ACCEPT_SCRIPT 覆盖）
+    ACCEPT_SCRIPT="${ACCEPT_SCRIPT:-${FS_SHARED_SCRIPTS}/agent_overlays/p1c-20260724/accept_p1swc_spike.py}"
     ;;
   P3-EXT-B)
     # 抢磁盘 IO：镜像无 fio/apt → stress-ng --hdd/--iomix；同盘 ckpt+payload 才咬 step_ms
@@ -130,6 +216,30 @@ case "$CASE_ID" in
     VM_N="${VM_N:-96}"
     VM_BYTES="${VM_BYTES:-6G}"
     INJECT_ARGS="${INJECT_ARGS:-vm_n=${VM_N},vm_bytes=${VM_BYTES}}"
+    ;;
+  P2-SW-B)
+    # HCCL 通信算法切换（对齐沐曦 mccl_algo）：C0/C1/C2 同开大 AllReduce；
+    # 仅 C1/C2 钳 HCCL_ALGO=ring（+可选小 buffsize）。主证=comm_ms。
+    INJECT_KIND="${INJECT_KIND:-hccl_algo}"
+    MODE="${MODE_OVERRIDE:-gpu_bound}"
+    ACCEPT_MIN_RATIO="${ACCEPT_MIN_RATIO:-1.3}"
+    HCCL_ALGO_V="${HCCL_ALGO_V:-ring}"
+    HCCL_STRESS_MB="${HCCL_STRESS_MB:-512}"
+    HCCL_BUFFSIZE_V="${HCCL_BUFFSIZE_V:-}"
+    INJECT_ARGS="${INJECT_ARGS:-algo=${HCCL_ALGO_V},stress_mb=${HCCL_STRESS_MB}${HCCL_BUFFSIZE_V:+,buffsize=${HCCL_BUFFSIZE_V}}}"
+    ACCEPT_SCRIPT="${ACCEPT_SCRIPT:-${ROOT}/scripts/fail-slow/accept_p2swb_comm.py}"
+    ;;
+  P2-SW-C)
+    # 拓扑映射漂移（对齐沐曦 topo_5c）：C1/C2 逆序 ASCEND_VISIBLE + TOPO_EXTRA_AR。
+    # 主证优先 comm_ms（EXTRA_AR 落 comm 窗）；step 弱不 FAIL。禁 P2P_DISABLE。
+    INJECT_KIND="${INJECT_KIND:-topo_5c}"
+    MODE="${MODE_OVERRIDE:-gpu_bound}"
+    ACCEPT_MIN_RATIO="${ACCEPT_MIN_RATIO:-1.15}"
+    TOPO_DEVICE_REV="${TOPO_DEVICE_REV:-1}"
+    TOPO_EXTRA_AR="${TOPO_EXTRA_AR:-512}"
+    TOPO_AR_ELEMS="${TOPO_AR_ELEMS:-262144}"
+    INJECT_ARGS="${INJECT_ARGS:-device_rev=${TOPO_DEVICE_REV},topo_extra_ar=${TOPO_EXTRA_AR},topo_ar_elems=${TOPO_AR_ELEMS}}"
+    ACCEPT_SCRIPT="${ACCEPT_SCRIPT:-${ROOT}/scripts/fail-slow/accept_p2swc.py}"
     ;;
   *)
     echo "hold_exec_run_case: CASE_ID=$CASE_ID not yet wired" >&2
@@ -202,6 +312,10 @@ if [[ -f "$SIDECAR_PY_LOCAL" ]]; then
   echo "[hold-exec] sync sidecar → ${POD_BUNDLE}/sidecar_inject_npu.py"
   jsync_file "$SIDECAR_PY_LOCAL" "${POD_BUNDLE}/sidecar_inject_npu.py"
 fi
+if [[ -f "$SIDECAR_8C_PY_LOCAL" ]]; then
+  echo "[hold-exec] sync 8c sidecar → ${POD_BUNDLE}/sidecar_inject_8c.py"
+  jsync_file "$SIDECAR_8C_PY_LOCAL" "${POD_BUNDLE}/sidecar_inject_8c.py"
+fi
 if [[ -f "$DUMP_SQL_LOCAL" ]]; then
   jsync_file "$DUMP_SQL_LOCAL" "${POD_BUNDLE}/dump_probing_sql.sh"
 fi
@@ -210,7 +324,7 @@ echo "[hold-exec] MASTER_IP=$MASTER_IP"
 [[ -n "$MASTER_IP" ]] || { echo "FATAL: no pod IP"; exit 2; }
 
 clean_pod() {
-  jexec "pkill -9 -f '[t]rain_bench_probe_npu' 2>/dev/null || true; pkill -9 -f '/tmp/[t]bp_npu.py' 2>/dev/null || true; pkill -9 -f '[t]orchrun' 2>/dev/null || true; pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 -x stress-ng 2>/dev/null || true; pkill -9 -f '[s]tress-ng' 2>/dev/null || true; pkill -9 -f 'fio.*io_stress' 2>/dev/null || true; sleep 2; exit 0" || true
+  jexec "pkill -9 -f '[t]rain_bench_probe_npu' 2>/dev/null || true; pkill -9 -f '/tmp/[t]bp_npu.py' 2>/dev/null || true; pkill -9 -f '[t]orchrun' 2>/dev/null || true; pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 -f '[s]idecar_inject_8c' 2>/dev/null || true; pkill -9 -x stress-ng 2>/dev/null || true; pkill -9 -f '[s]tress-ng' 2>/dev/null || true; pkill -9 -f 'fio.*io_stress' 2>/dev/null || true; sleep 2; exit 0" || true
 }
 
 fire_config() {
@@ -230,13 +344,51 @@ fire_config() {
   if [[ "$cfg" == C1_* || "$cfg" == C2_* ]] && [[ "$INJECT_KIND" == inline_cube ]]; then
     denv="${denv} export INLINE_INJECT=cube; export INLINE_VICTIM_LOCAL_RANK=${SIDECAR_LOCAL_RANK}; export INLINE_INJECT_START=${INJECT_START}; export INLINE_INJECT_STOP=${INJECT_STOP}; export INLINE_CUBE_SIZE=${CUBE_SIZE}; export INLINE_CUBE_MM=${CUBE_MM};"
   fi
-  # C1/C2：inline HBM（同进程带宽争用）
-  if [[ "$cfg" == C1_* || "$cfg" == C2_* ]] && [[ "$INJECT_KIND" == inline_hbm || "$INJECT_KIND" == hbm ]]; then
-    denv="${denv} export INLINE_INJECT=hbm; export INLINE_VICTIM_LOCAL_RANK=${SIDECAR_LOCAL_RANK}; export INLINE_INJECT_START=${INJECT_START}; export INLINE_INJECT_STOP=${INJECT_STOP}; export INLINE_HBM_MB=${INLINE_HBM_MB}; export INLINE_HBM_COPIES=${INLINE_HBM_COPIES};"
+  # C1/C2：inline HBM（同进程带宽争用；1b=渐进 ramp）
+  if [[ "$cfg" == C1_* || "$cfg" == C2_* ]] && [[ "$INJECT_KIND" == "inline_hbm" || "$INJECT_KIND" == "hbm" || "$INJECT_KIND" == "1b" || "$INJECT_KIND" == "hbm_ramp" ]]; then
+    denv="${denv} export INLINE_INJECT=hbm; export INLINE_VICTIM_LOCAL_RANK=${SIDECAR_LOCAL_RANK}; export INLINE_INJECT_START=${INJECT_START}; export INLINE_INJECT_STOP=${INJECT_STOP}; export INLINE_HBM_MB=${INLINE_HBM_MB}; export INLINE_HBM_COPIES=${INLINE_HBM_COPIES}; export INLINE_HBM_COPIES_MAX=${INLINE_HBM_COPIES_MAX:-48}; export INLINE_HBM_RAMP=${INLINE_HBM_RAMP:-0};"
+    if [[ "$INJECT_KIND" == "1b" || "$INJECT_KIND" == "hbm_ramp" || "${INLINE_HBM_RAMP}" == "1" ]]; then
+      denv="${denv} export INLINE_HBM_RAMP=1;"
+    fi
   fi
   # C1/C2：inline 8a GC/stall（同进程）
   if [[ "$cfg" == C1_* || "$cfg" == C2_* ]] && [[ "$INJECT_KIND" == 8a || "$INJECT_KIND" == inline_8a ]]; then
     denv="${denv} export INLINE_INJECT=8a; export INLINE_VICTIM_LOCAL_RANK=${SIDECAR_LOCAL_RANK}; export INLINE_INJECT_START=${INJECT_START}; export INLINE_INJECT_STOP=${INJECT_STOP}; export INLINE_GC_EVERY=${INLINE_GC_EVERY:-1}; export INLINE_GC_STALL_S=${INLINE_GC_STALL_S:-0.25};"
+  fi
+  # C1/C2：inline 8b dataloader 泄漏（同进程 leak MB + data_stall）
+  if [[ "$cfg" == C1_* || "$cfg" == C2_* ]] && [[ "$INJECT_KIND" == 8b || "$INJECT_KIND" == inline_8b ]]; then
+    denv="${denv} export INLINE_INJECT=8b; export INLINE_VICTIM_LOCAL_RANK=${SIDECAR_LOCAL_RANK}; export INLINE_INJECT_START=${INJECT_START}; export INLINE_INJECT_STOP=${INJECT_STOP}; export INLINE_8B_MB=${INLINE_8B_MB:-16}; export INLINE_8B_STALL_S=${INLINE_8B_STALL_S:-0.25};"
+  fi
+  # C1/C2：inline 2a 显存碎片化→骤停（同进程，barrier 前）
+  if [[ "$cfg" == C1_* || "$cfg" == C2_* ]] && [[ "$INJECT_KIND" == 2a || "$INJECT_KIND" == inline_2a ]]; then
+    denv="${denv} export INLINE_INJECT=2a; export INLINE_VICTIM_LOCAL_RANK=${SIDECAR_LOCAL_RANK}; export INLINE_INJECT_START=${INJECT_START}; export INLINE_INJECT_STOP=${INJECT_STOP}; export INLINE_2A_CHUNKS=${INLINE_2A_CHUNKS:-12}; export INLINE_2A_STALL_MB=${INLINE_2A_STALL_MB:-768}; export INLINE_2A_STALL_S=${INLINE_2A_STALL_S:-0.25};"
+  fi
+  # C1/C2：inline 2b 罕见 shape（同进程 pad/truncate seq）
+  if [[ "$cfg" == C1_* || "$cfg" == C2_* ]] && [[ "$INJECT_KIND" == 2b || "$INJECT_KIND" == inline_2b || "$INJECT_KIND" == rare_shape ]]; then
+    denv="${denv} export INLINE_INJECT=2b; export INLINE_VICTIM_LOCAL_RANK=${SIDECAR_LOCAL_RANK}; export INLINE_INJECT_START=${INJECT_START}; export INLINE_INJECT_STOP=${INJECT_STOP}; export RARE_SHAPE_SEQ=${RARE_SHAPE_SEQ:-1536}; export RARE_SHAPE_EVERY=${RARE_SHAPE_EVERY:-1};"
+  fi
+  # C1/C2：inline 2c 首次编译尖刺（同进程 compile/fallback）
+  if [[ "$cfg" == C1_* || "$cfg" == C2_* ]] && [[ "$INJECT_KIND" == 2c || "$INJECT_KIND" == inline_2c || "$INJECT_KIND" == compile_spike ]]; then
+    denv="${denv} export INLINE_INJECT=2c; export INLINE_VICTIM_LOCAL_RANK=${SIDECAR_LOCAL_RANK}; export INLINE_INJECT_START=${INJECT_START}; export INLINE_INJECT_STOP=${INJECT_STOP}; export INLINE_2C_N=${INLINE_2C_N:-1024}; export INLINE_2C_EVERY=${INLINE_2C_EVERY:-1}; export INLINE_2C_FALLBACK_S=${INLINE_2C_FALLBACK_S:-0.25};"
+  fi
+  # P2-SW-B：C0/C1/C2 同开 HCCL_STRESS_MB；仅 C1/C2 钳 HCCL_ALGO（+可选 buffsize）
+  if [[ "$INJECT_KIND" == hccl_algo || "$INJECT_KIND" == mccl_algo ]]; then
+    denv="${denv} export HCCL_STRESS_MB=${HCCL_STRESS_MB:-512};"
+    if [[ "$cfg" == C1_* || "$cfg" == C2_* ]]; then
+      denv="${denv} export HCCL_ALGO='level0:NA;level1:${HCCL_ALGO_V:-ring}';"
+      if [[ -n "${HCCL_BUFFSIZE_V:-}" ]]; then
+        denv="${denv} export HCCL_BUFFSIZE=${HCCL_BUFFSIZE_V};"
+      fi
+    fi
+  fi
+  # P2-SW-C：仅 C1/C2 逆序 ASCEND_VISIBLE + TOPO_EXTRA_AR（模拟拓扑漂移绕远）
+  if [[ "$INJECT_KIND" == topo_5c || "$INJECT_KIND" == 5c || "$INJECT_KIND" == topo ]]; then
+    if [[ "$cfg" == C1_* || "$cfg" == C2_* ]]; then
+      denv="${denv} export TOPO_EXTRA_AR=${TOPO_EXTRA_AR:-512}; export TOPO_AR_ELEMS=${TOPO_AR_ELEMS:-262144};"
+      if [[ "${TOPO_DEVICE_REV:-1}" == "1" ]]; then
+        denv="${denv} _AVD=\${ASCEND_VISIBLE_DEVICES:-0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}; export ASCEND_VISIBLE_DEVICES=\$(echo \"\$_AVD\" | tr ',' '\\n' | tac | paste -sd, -);"
+      fi
+    fi
   fi
 
   # P3-EXT-B：ckpt 与 stress IO 同盘，否则咬不到 step_ms
@@ -298,7 +450,7 @@ LAUNCH
     return 1
   fi
 
-  if [[ "$cfg" == C1_* || "$cfg" == C2_* ]] && [[ "$INJECT_KIND" == stress_cpu || "$INJECT_KIND" == stress_io || "$INJECT_KIND" == stress_vm || "$INJECT_KIND" == cube || "$INJECT_KIND" == inline_cube || "$INJECT_KIND" == inline_hbm || "$INJECT_KIND" == hbm || "$INJECT_KIND" == 8a || "$INJECT_KIND" == inline_8a ]]; then
+  if [[ "$cfg" == C1_* || "$cfg" == C2_* ]] && [[ "$INJECT_KIND" == stress_cpu || "$INJECT_KIND" == stress_io || "$INJECT_KIND" == stress_vm || "$INJECT_KIND" == cube || "$INJECT_KIND" == inline_cube || "$INJECT_KIND" == inline_hbm || "$INJECT_KIND" == hbm || "$INJECT_KIND" == "1b" || "$INJECT_KIND" == "hbm_ramp" || "$INJECT_KIND" == 8a || "$INJECT_KIND" == inline_8a || "$INJECT_KIND" == 8b || "$INJECT_KIND" == inline_8b || "$INJECT_KIND" == 8c || "$INJECT_KIND" == sidecar_8c || "$INJECT_KIND" == 2a || "$INJECT_KIND" == inline_2a || "$INJECT_KIND" == 2b || "$INJECT_KIND" == inline_2b || "$INJECT_KIND" == rare_shape || "$INJECT_KIND" == 2c || "$INJECT_KIND" == inline_2c || "$INJECT_KIND" == compile_spike || "$INJECT_KIND" == hccl_algo || "$INJECT_KIND" == mccl_algo || "$INJECT_KIND" == topo_5c || "$INJECT_KIND" == 5c || "$INJECT_KIND" == topo ]]; then
     echo "  wait measure step ${INJECT_START}…"
     e=0
     while [ "$e" -lt 2400 ]; do
@@ -314,19 +466,60 @@ LAUNCH
     done
     if [ "$e" -ge 2400 ]; then echo "  step ${INJECT_START} timeout"; return 1; fi
 
-    if [[ "$INJECT_KIND" == inline_cube ]]; then
+    if [[ "$INJECT_KIND" == hccl_algo || "$INJECT_KIND" == mccl_algo ]]; then
+      echo "  hccl_algo armed (algo=${HCCL_ALGO_V:-ring} stress_mb=${HCCL_STRESS_MB:-512} buffsize=${HCCL_BUFFSIZE_V:-default})"
+      jexec "printf '%s\n' 'INLINE_INJECT kind=hccl_algo' 'SIDECAR_START kind=hccl_algo' \"HCCL_ALGO=level0:NA;level1=${HCCL_ALGO_V:-ring}\" \"HCCL_STRESS_MB=${HCCL_STRESS_MB:-512}\" \"HCCL_BUFFSIZE=${HCCL_BUFFSIZE_V:-default}\" >'${out}/injection.log'; exit 0" || true
+    elif [[ "$INJECT_KIND" == topo_5c || "$INJECT_KIND" == 5c || "$INJECT_KIND" == topo ]]; then
+      echo "  topo_5c armed (device_rev=${TOPO_DEVICE_REV:-1} TOPO_EXTRA_AR=${TOPO_EXTRA_AR:-512} TOPO_AR_ELEMS=${TOPO_AR_ELEMS:-262144})"
+      jexec "printf '%s\n' 'SIDECAR_WARMUP kind=topo_5c' 'SIDECAR_START kind=topo_5c' \"TOPO_EXTRA_AR=${TOPO_EXTRA_AR:-512}\" \"TOPO_AR_ELEMS=${TOPO_AR_ELEMS:-262144}\" \"DEVICE_REV=${TOPO_DEVICE_REV:-1}\" >'${out}/injection.log'; exit 0" || true
+    elif [[ "$INJECT_KIND" == inline_cube ]]; then
       echo "  inline cube active (victim=${SIDECAR_LOCAL_RANK} size=${CUBE_SIZE} mm=${CUBE_MM})"
       jexec "grep -E \"INLINE_CUBE|SIDECAR\" '${out}/node_0.log' | head -20 >'${out}/injection.log' || true; echo SIDECAR_START kind=inline_cube size=${CUBE_SIZE} mm=${CUBE_MM} victim=${SIDECAR_LOCAL_RANK} >>'${out}/injection.log'; exit 0" || true
       # npu-smi on physical id for victim logical rank
       # npu-smi：远端展开 \${ASCEND_VISIBLE_DEVICES:-0}/\${PHYS:-0}，本地勿裸扩
       jexec "PHYS=\$(echo \${ASCEND_VISIBLE_DEVICES:-0} | cut -d, -f$((SIDECAR_LOCAL_RANK+1))); npu-smi info -t usages -i \${PHYS:-0} 2>/dev/null | head -40 >'${out}/npu_smi_util_inject.txt' || npu-smi info 2>/dev/null | head -80 >'${out}/npu_smi_util_inject.txt'; exit 0" || true
-    elif [[ "$INJECT_KIND" == inline_hbm || "$INJECT_KIND" == hbm ]]; then
-      echo "  inline hbm active (victim=${SIDECAR_LOCAL_RANK} mb=${INLINE_HBM_MB} copies=${INLINE_HBM_COPIES})"
-      jexec "grep -E \"INLINE_HBM|SIDECAR\" '${out}/node_0.log' | head -20 >'${out}/injection.log' || true; echo SIDECAR_START kind=inline_hbm mb=${INLINE_HBM_MB} copies=${INLINE_HBM_COPIES} victim=${SIDECAR_LOCAL_RANK} >>'${out}/injection.log'; exit 0" || true
+    elif [[ "$INJECT_KIND" == "inline_hbm" || "$INJECT_KIND" == "hbm" || "$INJECT_KIND" == "1b" || "$INJECT_KIND" == "hbm_ramp" ]]; then
+      echo "  inline hbm active (victim=${SIDECAR_LOCAL_RANK} mb=${INLINE_HBM_MB} copies=${INLINE_HBM_COPIES} max=${INLINE_HBM_COPIES_MAX:-48} ramp=${INLINE_HBM_RAMP:-0})"
+      jexec "grep -E \"INLINE_HBM|SIDECAR\" '${out}/node_0.log' | head -20 >'${out}/injection.log' || true; echo SIDECAR_START kind=inline_hbm_1b mb=${INLINE_HBM_MB} copies=${INLINE_HBM_COPIES} copies_max=${INLINE_HBM_COPIES_MAX:-48} ramp=${INLINE_HBM_RAMP:-0} victim=${SIDECAR_LOCAL_RANK} >>'${out}/injection.log'; exit 0" || true
       jexec "PHYS=\$(echo \${ASCEND_VISIBLE_DEVICES:-0} | cut -d, -f$((SIDECAR_LOCAL_RANK+1))); npu-smi info -t usages -i \${PHYS:-0} 2>/dev/null | head -40 >'${out}/npu_smi_util_inject.txt' || npu-smi info 2>/dev/null | head -80 >'${out}/npu_smi_util_inject.txt'; exit 0" || true
     elif [[ "$INJECT_KIND" == 8a || "$INJECT_KIND" == inline_8a ]]; then
       echo "  inline 8a GC/stall active (victim=${SIDECAR_LOCAL_RANK} every=${INLINE_GC_EVERY:-1} stall=${INLINE_GC_STALL_S:-0.25})"
       jexec "grep -E \"INLINE_8A|INLINE_GC|SIDECAR\" '${out}/node_0.log' | head -20 >'${out}/injection.log' || true; echo SIDECAR_START kind=inline_8a every=${INLINE_GC_EVERY:-1} stall_s=${INLINE_GC_STALL_S:-0.25} victim=${SIDECAR_LOCAL_RANK} >>'${out}/injection.log'; exit 0" || true
+    elif [[ "$INJECT_KIND" == 8b || "$INJECT_KIND" == inline_8b ]]; then
+      echo "  inline 8b leak/stall active (victim=${SIDECAR_LOCAL_RANK} mb=${INLINE_8B_MB:-16} stall=${INLINE_8B_STALL_S:-0.25})"
+      jexec "grep -E \"INLINE_8B|SIDECAR\" '${out}/node_0.log' | head -20 >'${out}/injection.log' || true; echo SIDECAR_START kind=inline_8b mb=${INLINE_8B_MB:-16} stall_s=${INLINE_8B_STALL_S:-0.25} victim=${SIDECAR_LOCAL_RANK} >>'${out}/injection.log'; exit 0" || true
+    elif [[ "$INJECT_KIND" == 8c || "$INJECT_KIND" == sidecar_8c ]]; then
+      # 监控泄漏：外挂 host sidecar（非 attach 训练 PID）；host_bound 咬 data_ms/step
+      echo "  8c sidecar fire (cpu_n=${SIDECAR_8C_CPU_N:-nproc} load=${SIDECAR_8C_CPU_LOAD} mb=${SIDECAR_8C_MB}/${SIDECAR_8C_LEAK_EVERY}s)"
+      jexec "rm -f '${out}/injection.log'; cp -f '${POD_BUNDLE}/sidecar_inject_8c.py' /tmp/sidecar_inject_8c.py; export SIDECAR_8C_CPU_LOAD=${SIDECAR_8C_CPU_LOAD} SIDECAR_8C_MB=${SIDECAR_8C_MB} SIDECAR_8C_LEAK_EVERY=${SIDECAR_8C_LEAK_EVERY} SIDECAR_8C_MAX_CHUNKS=${SIDECAR_8C_MAX_CHUNKS}; ${SIDECAR_8C_CPU_N:+export SIDECAR_8C_CPU_N=${SIDECAR_8C_CPU_N};} PYTHONUNBUFFERED=1 nohup ${PYBIN}/python -u /tmp/sidecar_inject_8c.py --case 8c --seconds 1800 >'${out}/injection.log' 2>&1 & echo SC=\$!; exit 0"
+      e=0
+      while [ "$e" -lt 60 ]; do
+        if jexec "grep -q 'SIDECAR_START' '${out}/injection.log'" 2>/dev/null; then
+          echo "  8c sidecar START ok (${e}s)"; break
+        fi
+        if jexec "test -f '${out}/node_0.fail'" 2>/dev/null; then
+          echo "  8c START aborted: training fail"; return 1
+        fi
+        if ! jexec "pgrep -f '[s]idecar_inject_8c' >/dev/null" 2>/dev/null; then
+          echo "  8c sidecar died without START"; jexec "tail -n 60 '${out}/injection.log'" || true
+          return 1
+        fi
+        sleep 2; e=$((e + 2))
+      done
+      if [ "$e" -ge 60 ]; then
+        echo "  8c sidecar START timeout"; jexec "tail -n 80 '${out}/injection.log'" || true
+        return 1
+      fi
+    elif [[ "$INJECT_KIND" == 2a || "$INJECT_KIND" == inline_2a ]]; then
+      echo "  inline 2a frag active (victim=${SIDECAR_LOCAL_RANK} chunks=${INLINE_2A_CHUNKS:-12} stall_mb=${INLINE_2A_STALL_MB:-768} stall_s=${INLINE_2A_STALL_S:-0.25})"
+      jexec "grep -E \"INLINE_2A|SIDECAR\" '${out}/node_0.log' | head -20 >'${out}/injection.log' || true; echo SIDECAR_START kind=inline_2a chunks=${INLINE_2A_CHUNKS:-12} stall_mb=${INLINE_2A_STALL_MB:-768} stall_s=${INLINE_2A_STALL_S:-0.25} victim=${SIDECAR_LOCAL_RANK} >>'${out}/injection.log'; exit 0" || true
+      jexec "PHYS=\$(echo \${ASCEND_VISIBLE_DEVICES:-0} | cut -d, -f$((SIDECAR_LOCAL_RANK+1))); npu-smi info -t usages -i \${PHYS:-0} 2>/dev/null | head -40 >'${out}/npu_smi_util_inject.txt' || npu-smi info 2>/dev/null | head -80 >'${out}/npu_smi_util_inject.txt'; exit 0" || true
+    elif [[ "$INJECT_KIND" == 2b || "$INJECT_KIND" == inline_2b || "$INJECT_KIND" == rare_shape ]]; then
+      echo "  inline 2b rare_shape active (victim=${SIDECAR_LOCAL_RANK} rare_seq=${RARE_SHAPE_SEQ:-1536} every=${RARE_SHAPE_EVERY:-1})"
+      jexec "grep -E \"INLINE_RARE_SHAPE|SIDECAR\" '${out}/node_0.log' | head -20 >'${out}/injection.log' || true; echo SIDECAR_START kind=inline_2b rare_seq=${RARE_SHAPE_SEQ:-1536} every=${RARE_SHAPE_EVERY:-1} victim=${SIDECAR_LOCAL_RANK} >>'${out}/injection.log'; exit 0" || true
+    elif [[ "$INJECT_KIND" == 2c || "$INJECT_KIND" == inline_2c || "$INJECT_KIND" == compile_spike ]]; then
+      echo "  inline 2c compile tip active (victim=${SIDECAR_LOCAL_RANK} n=${INLINE_2C_N:-1024} every=${INLINE_2C_EVERY:-1} fallback_s=${INLINE_2C_FALLBACK_S:-0.25})"
+      jexec "grep -E \"INLINE_2C|SIDECAR\" '${out}/node_0.log' | head -40 >'${out}/injection.log' || true; echo SIDECAR_START kind=inline_2c n=${INLINE_2C_N:-1024} every=${INLINE_2C_EVERY:-1} fallback_s=${INLINE_2C_FALLBACK_S:-0.25} victim=${SIDECAR_LOCAL_RANK} >>'${out}/injection.log'; exit 0" || true
     elif [[ "$INJECT_KIND" == stress_cpu ]]; then
       if [[ -n "$CPU_N" ]]; then
         jexec "nohup stress-ng --cpu ${CPU_N} --cpu-load ${CPU_LOAD} --timeout 900s >'${out}/injection.log' 2>&1 & echo SC=\$!; echo SIDECAR_START stress_cpu cpu_n=${CPU_N} cpu_load=${CPU_LOAD} >>'${out}/injection.log'; exit 0"
@@ -403,7 +596,7 @@ LAUNCH
     while [ "$e" -lt 2400 ]; do
       if jexec "test -f '${out}/ranks/step_${INJECT_STOP}.marker'" 2>/dev/null; then
         echo "  measure step ${INJECT_STOP} → stop injectors"
-        jexec "pkill -TERM -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -TERM stress-ng 2>/dev/null || true; sleep 1; pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 stress-ng 2>/dev/null || true; echo SIDECAR_STOP >>'${out}/injection.log'; exit 0" || true
+        jexec "pkill -TERM -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -TERM -f '[s]idecar_inject_8c' 2>/dev/null || true; pkill -TERM stress-ng 2>/dev/null || true; sleep 1; pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 -f '[s]idecar_inject_8c' 2>/dev/null || true; pkill -9 stress-ng 2>/dev/null || true; echo SIDECAR_STOP >>'${out}/injection.log'; exit 0" || true
         break
       fi
       if jexec "test -f '${out}/node_0.done' -o -f '${out}/node_0.fail'" 2>/dev/null; then
@@ -417,14 +610,14 @@ LAUNCH
   while [ "$e" -lt 3600 ]; do
     if jexec "test -f '${out}/node_0.done'" 2>/dev/null; then
       echo "  done (${e}s)"
-      jexec "pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 stress-ng 2>/dev/null || true; exit 0" || true
+      jexec "pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 -f '[s]idecar_inject_8c' 2>/dev/null || true; pkill -9 stress-ng 2>/dev/null || true; exit 0" || true
       return 0
     fi
     # pilot 宽松：测量窗 step_300 已齐且训练已退出 → 视为可验收（防他方 pkill 误杀）
     if jexec "test -f '${out}/ranks/step_${INJECT_STOP}.marker'" 2>/dev/null; then
       if ! jexec "pgrep -f '[t]bp_npu|[t]orchrun' >/dev/null" 2>/dev/null; then
         echo "  measure window complete + training gone → accept partial (step_${INJECT_STOP})"
-        jexec "pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 stress-ng 2>/dev/null || true; touch '${out}/node_0.done'; echo PARTIAL_DONE >>'${out}/node_0.log'; exit 0" || true
+        jexec "pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 -f '[s]idecar_inject_8c' 2>/dev/null || true; pkill -9 stress-ng 2>/dev/null || true; touch '${out}/node_0.done'; echo PARTIAL_DONE >>'${out}/node_0.log'; exit 0" || true
         return 0
       fi
     fi
@@ -432,11 +625,11 @@ LAUNCH
       # 若已有 step_300，fail 也升格 partial-ok
       if jexec "test -f '${out}/ranks/step_${INJECT_STOP}.marker'" 2>/dev/null; then
         echo "  FAIL after measure window → partial-ok"
-        jexec "pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 stress-ng 2>/dev/null || true; rm -f '${out}/node_0.fail'; touch '${out}/node_0.done'; exit 0" || true
+        jexec "pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 -f '[s]idecar_inject_8c' 2>/dev/null || true; pkill -9 stress-ng 2>/dev/null || true; rm -f '${out}/node_0.fail'; touch '${out}/node_0.done'; exit 0" || true
         return 0
       fi
       echo "  FAIL marker"; jexec "tail -n 150 '${out}/node_0.log'" || true
-      jexec "pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 stress-ng 2>/dev/null || true; exit 0" || true
+      jexec "pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 -f '[s]idecar_inject_8c' 2>/dev/null || true; pkill -9 stress-ng 2>/dev/null || true; exit 0" || true
       return 1
     fi
     sleep 10; e=$((e + 10))
@@ -514,12 +707,20 @@ clean_pod
 ACCEPT_SCRIPT="${ACCEPT_SCRIPT:-${FS_SHARED_SCRIPTS}/accept_loud.py}"
 if [[ -f "$ACCEPT_SCRIPT" ]]; then
   set +e
-  python3 "$ACCEPT_SCRIPT" \
-    --result-root "$LOCAL_RESULT_ROOT" \
-    --case "$CASE_ID" \
-    --min-ratio "$ACCEPT_MIN_RATIO" \
-    --configs "$ABC_CONFIGS" \
-    --write-md "$LOCAL_RESULT_ROOT/ACCEPT_LOUD.md"
+  if [[ "$(basename "$ACCEPT_SCRIPT")" == "accept_p1swc_spike.py" ]]; then
+    python3 "$ACCEPT_SCRIPT" \
+      --result-root "$LOCAL_RESULT_ROOT" \
+      --case "$CASE_ID" \
+      --min-median-ratio "$ACCEPT_MIN_RATIO" \
+      --write-md "$LOCAL_RESULT_ROOT/ACCEPT_LOUD.md"
+  else
+    python3 "$ACCEPT_SCRIPT" \
+      --result-root "$LOCAL_RESULT_ROOT" \
+      --case "$CASE_ID" \
+      --min-ratio "$ACCEPT_MIN_RATIO" \
+      --configs "$ABC_CONFIGS" \
+      --write-md "$LOCAL_RESULT_ROOT/ACCEPT_LOUD.md"
+  fi
   accept_rc=$?
   set -e
   echo "[hold-exec] accept_rc=$accept_rc"

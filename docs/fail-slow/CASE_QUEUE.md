@@ -32,6 +32,9 @@
 | P3-EXT-B | `fio` IO | ✅ | **SCORED** | C1/C0=**2.13**@`020212`；**D3** |
 | P3-EXT-C | `stress-ng --vm` | ✅ | **SCORED** | C1/C0=**1.59**@`021906`；**D3** |
 | P3-SW-A | inline `8a` GC/stall | ✅ | **SCORED** | C1/C0=**2.93**@`012957`；**D4** |
+| P1-SW-A | inline `2a` 显存碎片 | ✅ | **SCORED** | C1/C0=**4.20**@`114556`；**D3**；对照见 CONTRAST_QUEUE |
+| P1-SW-B | inline `2b` 罕见 shape | ✅ | **SCORED** | C1/C0=**1.36**@`115732`；**D3**；对照见 CONTRAST_QUEUE |
+| P1-SW-C | inline `2c` 编译尖刺 | ✅ | **SCORED** | tip max=**4.63**@`121105`；**D3**；median盲；对照见 CONTRAST_QUEUE |
 
 ### 第二梯队（流水线 1 优先序 · 逐格）
 
@@ -39,25 +42,22 @@
 
 | Case | 权限 | 状态 | 注入思路（草稿） | 备注 |
 |------|------|------|------------------|------|
-| P1-SW-A | ✅ | PENDING | 显存碎片化（纯软件） | 优先 |
-| P1-SW-B | ✅ | PENDING | 动态 shape 次优 kernel | |
-| P1-SW-C | ✅ | PENDING | 首次编译尖刺 | |
-| P2-SW-B | ✅ | PENDING | HCCL 通信算法切换 | |
-| P2-SW-C | ✅ | PENDING | 拓扑映射漂移 | |
-| P3-SW-B | ✅ | PENDING | dataloader 泄漏 | recipes 有骨架 uncalibrated |
-| P3-SW-C | ✅ | PENDING | 监控自身泄漏 | |
-| P1-HW-B | ✅ | PENDING | 带宽 sidecar / NPU 访存 | 可后置 |
+| P2-SW-B | ✅ | **SCORED** | HCCL 算法+buff 钳制 | C1/C0_comm=**1.82**@`122911`；**D3**；对照见 CONTRAST_QUEUE |
+| P2-SW-C | ✅ | **SCORED** | 拓扑映射漂移 | C1/C0_comm=**49.86**/step=**5.06**@`124102`；**D3**；对照见 CONTRAST_QUEUE |
+| P3-SW-B | ✅ | **SCORED** | dataloader 泄漏 | C1/C0=**2.06**@`125558`；**D4**；dose `mb=16,stall_s=0.25` calibrated；对照见 CONTRAST_QUEUE |
+| P3-SW-C | ✅ | **SCORED** | 监控自身泄漏 | C1/C0=**2.49**@`135238`；**D4**；dose `cpu_n=nproc,cpu_load=90`+1MB/s leak calibrated；对照见 CONTRAST_QUEUE |
+| P1-HW-B | ✅ | **SCORED** | INLINE 渐进 HBM 6→48 | C1/C0=**1.57**@`142359`；**D3**；dose calibrated；对照见 CONTRAST_QUEUE |
 
-### 第三梯队（Loop 开跑后批量标 SKIP_PERM）
+### 第三梯队（已批量 SKIP_PERM · 2026-07-25 Loop 开跑）
 
-| Case | 默认处置 | 原因 |
-|------|----------|------|
-| P1-HW-A / P1-HW-C | SKIP_PERM | 改频 / power cap |
-| P1-EXT-C | SKIP_PERM | 需卡共享调度配置 |
-| P2-HW-A/B/C | SKIP_PERM | 网络组 / 交换机 / 固件 |
-| P2-SW-A | SKIP_PERM | 需通信库插件权限时跳过 |
-| P2-EXT-A/B/C | SKIP_PERM | 第二 job / 隔离网 / 存储侧 |
-| P3-HW-A/B/C | SKIP_PERM | ECC 真值 / 改频 / 盘级配合 |
+| Case | 状态 | 原因 |
+|------|------|------|
+| P1-HW-A / P1-HW-C | **SKIP_PERM** | 改频 / power cap |
+| P1-EXT-C | **SKIP_PERM** | 需卡共享调度配置 |
+| P2-HW-A/B/C | **SKIP_PERM** | 网络组 / 交换机 / 固件 |
+| P2-SW-A | **SKIP_PERM** | 需通信库插件权限时跳过 |
+| P2-EXT-A/B/C | **SKIP_PERM** | 第二 job / 隔离网 / 存储侧 |
+| P3-HW-A/B/C | **SKIP_PERM** | ECC 真值 / 改频 / 盘级配合 |
 
 > **SKIP_PERM 不进覆盖率分母、不进 CONTRAST_QUEUE**。权限放开再改状态重排。
 
