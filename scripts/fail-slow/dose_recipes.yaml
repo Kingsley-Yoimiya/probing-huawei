@@ -1,0 +1,62 @@
+# Fail-slow 剂量配方 — 华为昇腾（未标定草稿）
+# 骨架从沐曦 dose_recipes.yaml 拷贝；Loud 数值仅作起点，pilot 后改本文件并记 ledger。
+# 编排：共享 probing-test/scripts/fail-slow/run_case_abc.sh + 本仓 env.sh
+
+platform: ascend
+defaults:
+  sidecar_warmup_s: 8
+  sidecar_local_rank: 7
+  inject_measure_window: [100, 300]
+  host_bound_matmul: 768
+  note: "未在 Ascend 上标定；accept_min_ratio 先沿用沐曦，咬空再抬剂量"
+
+cases:
+  P1-EXT-A:
+    inject_kind: inline_cube
+    mode: gpu_bound
+    loud:   { args: "inline_cube_size=8192,inline_cube_mm=64", accept_min_ratio: 1.5, status: calibrated, note: "INLINE@011129 C1/C0=3.87 PASS; SCORED D2; final dose after 4096x16=1.06" }
+    quiet:  { args: "inline_cube_size=2048,inline_cube_mm=4", accept_min_ratio: 1.15 }
+    masked: { args: "inline_cube_size=2048,inline_cube_mm=1", accept_min_ratio: 1.05 }
+
+  P1-EXT-B:
+    inject_kind: inline_hbm
+    mode: gpu_bound
+    loud:   { args: "inline_hbm_mb=512,inline_hbm_copies=48", accept_min_ratio: 1.6, status: calibrated, note: "INLINE@014350 C1/C0=2.02 PASS; SCORED D3; SQL attach fail no D4" }
+    quiet:  { args: "inline_hbm_mb=128,inline_hbm_copies=3", accept_min_ratio: 1.15 }
+    masked: { args: "inline_hbm_mb=64,inline_hbm_copies=1", accept_min_ratio: 1.05 }
+
+  P3-EXT-A:
+    inject_kind: stress_cpu
+    mode: host_bound
+    loud:   { args: "cpu_load=90", accept_min_ratio: 1.3, status: calibrated, note: "yysong-master-0 nproc=256 全核; C1/C0≈1.97 @20260724_231918; data_ms 1.2→13" }
+    quiet:  { args: "cpu_frac=0.5,cpu_load=70", accept_min_ratio: 1.15 }
+    masked: { args: "cpu_n=2,cpu_load=50", accept_min_ratio: 1.05 }
+
+  P3-EXT-B:
+    inject_kind: stress_io
+    mode: host_bound
+    loud:   { args: "fio_nj=16,iodepth=64,bs=4k,size=4G,ckpt_every=20,io_read_kb=1024", accept_min_ratio: 1.3, status: calibrated, note: "fio@020212 C1/C0=2.13 PASS; SCORED D3; SQL_NO_EXT_EVIDENCE no D4" }
+    quiet:  { args: "fio_nj=4,iodepth=16,bs=4k,size=1G,ckpt_every=50,io_read_kb=256", accept_min_ratio: 1.15 }
+
+  P3-EXT-C:
+    inject_kind: stress_vm
+    mode: host_bound
+    loud:   { args: "vm_n=96,vm_bytes=6G", accept_min_ratio: 1.3, status: calibrated, note: "20260725_021906 C1/C0=1.59 PASS; 2Ti; PSI_UNAVAIL" }
+    quiet:  { args: "vm_n=32,vm_bytes=4G", accept_min_ratio: 1.15 }
+    masked: { args: "vm_n=8,vm_bytes=2G", accept_min_ratio: 1.05 }
+
+  P3-SW-A:
+    inject_kind: "8a"
+    mode: host_bound
+    loud:   { args: "inline_gc_every=1,inline_gc_stall_s=0.25", accept_min_ratio: 1.3, status: calibrated, note: "INLINE@012957 C1/C0=2.93 PASS; SCORED D4; stall=0.25 every=1" }
+
+  P3-SW-B:
+    inject_kind: "8b"
+    mode: host_bound
+    loud:   { args: "", accept_min_ratio: 1.3, status: uncalibrated }
+
+scoring:
+  d4_requires: probing_sql
+  probing_pkg: "probing-huawei (NPU backend); version TBD after wheel build"
+  host_bypass: "npu-smi + /proc/pressure (see platform/ascend/host_bypass)"
+  competitors: { Greyhound: PENDING, XPUTimer: PENDING }

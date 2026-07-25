@@ -312,9 +312,3 @@ impl HccsCollector {
         Ok(())
     }
 }
-
-// Silence unused helper on non-NPU platforms.
-#[allow(dead_code)]
-fn _rate_bps_unused() {
-    let _ = rate_bps;
-}

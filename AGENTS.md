@@ -111,3 +111,19 @@ Details in each `skills/<id>/SKILL.md`.
 - **Vendor pip packages:** `probing-<vendor>` — discovery in `python/probing/extensions/`; template `examples/probing-acme/`
 - **Table plugins:** `python/probing/ext/` (`@table` + `python.enabled`)
 - **NCCL profiler:** `docs/src/design/nccl-profiler.md`
+
+## Fail-Slow（华为昇腾战役）
+
+本仓同时承载 **Ascend Probing 包** 与 **华为侧 fail-slow 规则/台账**：
+
+| 路径 | 用途 |
+|------|------|
+| `docs/fail-slow/rules.md` | 方法论（与沐曦同构） |
+| `docs/fail-slow/ledger.md` | 华为门禁 / 剂量 / 跑分速览 |
+| `docs/fail-slow/CASE_QUEUE.md` | 27-case 排期与 SKIP_PERM |
+| `docs/fail-slow/agents/` | **Loop + Case/Baseline 任务卡**（16 卡双轨） |
+| `scripts/fail-slow/env.sh` | SYY kube + `results/ascend-ais` |
+
+编排脚本仍共享 `project/probing-test/scripts/fail-slow/`（含 `platform/ascend/`）。  
+进集群借 `songyiyang.p`；落盘只写 `yinjinrun.p-huawei`；**禁止**碰 `yysong-*` / 共享盘 `yysong`。  
+Case 前缀 `yjr-as-c-*`；Baseline `yjr-as-b-*`。入口：`docs/fail-slow/README.md`。
