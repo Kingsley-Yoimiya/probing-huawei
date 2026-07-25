@@ -1,87 +1,84 @@
-# Loop 状态机 · 昇腾双轨编排
+# Loop 状态机 · 昇腾双流水线
 
 > 用户用 Cursor `/loop`（或等价）跑本状态机。  
-> **父会话留在 myportal**；写盘与身份服从 `AGENTS.md` + 华为 `ledger.md`。
+> 维护者可从 myportal 开聊；**真相源**在本仓 `docs/fail-slow/` 与 `$LOCAL_RESULT_ROOT_BASE`（默认 `results/ascend-ais/`）。对外不依赖 myportal。
 
-## 目标
+## 目标（两流水线并行）
 
-每一轮 loop 同时推进：
+1. **流水线 1 · Case（Probing）**：按 [`../CASE_QUEUE.md`](../CASE_QUEUE.md) 扫可跑 27 格；已 `SCORED` **跳过**；第三梯队标 `SKIP_PERM`。  
+2. **流水线 2 · Baseline 对照**：按 [`../CONTRAST_QUEUE.md`](../CONTRAST_QUEUE.md) 对已冻结 dose 的 case 跑 Greyhound / XPUTimer；**不改** Probing 分。
 
-1. **轨 A**：16 卡上按队列跑 27-case（Probing C0/C1/C2），出分。  
-2. **轨 B**：检查 Greyhound / XPUTimer（及可选 FR）适配 STATUS，推动 unblock，直到可采集、可按论文规则检测。
-
-Baseline **未就绪时不阻塞** Case 遍历。
+适配（S0–S4）已完成；本战役 Loop **不再**以「推适配」为主，只派 **Case Runner** 与 **Baseline Contrast**。
 
 ## 每轮必读（短）
 
-1. `docs/fail-slow/CASE_QUEUE.md`  
-2. `docs/fail-slow/ledger.md` §1.3 门禁 + §3  
-3. `results/ascend-ais/INDEX.md`  
-4. `results/ascend-ais/baseline/*/STATUS.md`（若尚无文件 → 视为 S0，应派适配 Agent）  
-5. `agents/RESOURCE.md`（**hold-exec on yysong**：壳空闲即可派）
+1. [`../CASE_QUEUE.md`](../CASE_QUEUE.md)  
+2. [`../CONTRAST_QUEUE.md`](../CONTRAST_QUEUE.md)  
+3. [`../ledger.md`](../ledger.md) §1.3 + §3  
+4. `$LOCAL_RESULT_ROOT_BASE/INDEX.md`（若有）  
+5. `$LOCAL_RESULT_ROOT_BASE/_prep/LOOP_LAST.md`（若有）  
+6. `baseline/{greyhound,xputimer}/STATUS.md`  
+7. [`RESOURCE.md`](RESOURCE.md)
 
-## 状态变量（逻辑）
+## 资源（硬）
 
-```text
-case_queue:     CASE_QUEUE 中非终态条目
-case_inflight:  yysong Case pods 内是否有我们的活训练
-gh_phase / xpu_phase / fr_phase:  来自各 STATUS.md
-shell_idle:     yysong 目标 pods 无活 torchrun
-```
+| 池 | Pod | 同时刻 |
+|----|-----|--------|
+| Case | `yysong-master-0` | formal ≤1 |
+| Greyhound 对照 | `yysong-worker-1` | ≤1 |
+| XPUTimer 对照 | `yysong-worker-2` | ≤1 |
+| Loop 父 | — | 0 卡；只派 Task |
 
-终态（Case）：`SCORED` | `SKIP_PERM` | `INEFFECTIVE`  
-进行中：`PENDING` | `PILOT` | `LOUD_OK`
+空闲 = 目标 pod 内无活 `torchrun`。禁止碰 a3/grj。
 
 ## 每轮决策（伪代码）
 
 ```text
-# --- 轨 A：Case ---
-if yysong Case pods 空闲 and 存在可跑 case:
-  pick = 第一梯队中首个 PENDING/PILOT/待 score
-  派生子 Agent ← CASE_RUNNER.md + case_id（hold-exec on yysong）
-elif case_inflight:
-  只监控 / 催回拉
-# 禁止：因调度空闲=0 不派；禁止改去 a3/grj
+读 CASE_QUEUE + CONTRAST_QUEUE + STATUS + LOOP_LAST + RESOURCE
 
-# --- 轨 B：Baseline ---
-在 yysong-worker-1 / worker-2 推进 GH / XPU（错开 Case）
+# —— 流水线 1：Case @ master-0 ——
+if master IDLE:
+  if 第三梯队仍有未标 SKIP_PERM:
+    本轮批量写入 SKIP_PERM（不进分母、不进对照）
+  elif 存在可跑且非终态（PENDING/PILOT/LOUD_OK 待 score）:
+    pick = 第二梯队优先序中首个
+    派 CASE_RUNNER(case_id)   # 无 dose → 先移植再 Loud
+  # 已 SCORED：不派 Case；确认已出现在 CONTRAST_QUEUE
+
+# —— 流水线 2：对照 @ workers ——
+for (tool, pod) in [(gh, w1), (xpu, w2)]:
+  if pod IDLE and CONTRAST_QUEUE 存在该 tool 的 PENDING:
+    pick = 队头（P3-EXT-A×GH 公平性重跑优先；其余已 SCORED）
+    派 BASELINE_CONTRAST(tool, case_id, frozen_dose, case_ref)
+
+写 LOOP_LAST；中文短报用户
 ```
 
-## 派发优先级
+## 子 Agent 边界
 
-1. 门禁（SSH/kube/kubectl）红 → 先修  
-2. Case 第一梯队 —— **yysong 空闲即派**  
-3. Baseline S0→S2 —— 并行（另 yysong worker）  
-4. S3→S4 / 对照波次 —— 后
+| Agent | 任务卡 | 可写 | 不可写 |
+|-------|--------|------|--------|
+| Case Runner | [`CASE_RUNNER.md`](CASE_RUNNER.md) | master-0、Case 结果、CASE_QUEUE | workers 对照、a3/grj |
+| Baseline Contrast | [`BASELINE_CONTRAST.md`](BASELINE_CONTRAST.md) | 对应 worker、`baseline/<tool>/contrast-*`、CONTRAST_QUEUE | master-0、改 Probing 分 |
+| Loop 父 | 本文件 + [`LOOP_PROMPT.md`](LOOP_PROMPT.md) | 派发、LOOP_LAST、台账催更 | 自己长跑占卡 |
 
-## 子 Agent 边界（硬）
-
-| Agent | 可写 | 不可写 |
-|-------|------|--------|
-| Case Runner | `yysong` Case pods、`results/ascend-ais/<run_id>/` | a3/grj、宋 AFS、muxi-h3c |
-| Greyhound | `yysong-worker-1`、`baseline/greyhound/` | Case 正在用的 pod、a3/grj |
-| XPUTimer | `yysong-worker-2`、`baseline/xputimer/` | 同上 |
-| Loop 父 | 派发、台账 | 自己长跑占满 |
-
-跳板：`K=/root/.cache/volcano/kubectl/kubectl` + SYY kube。
-
-## LOOP_LAST.md 模板
+## LOOP_LAST 模板
 
 ```markdown
 # LOOP_LAST
 time: …
-case: dispatched=… | monitored=… | updated=…
-baseline: gh=Sx … | xpu=Sx … | actions=…
+pipe1_case: dispatched=… | skipped_scored=… | skip_perm=… | monitored=…
+pipe2_contrast: gh=… | xpu=… | queue_pending=…
 blockers: …
 next_round: …
 ```
 
-## 成功判据（战役级，非单轮）
+## 战役成功（可停 loop）
 
-- Case：第一梯队有 Loud 分；27 格中可跑者尽量 `SCORED`/`SKIP_PERM`/`INEFFECTIVE` 有归宿  
-- Baseline：至少 Greyhound 与 XPUTimer 各自达到 **S2_COLLECT**；争取 S4；未达者不阻塞 Case 分母  
-- 全程无写他人 AFS / 无碰 `yysong-*` / 无混写 `muxi-h3c`
+- Case：可跑格均 `SCORED`/`INEFFECTIVE`；第三梯队 `SKIP_PERM` 写齐。  
+- 对照：所有 `calibrated` case 的 GH×XPU 在 CONTRAST_QUEUE 为 `DONE`（或 `BLOCKED`+原因）。  
+- 全程无串池、无碰他人作业、无写宋 AFS。
 
-## /loop 提示词（父会话 · 全文可粘贴）
+## /loop 提示词
 
-见同目录 [`LOOP_PROMPT.md`](LOOP_PROMPT.md)。
+见 [`LOOP_PROMPT.md`](LOOP_PROMPT.md)。

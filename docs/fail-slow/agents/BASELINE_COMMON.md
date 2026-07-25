@@ -34,27 +34,29 @@ S6_HANDOFF  文档+产物就绪，可供 Case 轨对照波次调用
 
 任一阶段失败：写 `BLOCKER`（类型用 COMPAT_MATRIX 标签：`HOOK_SYMBOL` / `STACK_CRASH` / `PENDING` / …），不要跳级宣称 S4。
 
-## 与 Case 轨的交接
+## 与 Case 轨的交接（双流水线）
 
-- Case 轨本阶段**不依赖** baseline。  
-- 某工具进入 `S4_DETECT` 或 `S6_HANDOFF` 后，Loop 可开 **对照波次**：同一 `case_id` + 同一剂量 + 同 seed，只换工具挂载。  
-- 对照结果写入 `results/ascend-ais/baseline/<tool>/` 与 ledger §3.2，**不覆盖** Case 轨已有 Probing 分数。
+- Case（流水线 1）**不依赖** baseline 是否对照完。  
+- GH/XPU 已达 `S4_DETECT`：**本战役以对照为主**（见 [`BASELINE_CONTRAST.md`](BASELINE_CONTRAST.md) + [`../CONTRAST_QUEUE.md`](../CONTRAST_QUEUE.md)）。  
+- 对照：同一 `case_id` + 冻结 dose + 同窗语义；只换工具挂载；**不抢** `yysong-master-0`。  
+- 产物：`$LOCAL_RESULT_ROOT_BASE/baseline/<tool>/contrast-<case>-<ts>/` + ledger §3.2；**不覆盖** Probing 分。
 
-## 每个 Baseline Agent 的落盘约定
+## 每个 Baseline 落盘约定
 
 ```text
-results/ascend-ais/baseline/<tool>/
-  STATUS.md           # 当前阶段、卡点、下一步（Loop 必读）
-  NOTES.md            # 符号表、构建命令、踩坑
-  <run_id>/           # 原始产物
-project/probing-test/scripts/fail-slow/platform/ascend/<tool>/   # 可合并的脚本
+$LOCAL_RESULT_ROOT_BASE/baseline/<tool>/
+  STATUS.md           # 适配阶段（S0–S6；本波已 S4）
+  NOTES.md
+  <adapt_run_id>/     # 历史适配 / 首轮 S4
+  contrast-<case>-*/  # 流水线 2 对照
+probing-test/scripts/fail-slow/platform/ascend/<tool>/
 ```
 
 ## Loop 催办时看什么
 
-| 若 STATUS | Loop 动作 |
-|-----------|-----------|
-| 卡住 >1 轮且无新 NOTES | 派 unblock 子任务或换策略（stub / 符号重扫） |
-| `S2_COLLECT` 已绿 | 催做 S3/S4，不要继续只堆编译 |
-| 声称完成但无非空 dump | **驳回**，退回 S2 |
-| 要动 Case 池机器 | **拒绝**，改 RESOURCE 登记 |
+| 若 | Loop 动作 |
+|----|-----------|
+| CONTRAST_QUEUE 有 PENDING 且 worker IDLE | 派 **BASELINE_CONTRAST**（优先于再适配） |
+| 适配 STATUS 声称完成但无非空 dump | **驳回**，退回 S2（罕见） |
+| 要动 Case master | **拒绝** |
+| FR/Dynolog 仍 PENDING | 本波不进对照队 |

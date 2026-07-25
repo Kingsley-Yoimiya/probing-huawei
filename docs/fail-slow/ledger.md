@@ -141,15 +141,23 @@
 | P3-EXT-C | 抢内存带宽 | **stress_vm** | host_bound | **1.59** | **D3** | `20260725_021906` vm 96×6G；C1/C0=1.59 PASS；PSI_UNAVAIL（无 /proc/pressure）；SQL attach 失败不升 D4；dose calibrated |
 | P3-SW-A | 对象泄漏→GC | 8a inline | host_bound | **2.93** | **D4** | Loud+C2 `20260725_012957-yjr-as-c-p3-sw-a-loud`；证据 `data_ms`/onset + SQL `cpu.utilization_rss`；stall=0.25 calibrated |
 
-## 3.2 baseline 状态
+## 3.2 baseline 适配态
 
 | 工具 | 状态 | 备注 |
 |---|---|---|
-| Greyhound | **S4_DETECT** | **yysong-worker-1**；P3-EXT-A 对照 `yjr-as-b-gh-s4-20260725_002805/`；dose_OK(1.94) 但自主 no_bite（coll=1.058 / n_cp=0）。Rbeast 已升级喂**真实 per-rank 序列**+C0 假阳性对照（`collect_seq.py`），acf_period≈8，待 pod 重跑刷新产物 |
-| XPUTimer | **S4_DETECT** | **yysong-worker-2**；P3-EXT-A 对照 `yjr-as-b-xpu-s4-20260724_233105/`；**自主 flags=0**（hang/slow 在 C0/C1 均 0）；跨-run 中位比 C1/C0=1.032 **无咬合**；`detect_mode=cross_run_contrast`（原误标 autonomous 已纠）；公平性：SLOW 阈按 C0 p99.9 冻结仍 0.99×，host CPU 抢占结构性不可见 |
-| Dynolog | PENDING | |
-| Flight Recorder | PENDING | |
-| StragglerAnalysis | PENDING | |
+| Greyhound | **S4_DETECT** | worker-1；公平性：真实序列+C0 假阳性；P3-EXT-A 旧产物待对照重跑 |
+| XPUTimer | **S4_DETECT** | worker-2；`cross_run_contrast`；P3-EXT-A DONE |
+| Dynolog / FR / … | PENDING | **本波不进对照** |
+
+## 3.2b 对照波次（流水线 2）
+
+真相源：[`CONTRAST_QUEUE.md`](CONTRAST_QUEUE.md)。任务卡：[`agents/BASELINE_CONTRAST.md`](agents/BASELINE_CONTRAST.md)。
+
+| case | tool | 状态 | evidence |
+|---|---|---|---|
+| P3-EXT-A | XPUTimer | DONE | `yjr-as-b-xpu-s4-20260724_233105` |
+| P3-EXT-A | Greyhound | PENDING（公平性重跑） | 旧 `yjr-as-b-gh-s4-20260725_002805` |
+| 其余 5×SCORED × GH/XPU | — | PENDING | 见 CONTRAST_QUEUE |
 
 ## 3.3 判分证据口径（探索后填）
 
@@ -161,22 +169,22 @@
 
 ---
 
-# 四、Agent 双轨（编排）
+# 四、Agent 双流水线（编排）
 
 | 轨 | 文档 | 状态落点 |
 |---|---|---|
-| Loop 状态机 | [`agents/LOOP.md`](agents/LOOP.md) | `results/ascend-ais/_prep/LOOP_LAST.md` |
-| Case 16 卡 | [`agents/CASE_RUNNER.md`](agents/CASE_RUNNER.md) | CASE_QUEUE + 本文件 §3.1 |
-| Greyhound | [`agents/BASELINE_GREYHOUND.md`](agents/BASELINE_GREYHOUND.md) | `results/ascend-ais/baseline/greyhound/STATUS.md` |
-| XPUTimer | [`agents/BASELINE_XPUTIMER.md`](agents/BASELINE_XPUTIMER.md) | `results/ascend-ais/baseline/xputimer/STATUS.md` |
-| 共通原则 | [`agents/BASELINE_COMMON.md`](agents/BASELINE_COMMON.md) | 采集 / 检测 两轴分开记 |
+| Loop | [`agents/LOOP.md`](agents/LOOP.md) / [`LOOP_PROMPT.md`](agents/LOOP_PROMPT.md) | `$LOCAL_RESULT_ROOT_BASE/_prep/LOOP_LAST.md` |
+| 流水线1 Case | [`agents/CASE_RUNNER.md`](agents/CASE_RUNNER.md) | CASE_QUEUE + §3.1 |
+| 流水线2 对照 | [`agents/BASELINE_CONTRAST.md`](agents/BASELINE_CONTRAST.md) | [`CONTRAST_QUEUE.md`](CONTRAST_QUEUE.md) + §3.2b |
+| 适配原则 | [`agents/BASELINE_COMMON.md`](agents/BASELINE_COMMON.md) | baseline/*/STATUS.md |
 
-Case 本阶段只跑 Probing；Baseline 未达 S2 **不阻塞** 27-case。对照波次另开。
+Case 与对照并行；已 SCORED 跳过 Case 直入对照。本波工具仅 GH+XPU。
 
 # 五、变更记录
 
 | 日期 | 变更 |
 |---|---|
+| 2026-07-25 | **双流水线 Loop**：CONTRAST_QUEUE + BASELINE_CONTRAST；LOOP/PROMPT 改为 Case 扫格 ∥ 竞品对照；第一梯队 6 格入对照队 |
 | 2026-07-24 | 台账初建；SYY 门禁 1–4 绿；卡面 128；目录落在 probing-huawei |
 | 2026-07-24 | 双轨 Agent 边界包；Case=16 卡；Baseline 另池适配 |
 | 2026-07-24 | Case Runner 再探 P3-EXT-A：空闲仍 0；新 BLOCKED `20260724_225135-p3exta-blocked`；CASE_QUEUE 备注更新 |

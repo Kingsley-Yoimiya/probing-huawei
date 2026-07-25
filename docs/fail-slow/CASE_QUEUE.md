@@ -3,6 +3,7 @@
 > 故障定义：`project/reading-paper/writing/probing-paper/OUTLINE-v3-27-cases-per-cell.md`  
 > 状态机：`PENDING` → `PILOT` → `LOUD_OK` → `SCORED` / `SKIP_PERM` / `INEFFECTIVE`  
 > 默认规模：**16 卡**（`yjr-as-c-*`）；派发任务卡见 [`agents/CASE_RUNNER.md`](agents/CASE_RUNNER.md)  
+> **对照流水线**：已 `LOUD_OK`/`SCORED` 且 dose calibrated → [`CONTRAST_QUEUE.md`](CONTRAST_QUEUE.md)  
 > 更新：跑完一格就改本表 + [`ledger.md`](ledger.md) §3。
 
 ## 总览
@@ -19,46 +20,51 @@
 | **P3×SW** | P3-SW-A 对象泄漏→GC | P3-SW-B dataloader 泄漏 | P3-SW-C 监控自身泄漏 |
 | **P3×EXT** | P3-EXT-A 抢 CPU | P3-EXT-B 抢磁盘 IO | P3-EXT-C 抢内存带宽 |
 
-## 排期（仿沐曦：先零审批）
+## 排期
 
-### 第一梯队（优先 Loud pilot）
+### 第一梯队（已完成 · 跳过流水线 1 → 进对照）
 
 | Case | 注入思路（昇腾） | 权限 | 状态 | 备注 |
 |------|------------------|------|------|------|
-| P1-EXT-A | 同卡 INLINE cube（外挂隔离无效） | ✅ | **SCORED** | Loud PASS C1/C0=**3.87**@`011129`（8192×64）；**D2**；D3 定位错不升；末次加剂有效 |
-| P1-EXT-B | inline HBM（外挂隔离无效） | ✅ | **SCORED** | Loud PASS C1/C0=**2.02**@`014350`（512×48）；**D3**；SQL attach 失败不升 D4；dose calibrated |
-| P3-EXT-A | `stress-ng` CPU，host_bound | ✅ | SCORED | C1/C0≈1.97；C2 @`20260725_001251-yjr-as-c-p3-ext-a-loud` **D3**（SQL_PENDING→D4 未升）；wheel 0.2.6 |
-| P3-EXT-B | `fio` IO（同盘 ckpt+payload） | ✅ | **SCORED** | Loud PASS C1/C0=**2.13**@`020212`（fio nj16）；**D3**；SQL attach/PSI 未升 D4；dose calibrated |
-| P3-EXT-C | `stress-ng --vm` | ✅ | **SCORED** | Loud PASS C1/C0=**1.59**@`021906`（96×6G）；**D3**；PSI_UNAVAIL；dose calibrated |
-| P3-SW-A | inline `8a` GC/stall | ✅ | **SCORED** | Loud PASS C1/C0=**2.93**@`012957`（stall=0.25）；**D4**（RSS SQL）；dose calibrated |
+| P1-EXT-A | 同卡 INLINE cube | ✅ | **SCORED** | C1/C0=**3.87**@`011129`；**D2**；对照见 CONTRAST_QUEUE |
+| P1-EXT-B | inline HBM | ✅ | **SCORED** | C1/C0=**2.02**@`014350`；**D3** |
+| P3-EXT-A | `stress-ng` CPU | ✅ | **SCORED** | C1/C0≈1.97；**D3**；GH 公平性重跑对照优先 |
+| P3-EXT-B | `fio` IO | ✅ | **SCORED** | C1/C0=**2.13**@`020212`；**D3** |
+| P3-EXT-C | `stress-ng --vm` | ✅ | **SCORED** | C1/C0=**1.59**@`021906`；**D3** |
+| P3-SW-A | inline `8a` GC/stall | ✅ | **SCORED** | C1/C0=**2.93**@`012957`；**D4** |
 
-### 第二梯队
+### 第二梯队（流水线 1 优先序 · 逐格）
 
-| Case | 权限 | 状态 | 备注 |
-|------|------|------|------|
-| P1-HW-B | ✅ | PENDING | 带宽 sidecar；需 NPU 访存 kernel |
-| P1-SW-A / B / C | ✅ | PENDING | 纯软件；脚本移植后开 |
-| P2-SW-B / C | ✅ | PENDING | HCCL env / message size |
-| P3-SW-B / C | ✅ | PENDING | 仿沐曦 inline / sidecar |
+> 缺 `dose_recipes` calibrated 时：Case Runner **先移植剂量**再 Loud。
 
-### 第三梯队（权限或审批 → 先 SKIP）
+| Case | 权限 | 状态 | 注入思路（草稿） | 备注 |
+|------|------|------|------------------|------|
+| P1-SW-A | ✅ | PENDING | 显存碎片化（纯软件） | 优先 |
+| P1-SW-B | ✅ | PENDING | 动态 shape 次优 kernel | |
+| P1-SW-C | ✅ | PENDING | 首次编译尖刺 | |
+| P2-SW-B | ✅ | PENDING | HCCL 通信算法切换 | |
+| P2-SW-C | ✅ | PENDING | 拓扑映射漂移 | |
+| P3-SW-B | ✅ | PENDING | dataloader 泄漏 | recipes 有骨架 uncalibrated |
+| P3-SW-C | ✅ | PENDING | 监控自身泄漏 | |
+| P1-HW-B | ✅ | PENDING | 带宽 sidecar / NPU 访存 | 可后置 |
+
+### 第三梯队（Loop 开跑后批量标 SKIP_PERM）
 
 | Case | 默认处置 | 原因 |
 |------|----------|------|
 | P1-HW-A / P1-HW-C | SKIP_PERM | 改频 / power cap |
 | P1-EXT-C | SKIP_PERM | 需卡共享调度配置 |
 | P2-HW-A/B/C | SKIP_PERM | 网络组 / 交换机 / 固件 |
-| P2-SW-A | SKIP_PERM 或 PILOT | 需通信库插件权限时跳过 |
+| P2-SW-A | SKIP_PERM | 需通信库插件权限时跳过 |
 | P2-EXT-A/B/C | SKIP_PERM | 第二 job / 隔离网 / 存储侧 |
 | P3-HW-A/B/C | SKIP_PERM | ECC 真值 / 改频 / 盘级配合 |
 
-> 原则：**SKIP_PERM 不进覆盖率分母**；权限突然放开再改状态重排。
+> **SKIP_PERM 不进覆盖率分母、不进 CONTRAST_QUEUE**。权限放开再改状态重排。
 
-## 建议执行顺序（开跑后）
+## Loop 执行顺序（双流水线）
 
-1. Smoke：16 卡或先 1×8 写 jsonl（无注入）  
-2. Loop 派 Case：P3-EXT-A → P1-EXT-A → P3-SW-A → …（第一梯队）  
-3. **并行**（另池）：Greyhound / XPUTimer 适配 Agent（见 `agents/`）；**不挡**本表遍历  
-4. 某 baseline 达 S4 后，Loop 再开对照波次（同剂量换工具），不回改已打的 Probing 分  
+1. **流水线 1**：跳过已 SCORED → 批量 SKIP_PERM（第三梯队）→ 按第二梯队表序 Pilot/Score。  
+2. **流水线 2**：已 LOUD_OK/SCORED + calibrated → [`CONTRAST_QUEUE.md`](CONTRAST_QUEUE.md)（GH@w1 / XPU@w2 并行）。  
+3. Case 新达 LOUD_OK/SCORED：立刻追加对照两行；C2 可与对照并行（不抢 master 给对照）。
 
-每完成一步：更新本表状态 + `ledger.md` §3 + `results/ascend-ais/INDEX.md`。
+每完成一步：更新本表 + CONTRAST_QUEUE（若适用）+ `ledger.md` §3 + `$LOCAL_RESULT_ROOT_BASE/INDEX.md`。
