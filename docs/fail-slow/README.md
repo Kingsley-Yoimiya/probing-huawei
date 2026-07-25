@@ -15,12 +15,14 @@
 
 | 层 | 沐曦 | 华为昇腾 |
 |----|------|----------|
-| 规则 / 台账 | `project/probing-test/docs/fail-slow/` | **本目录** |
-| Probing 包 | MetaX 构建 / Probing_plus | **本仓** `probing-huawei`（NPU backend） |
-| 编排脚本 | `probing-test/scripts/fail-slow/` | 共享编排 + `platform/ascend/`；本仓 `scripts/fail-slow/` 只放 env / dose / 薄包装 |
-| 结果本机根 | `results/muxi-h3c/` | `results/ascend-ais/` |
-| AFS | `…/yinjinrun.p/…` | `…/yinjinrun.p-huawei/…` |
-| 进集群身份 | 默认同人 / 借 weibozhen | 默认同人 / **借 songyiyang（SYY）** 拿 128 卡面 |
+| 规则 / 台账 | `probing-test/docs/fail-slow/` | **本目录** |
+| Probing 包 | MetaX 构建 / Probing_plus | **本仓**（NPU backend） |
+| 编排脚本 | `probing-test/scripts/fail-slow/` | 同级 `probing-test` + `platform/ascend/`；本仓 `scripts/fail-slow/` 薄包装 |
+| 结果本机根 | （沐曦侧自定） | **本仓** `results/ascend-ais/`（可用 `LOCAL_RESULT_ROOT_BASE` 覆盖） |
+| 落盘前缀 | `…/yinjinrun.p/…` | `…/yinjinrun.p-huawei/…`（pod 常为 `/data/yinjinrun.p-huawei/`） |
+| 进集群 | 默认同人 / 借权 | **借 songyiyang（SYY）**；见 [`IDENTITY.md`](IDENTITY.md) |
+
+**对外不依赖 myportal**（私有编排仓）。协作者入口：[`SHARE.md`](SHARE.md)。
 
 故障定义真相源仍是论文侧  
 `project/reading-paper/writing/probing-paper/OUTLINE-v3-27-cases-per-cell.md`。
@@ -29,9 +31,10 @@
 
 1. 读本目录 `rules.md` + `ledger.md` 门禁  
 2. 读 [`agents/README.md`](agents/README.md)：轨 A Case（16 卡）与轨 B Baseline **资源隔离**  
-3. `source scripts/fail-slow/env.sh`（本仓）  
-4. 跳板 `ais-cf3e61a5` + SYY kube（`huawei-ais-syy`）  
-5. 开 `/loop` 时用 [`agents/LOOP.md`](agents/LOOP.md) 提示词；子任务用 CASE_RUNNER / BASELINE_* 任务卡  
-6. Case 结果 → `results/ascend-ais/<run_id>/`；Baseline 状态 → `results/ascend-ais/baseline/<tool>/STATUS.md`  
+3. 同级 clone `probing-test`（或 `export FS_SHARED_SCRIPTS=…`）  
+4. `source scripts/fail-slow/env.sh`（本仓；默认结果根=本仓 `results/ascend-ais/`）  
+5. 跳板 + SYY kube：[`IDENTITY.md`](IDENTITY.md)  
+6. Case / Baseline 任务卡：[`agents/`](agents/README.md)  
+7. 产物：`$LOCAL_RESULT_ROOT_BASE/<run_id>/`；Baseline → `…/baseline/<tool>/STATUS.md`  
 
 本阶段 Case **不跑** baseline 对照；Baseline 未就绪**不阻塞** 27-case 遍历。

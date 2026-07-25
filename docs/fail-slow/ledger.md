@@ -79,7 +79,7 @@
 
 | 位置 | 路径 |
 |---|---|
-| 本机主备份 | myportal `results/ascend-ais/<run_id>/` |
+| 本机主备份 | `$LOCAL_RESULT_ROOT_BASE/<run_id>/`（默认本仓 `results/ascend-ais/`；**不依赖 myportal**） |
 | AFS（若挂上） | `/afs-a3-weight-share/yinjinrun.p-huawei/results/<run_id>/` |
 | 索引 | `results/ascend-ais/INDEX.md` |
 

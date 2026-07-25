@@ -1,78 +1,94 @@
-# 华为昇腾 Fail-Slow · 对外入口（台账 / 规则 / 代码 / 竞品）
+# 华为昇腾 Fail-Slow · 对外入口（无 myportal）
 
-> 给协作者：先读本页，再按链接进仓。密钥不进仓；集群 kube 只在本机 vault。
+> **myportal 是维护者私有编排仓，不对外开放，也不是运行依赖。**  
+> 外人只要：**① 两份公开代码仓** + **② 集群/跳板访问权限** + **③ 自备 kube**，即可跑 Case / Baseline。
 
-## 1. 三仓分工
+密钥不进仓；kube 正文只放本机 `~/.kube/` 或跳板 `/tmp/`。
 
-| 仓 | Remote | 放什么 |
-|----|--------|--------|
-| **probing-huawei** | `git@github.com:Kingsley-Yoimiya/probing-huawei.git` | 华为侧 **rules / ledger / CASE_QUEUE / Agent 任务卡**；NPU Probing 包；薄包装 `scripts/fail-slow/` |
-| **probing-test** | `git@github.com:Kingsley-Yoimiya/probing-test.git` | **Baseline 适配源码**（`platform/ascend/{greyhound,xputimer}/`）、共享编排、符号表 |
-| **myportal** | `git@gitee.com:yinjinrun/myportal.git` | 本机结果根 `results/ascend-ais/`、身份 shortcut、跨仓挂载 `project/registry.yaml` |
+---
 
-本机挂载（myportal 内点文件）：
+## 0. 你需要什么
 
-- `project/probing-huawei` → `~/Codespace/probing-huawei`
-- `project/probing-test` → lab-workspace 内 probing-test submodule 路径
+| 需要 | 不需要 |
+|------|--------|
+| `probing-huawei`（台账 + NPU Probing + `scripts/fail-slow/`） | **myportal** |
+| `probing-test`（`platform/ascend` 竞品适配与共享编排） | 维护者本机路径 / vault zip |
+| 跳板 SSH（如 `ais-cf3e61a5`）+ SYY kube 进 `vc-a3-241ceshi` | 写宋一扬 AFS / 碰 a3·grj 作业 |
+| 落盘前缀权限：`yinjinrun.p-huawei`（或你被授权的等价前缀） | |
 
-## 2. 台账与规则（华为副本）
+建议目录（同级 clone，env.sh 会自动找到）：
 
-入口：[`README.md`](README.md)
+```text
+~/Codespace/
+  probing-huawei/     # git@github.com:Kingsley-Yoimiya/probing-huawei.git
+  probing-test/       # git@github.com:Kingsley-Yoimiya/probing-test.git
+```
+
+若 probing-test 不在同级：
+
+```bash
+export FS_SHARED_SCRIPTS=/path/to/probing-test/scripts/fail-slow
+```
+
+---
+
+## 1. 台账与规则（本仓）
 
 | 文件 | 说明 |
 |------|------|
-| [`rules.md`](rules.md) | 方法论红线 / 控变 / D0–D5；**公平对照**见 §三·五A |
-| [`ledger.md`](ledger.md) | 门禁、剂量、已跑 case、Baseline S4 与公平性修正记录 |
-| [`CASE_QUEUE.md`](CASE_QUEUE.md) | 27-case 排期（第一梯队 6/6 SCORED；其余 PENDING / SKIP_PERM） |
-| [`agents/`](agents/README.md) | 双轨 Loop：Case 16 卡 / Baseline 另池 |
-| [`agents/BASELINE_COMMON.md`](agents/BASELINE_COMMON.md) | 竞品适配阶段机 S0–S6；禁止改对手判据抬分 |
-| [`agents/BASELINE_GREYHOUND.md`](agents/BASELINE_GREYHOUND.md) | Greyhound 任务卡 |
-| [`agents/BASELINE_XPUTIMER.md`](agents/BASELINE_XPUTIMER.md) | XPUTimer 任务卡 |
+| [`README.md`](README.md) | 华为侧文档总入口 |
+| [`IDENTITY.md`](IDENTITY.md) | kube / 跳板 / 落盘约定（无密钥） |
+| [`rules.md`](rules.md) | 方法论；公平对照 §三·五A |
+| [`ledger.md`](ledger.md) | 门禁、剂量、已跑 case、Baseline 公平性记录 |
+| [`CASE_QUEUE.md`](CASE_QUEUE.md) | 27-case 排期 |
+| [`agents/`](agents/README.md) | 双轨任务卡（Case / Greyhound / XPUTimer） |
 
-## 3. Baseline 适配代码（竞品）
+---
 
-仓内路径（**probing-test**）：
-
-```text
-scripts/fail-slow/platform/ascend/
-  README.md / BASELINE_PORTING.md / SYMBOL_MAP.md / COMPAT_MATRIX.md
-  greyhound/          # HCCL collect_min、collect_seq、S3/S4、Redis
-  xputimer/           # ascend hook .cc、build、S3/S4 verdict
-  train_bench_probe_npu.py
-```
-
-关键公平性修正（2026-07-25 审查后）：
-
-- Greyhound：`collect_seq.py` 喂**真实 per-rank 序列** + C0 假阳性对照（不再人造 `i%4` / 恒 0）
-- XPUTimer：S4 分列 **自主 flags** vs **跨-run 中位比**；不再误标 `autonomous`
-
-## 4. 实验结果与竞品对照
-
-本机 / myportal：
+## 2. 竞品适配代码（probing-test）
 
 ```text
-results/ascend-ais/
-  INDEX.md                          # Case 跑分索引
-  <run_id>/                         # Probing C0/C1/C2
-  baseline/greyhound/STATUS.md      # 阶段与公平性说明
-  baseline/greyhound/NOTES.md
-  baseline/greyhound/yjr-as-b-gh-s4-*/S4_VERDICT.md
-  baseline/xputimer/STATUS.md
-  baseline/xputimer/NOTES.md
-  baseline/xputimer/yjr-as-b-xpu-s4-*/S4_VERDICT.md
+probing-test/scripts/fail-slow/platform/ascend/
+  README.md  BASELINE_PORTING.md  SYMBOL_MAP.md
+  greyhound/   # collect_min.c、collect_seq.py、S3/S4
+  xputimer/    # xpu_timer_ascend_hook.cc、S3/S4
 ```
 
-当前对照 case：`P3-EXT-A` Loud（host CPU）；两者能力范围内均 **无自主咬合**；剂量经 step_ms 核对 OK。
+公平性修正（2026-07-25）：Greyhound 喂真实 per-rank 序列 + C0 假阳性对照；XPUTimer 分列自主 flags vs 跨-run 中位比。
 
-## 5. 最小配置（他人复现）
+---
 
-1. clone 上述三仓（或至少 probing-huawei + probing-test）。  
-2. 身份：借 `songyiyang.p` 进 `vc-a3-241ceshi`；**落盘**只用 `yinjinrun.p-huawei`（见 myportal `config/identity/songyiyang.p-huawei.yaml`）。  
-3. `source probing-huawei/scripts/fail-slow/env.sh`  
-4. Baseline：读 `BASELINE_PORTING.md` → 按 STATUS 阶段机；S4 用 `s4_p3exta_contrast.sh`。  
-5. **禁止**写宋 AFS / 碰 a3·grj 作业；结果回拉 `results/ascend-ais/`。
+## 3. 结果落在哪（可覆盖）
 
-## 6. 压缩包
+| 位置 | 默认 | 说明 |
+|------|------|------|
+| 本机备份 | `$FS_HUAWEI_ROOT/results/ascend-ais/` | `source scripts/fail-slow/env.sh` 后 `LOCAL_RESULT_ROOT_BASE` |
+| Pod 真盘 | `/data/yinjinrun.p-huawei/results/ascend-ais/` | hold-exec 写入；回拉到本机 |
+| AFS 前缀 | `/afs-a3-weight-share/yinjinrun.p-huawei/` | 部分节点假挂载，以 pod `/data` 为准 |
 
-同内容可打成分享包（无密钥、无巨型 jsonl 全量时可只要摘要）：见 myportal  
-`tmp/ascend-failslow-handoff-YYYYMMDD.zip`（由本机脚本生成，不进 git）。
+覆盖示例：
+
+```bash
+export LOCAL_RESULT_ROOT_BASE=$HOME/ascend-ais-results
+export FS_SHARED_SCRIPTS=$HOME/src/probing-test/scripts/fail-slow
+source probing-huawei/scripts/fail-slow/env.sh
+```
+
+历史对照摘要（STATUS / S4_VERDICT）可放在分享 zip；全量 jsonl 在授权机器上从 pod 回拉即可。
+
+---
+
+## 4. 最小开跑
+
+```bash
+git clone git@github.com:Kingsley-Yoimiya/probing-huawei.git
+git clone git@github.com:Kingsley-Yoimiya/probing-test.git
+# 自备：~/.kube/config-vc-a3-241ceshi-songyiyang.yaml  → 跳板 /tmp/...
+cd probing-huawei
+source scripts/fail-slow/env.sh
+# 读 docs/fail-slow/{IDENTITY,rules,ledger,agents/RESOURCE}.md
+# Case：scripts/fail-slow/hold_exec_run_case.sh …
+# Baseline：$FS_PLATFORM_ASCEND/greyhound|xputimer/ …
+```
+
+原则：有机器权限就能跑；**禁止**依赖未公开的门户仓路径。
