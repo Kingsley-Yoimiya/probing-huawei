@@ -40,8 +40,9 @@ export FS_SHARED_SCRIPTS=/path/to/probing-test/scripts/fail-slow
 | [`IDENTITY.md`](IDENTITY.md) | kube / 跳板 / 落盘约定（无密钥） |
 | [`rules.md`](rules.md) | 方法论；公平对照 §三·五A |
 | [`ledger.md`](ledger.md) | 门禁、剂量、已跑 case、Baseline 公平性记录 |
-| [`CASE_QUEUE.md`](CASE_QUEUE.md) | 27-case 排期 |
-| [`agents/`](agents/README.md) | 双轨任务卡（Case / Greyhound / XPUTimer） |
+| [`CASE_QUEUE.md`](CASE_QUEUE.md) | 27-case 排期（流水线 1） |
+| [`CONTRAST_QUEUE.md`](CONTRAST_QUEUE.md) | 竞品同剂量对照（流水线 2） |
+| [`agents/`](agents/README.md) | 双流水线任务卡 + [`LOOP_PROMPT.md`](agents/LOOP_PROMPT.md) |
 
 ---
 
