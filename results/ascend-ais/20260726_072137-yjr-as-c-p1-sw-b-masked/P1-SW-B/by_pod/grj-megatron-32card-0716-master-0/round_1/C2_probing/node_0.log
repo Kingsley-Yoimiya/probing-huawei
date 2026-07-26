@@ -1,0 +1,102 @@
+W0726 07:25:44.039000 2092951 site-packages/torch/distributed/run.py:766] 
+W0726 07:25:44.039000 2092951 site-packages/torch/distributed/run.py:766] *****************************************
+W0726 07:25:44.039000 2092951 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0726 07:25:44.039000 2092951 site-packages/torch/distributed/run.py:766] *****************************************
+Activating probing in 'nested' mode (all child processes)
+Activating probing in 'nested' mode (all child processes)
+Activating probing in 'nested' mode (all child processes)
+Activating probing in 'nested' mode (all child processes)
+Activating probing in 'nested' mode (all child processes)
+Activating probing in 'nested' mode (all child processes)
+Activating probing in 'nested' mode (all child processes)
+Activating probing in 'nested' mode (all child processes)
+Activating probing in 'nested' mode (all child processes)
+Activating probing in 'nested' mode (all child processes)
+Activating probing in 'nested' mode (all child processes)
+Activating probing in 'nested' mode (all child processes)
+Activating probing in 'nested' mode (all child processes)
+Activating probing in 'nested' mode (all child processes)
+Activating probing in 'nested' mode (all child processes)
+Activating probing in 'nested' mode (all child processes)
+[rank9]:[W726 07:25:53.332529575 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank7]:[W726 07:25:53.486655184 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank0]:[W726 07:25:53.964966420 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank3]:[W726 07:25:53.100405929 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank6]:[W726 07:25:54.381417162 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank11]:[W726 07:25:54.018720093 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank2]:[W726 07:25:54.136738738 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank4]:[W726 07:25:54.228831524 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank5]:[W726 07:25:55.354834022 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank13]:[W726 07:25:55.733079539 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank10]:[W726 07:25:55.857175567 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank1]:[W726 07:25:55.031665296 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank15]:[W726 07:25:55.056390730 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank8]:[W726 07:25:56.667918832 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank12]:[W726 07:25:56.712223950 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank14]:[W726 07:25:56.875822961 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+INLINE_RARE_SHAPE seq=1408 every=1 frac=None win=[100,300) victim_local=7
+DONE world=16 out=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/20260726_072137-yjr-as-c-p1-sw-b-masked/P1-SW-B/by_pod/grj-megatron-32card-0716-master-0/round_1/C2_probing/ranks/rank_0000.jsonl

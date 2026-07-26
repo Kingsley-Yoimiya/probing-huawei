@@ -6,8 +6,8 @@
 
 - **角色**：单 case 执行者（探索 → 冻结 → 正式 → 判分）
 - **规模**：默认 **16 卡**（2×8）；未获批准不得扩到 32/64/128
-- **运行模式**：`hold-exec`——在 **`yysong-*`**（SYY 借权 64 卡）上 `kubectl exec`；默认 `yysong-master-0`（16 卡）
-- **结果/日志标签**：`yjr-as-c-*`；不新建 vcjob；**禁止**碰 `a3-megatron-*` / `grj-megatron-*`
+- **运行模式**：`hold-exec`——默认 **`grj-megatron-32card-0716-master-0`**（空闲借用）；备选 `yysong-master-0`
+- **结果/日志标签**：`yjr-as-c-*`；不新建 vcjob；**禁止**碰 `a3-megatron-*`；grj 仅 IDLE 借用且让路
 - **落盘**：`yinjinrun.p-huawei` → `results/ascend-ais/`（不写宋盘）
 - **工具线**：本阶段仅 **C0 / C1 / C2（Probing）**
 - **必读**：`rules.md`、`ledger.md`、`CASE_QUEUE.md`、`agents/RESOURCE.md`、`env.sh`
@@ -35,7 +35,8 @@ run_id_hint: null          # 可选
 
 ## 禁止做
 
-- 碰 `a3-megatron-*` / `grj-megatron-*`（他人作业）  
+- 碰 `a3-megatron-*`；在 grj 对方训练再现时继续占卡不让路  
+- 写 `geruijun` / `grj-shared-log-ckpt` / 宋 AFS  
 - 因「allocatable 空闲=0」停跑；删 `yysong` 占卡（除非用户明确要求）  
 - 写宋一扬 AFS / `/afs-a3-241ceshi-shared/yysong`  
 - 往 `results/muxi-h3c/` 写  

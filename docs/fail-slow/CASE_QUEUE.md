@@ -45,7 +45,7 @@
 | P2-SW-B | ✅ | **SCORED** | HCCL 算法+buff 钳制 | C1/C0_comm=**1.82**@`122911`；**D3**；对照见 CONTRAST_QUEUE |
 | P2-SW-C | ✅ | **SCORED** | 拓扑映射漂移 | C1/C0_comm=**49.86**/step=**5.06**@`124102`；**D3**；对照见 CONTRAST_QUEUE |
 | P3-SW-B | ✅ | **SCORED** | dataloader 泄漏 | C1/C0=**2.06**@`125558`；**D4**；dose `mb=16,stall_s=0.25` calibrated；对照见 CONTRAST_QUEUE |
-| P3-SW-C | ✅ | **SCORED** | 监控自身泄漏 | C1/C0=**2.49**@`135238`；**D4**；dose `cpu_n=nproc,cpu_load=90`+1MB/s leak calibrated；对照见 CONTRAST_QUEUE |
+| P3-SW-C | ✅ | **SCORED** | 监控自身泄漏 | C1/C0=**2.33**@`135238`（pod-sup 准时 inject@step100）；**D4**；dose `cpu_n=nproc,cpu_load=90,mb=1` calibrated；对照见 CONTRAST_QUEUE |
 | P1-HW-B | ✅ | **SCORED** | INLINE 渐进 HBM 6→48 | C1/C0=**1.57**@`142359`；**D3**；dose calibrated；对照见 CONTRAST_QUEUE |
 
 ### 第三梯队（已批量 SKIP_PERM · 2026-07-25 Loop 开跑）

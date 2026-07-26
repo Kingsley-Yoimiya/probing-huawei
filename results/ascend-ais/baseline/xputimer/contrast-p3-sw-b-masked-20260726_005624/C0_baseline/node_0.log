@@ -1,0 +1,85 @@
+W0726 00:56:30.378000 244297 site-packages/torch/distributed/run.py:766] 
+W0726 00:56:30.378000 244297 site-packages/torch/distributed/run.py:766] *****************************************
+W0726 00:56:30.378000 244297 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0726 00:56:30.378000 244297 site-packages/torch/distributed/run.py:766] *****************************************
+[xpu_timer.ascend] started. pid=244438 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[xpu_timer.ascend] started. pid=244437 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[rank2]:[W726 00:56:36.094020000 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank1]:[W726 00:56:36.135140744 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[xpu_timer.ascend] started. pid=244441 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[rank5]:[W726 00:56:36.246583091 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[xpu_timer.ascend] started. pid=244440 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[xpu_timer.ascend] started. pid=244443 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[rank4]:[W726 00:56:37.374193393 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank7]:[W726 00:56:37.386775411 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[xpu_timer.ascend] started. pid=244436 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[rank0]:[W726 00:56:37.528989988 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[xpu_timer.ascend] started. pid=244442 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[rank6]:[W726 00:56:37.864191332 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[xpu_timer.ascend] started. pid=244439 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[xpu_timer.ascend] started. pid=244449 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[xpu_timer.ascend] started. pid=244446 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[xpu_timer.ascend] started. pid=244445 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[xpu_timer.ascend] started. pid=244444 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[xpu_timer.ascend] started. pid=244447 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[xpu_timer.ascend] started. pid=244450 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[xpu_timer.ascend] started. pid=244451 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[xpu_timer.ascend] started. pid=244448 hang_timeout=60000ms slow_us=0 dump=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer
+[rank13]:[W726 00:56:37.032402708 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank3]:[W726 00:56:37.037070385 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank10]:[W726 00:56:37.041988402 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank9]:[W726 00:56:37.046974922 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank8]:[W726 00:56:37.052486001 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank11]:[W726 00:56:37.079423046 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank14]:[W726 00:56:37.102518514 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank15]:[W726 00:56:37.112249574 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank12]:[W726 00:56:37.138741691 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+DONE world=16 out=/data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/ranks/rank_0000.jsonl
+[xpu_timer.ascend] stopped. events=5056 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank3.pid244439.prom
+[xpu_timer.ascend] stopped. events=5056 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank9.pid244445.prom
+[xpu_timer.ascend] stopped. events=5056 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank10.pid244446.prom
+[xpu_timer.ascend] stopped. events=5056 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank15.pid244451.prom
+[xpu_timer.ascend] stopped. events=5056 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank12.pid244448.prom
+[xpu_timer.ascend] stopped. events=5056 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank11.pid244447.prom
+[xpu_timer.ascend] stopped. events=5056 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank14.pid244450.prom
+[xpu_timer.ascend] stopped. events=5056 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank2.pid244438.prom
+[xpu_timer.ascend] stopped. events=5056 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank13.pid244449.prom
+[xpu_timer.ascend] stopped. events=5056 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank1.pid244437.prom
+[xpu_timer.ascend] stopped. events=5561 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank0.pid244436.prom
+[xpu_timer.ascend] stopped. events=5056 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank7.pid244443.prom
+[xpu_timer.ascend] stopped. events=5056 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank5.pid244441.prom
+[xpu_timer.ascend] stopped. events=5056 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank6.pid244442.prom
+[xpu_timer.ascend] stopped. events=5056 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank8.pid244444.prom
+[xpu_timer.ascend] stopped. events=5056 hang_flags=0 slow_flags=0 metrics -> /data/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-sw-b-masked-20260726_005624/C0_baseline/xputimer/ascend_metrics.rank4.pid244440.prom

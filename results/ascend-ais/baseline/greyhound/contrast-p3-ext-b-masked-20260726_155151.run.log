@@ -1,0 +1,65 @@
+MASTER_ADDR=127.0.0.1 NPROC=16 RUN=contrast-p3-ext-b-masked-20260726_155151 dose=masked pod=yysong-worker-2 IO_ENGINE=fio fio_nj=4 ckpt_every=50
+========== C0_baseline port=30362 inject=0 fio_nj=4 ckpt_every=50 dose=masked ==========
+  warmup ok (30s)
+  waiting… t=30s dump=26850
+  waiting… t=60s dump=47465
+  waiting… t=90s dump=67840
+  done (105s) dump_lines=70416
+========== C1_inject_none port=30363 inject=1 fio_nj=4 ckpt_every=50 dose=masked ==========
+  warmup ok (31s)
+  measure step 100 (19s) — start stress_io
+SC=668558
+  stress_io START ok (0s)
+  measure step 300 → stop io (32s)
+  waiting… t=30s dump=67440
+  done (50s) dump_lines=70416
+post_run live_fio=0 live_stress=435
+# Greyhound Contrast · P3-EXT-B masked
+
+- run_id: `contrast-p3-ext-b-masked-20260726_155151`
+- case_ref: `20260726_154204-yjr-as-c-p3-ext-b-masked`
+- dose_label: `masked`；dose: stress_io fio_nj=4,iodepth=16,bs=4k,size=1G,ckpt_every=50,io_read_kb=256; engine=fio; window [100,300]; gold≈1.078；窗对齐 Case [100,300]
+- fairness: `collect_seq` 真实 per-rank 序列 + C0 假阳性对照
+- detect_ok: **no**；detect_mode: **no_bite**（自主= coll 比≥1.05 或 Rbeast 变点[C1有/C0无]）
+- oracle_trigger: **no**（未把注入窗写入判定）；注入窗 [100,300] 仅标注；step_ms 窗比=0.777（剂量核对，非 Greyhound 规则）
+- preload: cyclecounter stub + libhcclprobe.so；Redis :16379；pod=`yysong-worker-2`
+
+## A) autonomous · collect-min AllReduce host-wall
+
+| arm | n | median dur_us |
+|-----|--:|-------------:|
+| C0  | 70336 | 127.1 |
+| C1  | 70336 | 130.2 |
+
+**C1/C0 coll ratio = 1.024** → FAIL (thr 1.05)
+
+## B) autonomous · Greyhound Rbeast（真实 per-rank 序列；C0 假阳性对照）
+
+> call_id 用真实 (op,count) 签名序列、call_time 用真实 t0（`collect_seq`），跑 Greyhound 自带 find_period+find_performance_drop。健康线 C0 同跑作对照。
+
+| arm | rep_rank | n_calls | uniq_sig | acf_period | n_changepoints |
+|-----|---------:|--------:|---------:|-----------:|---------------:|
+| C0  | 659890 | 4401 | 10 | 8 | 0 |
+| C1  | 664321 | 4401 | 10 | 8 | 0 |
+
+- C1 changepoints: []
+- C0 changepoints: []
+- rbeast_hit (C1有/C0无): **False**
+- error: C1=None C0=None
+
+## C) dose check · step_ms in oracle window (not Greyhound rule)
+
+| arm | window median step_ms |
+|-----|----------------------:|
+| C0  | 138.06 |
+| C1  | 107.27 |
+| C1/C0 | 0.777 → dose_WEAK |
+
+## Verdict
+
+- **autonomous_detect**: NO (coll_pass=False, rbeast_hit=False, rbeast_fp=False)
+- **dose_reproduced**: NO/WEAK (step_ms)
+
+Note: P3-EXT-B 注入下 Greyhound 主路径是 CCL 时间戳+变点。若 coll/Rbeast 无咬合而 step_ms 有抬升，记能力边界，不焊 D4。
+
+CONTRAST_DONE RUN=contrast-p3-ext-b-masked-20260726_155151 DUMP=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/baseline/greyhound/contrast-p3-ext-b-masked-20260726_155151

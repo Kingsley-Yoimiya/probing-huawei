@@ -1,0 +1,44 @@
+{
+  "case_id": "P3-SW-A",
+  "tool": "xputimer",
+  "dose": "quiet",
+  "case_ref": "20260725_215903-yjr-as-c-p3-sw-a-quiet",
+  "metric_name": "HcclAllReduce",
+  "median_c0": 127.0,
+  "median_c1": 136.0,
+  "coll_ratio": 1.0708661417322836,
+  "cross_run_contrast_pass": false,
+  "detect_mode": "cross_run_contrast",
+  "autonomous_flag": false,
+  "autonomous_detect": false,
+  "hang_flags": {
+    "c0": 0,
+    "c1": 0
+  },
+  "slow_flags": {
+    "c0": 0,
+    "c1": 0
+  },
+  "coll_events": {
+    "c0": 81401,
+    "c1": 81401
+  },
+  "noise_diag_slow_ge_1p5xc0": {
+    "c0": 9701,
+    "c1": 13826
+  },
+  "dose_check": {
+    "step_ms_median_c0": 84.75999999999999,
+    "step_ms_median_c1": 289.9435,
+    "step_ms_ratio": 3.420758612553091,
+    "pass": true,
+    "n_c0": 3200,
+    "n_c1": 3200,
+    "window": [
+      100,
+      300
+    ]
+  },
+  "accept_min_ratio": 1.15,
+  "detect_ok": false
+}

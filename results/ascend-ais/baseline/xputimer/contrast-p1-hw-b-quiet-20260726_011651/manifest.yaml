@@ -1,0 +1,22 @@
+case_id: P1-HW-B
+dose: quiet
+phase: contrast
+run_id: contrast-p1-hw-b-quiet-20260726_011651
+case_ref: 20260726_005203-yjr-as-c-p1-hw-b-quiet
+world_size: 16
+pod: yysong-worker-2
+pool: pool-xpu
+mode: gpu_bound
+inject_kind: inline_hbm_ramp
+inject_args: "inline_hbm_mb=320,inline_hbm_copies=5,inline_hbm_copies_max=30,ramp=1"
+inject_window_measure: [100, 300]
+victim_local_rank: 7
+host_bound_matmul: 768
+seed: 42
+iters: 500
+warmup: 50
+tool: XPUTimer
+label_prefix: yjr-as-b-xpu
+script: platform/ascend/xputimer/contrast_p1hwb.sh
+accept_min_ratio: 1.15
+gold_step_ratio: 1.219

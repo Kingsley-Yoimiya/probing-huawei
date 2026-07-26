@@ -1,0 +1,2 @@
+INLINE_2A_FRAG chunks/step=3 stall_mb=128 min_stall_s=0.05 win=[100,300)
+SIDECAR_START kind=inline_2a chunks=3 stall_mb=128 stall_s=0.05 victim=7

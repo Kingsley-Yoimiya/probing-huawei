@@ -1,0 +1,23 @@
+case_id: P1-SW-C
+dose: quiet
+phase: contrast
+run_id: contrast-p1-sw-c-quiet-20260726_023654
+case_ref: 20260726_021606-yjr-as-c-p1-sw-c-quiet
+world_size: 16
+pod: yysong-worker-2
+pool: pool-xpu
+mode: gpu_bound
+inject_kind: inline_2c
+inject_args: "n=768,every=4,fallback_s=0.1"
+inject_window_measure: [100, 300]
+victim_local_rank: 7
+host_bound_matmul: 768
+seed: 42
+iters: 500
+warmup: 50
+tool: XPUTimer
+label_prefix: yjr-as-b-xpu
+script: platform/ascend/xputimer/contrast_p1swc.sh
+accept_min_ratio: 1.15
+gold_tip_max: 2.61
+tip_note: "Probing tip max=2.61 median blind; dose_check must use tip/max (not median alone)"

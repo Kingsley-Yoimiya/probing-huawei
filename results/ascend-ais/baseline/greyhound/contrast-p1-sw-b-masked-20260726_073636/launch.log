@@ -1,0 +1,24 @@
+busy_procs=0
+IDLE
+   94 /tmp/gh_p1swb_masked/collect_seq.py
+  259 /tmp/gh_p1swb_masked/contrast_p1swb.sh
+  337 /tmp/gh_p1swb_masked/s4_verdict.py
+  690 total
+4:# dose=quiet:          rare_seq=1408,every=1；thr=1.15；金标≈1.288（Loud 冻结规则只复测）
+5:# dose=masked:         rare_seq=1408,every=1；thr=1.05；金标≈1.287（=quiet；formal `072137`）
+20:  RARE_SEQ="${RARE_SHAPE_SEQ:-1408}"
+27:elif [[ "$DOSE" == "masked" ]]; then
+28:  RUN="${RUN:-contrast-p1-sw-b-masked-${TS}}"
+29:  RARE_SEQ="${RARE_SHAPE_SEQ:-1408}"
+31:  CASE_REF="${CASE_REF:-20260726_072137-yjr-as-c-p1-sw-b-masked}"
+PID=471679
+ALIVE
+MASTER_ADDR=127.0.0.1 NPROC=16 RUN=contrast-p1-sw-b-masked-20260726_073636 dose=masked pod=yysong-worker-2 rare_seq=1408 every=1
+========== C0_baseline port=30382 inject=0 2b rare_seq=1408 every=1 ==========
+---ids---
+contrast-p1-sw-b-masked-20260726_073636
+/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/baseline/greyhound/contrast-p1-sw-b-masked-20260726_073636
+471679 bash /tmp/gh_p1swb_masked/contrast_p1swb.sh
+471843 bash /tmp/gh_p1swb_masked/contrast_p1swb.sh
+471845 /root/miniconda3/envs/llm_test/bin/python3.10 /root/miniconda3/envs/llm_test/bin/torchrun --nnodes=1 --nproc_per_node=16 --node_rank=0 --master_addr=127.0.0.1 --master_port=30382 /data/yinjinrun.p-huawei/probe-bundle/train_bench_probe_npu.py --iters=500 --warmup=50 --seed=42 --mode=gpu_bound --model=gpt2 --seq=1024 --batch=8 --flush-every=5 --ckpt-every=100 --run-id=contrast-p1-sw-b-masked-20260726_073636 --group=C0_baseline --config=C0_baseline --round=1 --out-dir=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/baseline/greyhound/contrast-p1-sw-b-masked-20260726_073636/C0_baseline/ranks
+LAUNCH_OK

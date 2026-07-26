@@ -1,0 +1,17 @@
+# Acceptance (quiet): P3-SW-A
+
+- window: measure step [100, 300] rank0 `step_ms` median
+- dose: `quiet`
+- threshold C1/C0 ≥ **1.15** (recipes:/Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/dose_recipes.yaml:P3-SW-A.quiet)
+- recipes: `/Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/dose_recipes.yaml`
+- injection.log: `started`
+- verdict: **PASS**
+
+| config | median step_ms | vs C0 |
+|---|---:|---:|
+| C0_baseline | 155.64 | 1.00 |
+| C1_inject_none | 303.33 | 1.95 |
+| C2_probing | 371.24 | 2.39 |
+
+C1/C0 = 1.949
+C2/C0 = 2.385

@@ -1,0 +1,29 @@
+case_id: P3-EXT-C
+dose: quiet
+phase: contrast
+run_id: contrast-p3-ext-c-quiet-20260726_104300
+case_ref: 20260726_102936-yjr-as-c-p3-ext-c-quiet
+world_size: 16
+pod: yysong-worker-2
+pool: pool-gh
+mode: host_bound
+inject_kind: stress_vm
+inject_args: "vm_n=32,vm_bytes=4G"
+inject_window_measure: [100, 300]
+victim_local_rank: 7
+host_bound_matmul: 768
+seed: 42
+iters: 500
+warmup: 50
+tool: Greyhound
+label_prefix: yjr-as-b-gh
+preload: /data/yinjinrun.p-huawei/opt/rbeast-fix/libbuiltin_readcyclecounter.so:/data/yinjinrun.p-huawei/probe-bundle/greyhound/libhcclprobe.so
+redis: 127.0.0.1:16379
+fairness: collect_seq_real_per_rank + C0_fp_control
+script: platform/ascend/greyhound/contrast_p3extc.sh
+accept_min_ratio: 1.15
+gold_step_ratio: 1.906
+master_addr: 127.0.0.1
+vm_prestart: warmup_done
+vm_prestart_note: "page-in ramp before measure window; dose args unchanged"
+pagein_target_gi: 40

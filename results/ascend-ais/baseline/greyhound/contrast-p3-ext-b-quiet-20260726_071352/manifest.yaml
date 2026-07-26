@@ -1,0 +1,35 @@
+case_id: P3-EXT-B
+dose: quiet
+phase: contrast
+run_id: contrast-p3-ext-b-quiet-20260726_071352
+case_ref: 20260726_065841-yjr-as-c-p3-ext-b-quiet
+world_size: 16
+pod: yysong-worker-2
+pool: pool-gh
+mode: host_bound
+inject_kind: stress_io
+inject_args: "fio_nj=4,iodepth=16,bs=4k,size=1G,ckpt_every=50,io_read_kb=256"
+inject_window_measure: [100, 300]
+victim_local_rank: 7
+host_bound_matmul: 768
+io_stress_dir: /data/yinjinrun.p-huawei/probe-bundle/io_stress
+ckpt_dir: /data/yinjinrun.p-huawei/probe-bundle/io_stress/ckpt
+io_engine: stress-ng
+io_fallback: true
+io_fallback_note: "no fio; stress-ng hdd8+iomix4 fallback (dose=quiet)"
+fio_bin: ""
+hdd_n: 8
+hdd_bytes: 1G
+iomix_n: 4
+seed: 42
+iters: 500
+warmup: 50
+tool: Greyhound
+label_prefix: yjr-as-b-gh
+preload: /data/yinjinrun.p-huawei/opt/rbeast-fix/libbuiltin_readcyclecounter.so:/data/yinjinrun.p-huawei/probe-bundle/greyhound/libhcclprobe.so
+redis: 127.0.0.1:16379
+fairness: collect_seq_real_per_rank + C0_fp_control
+script: platform/ascend/greyhound/contrast_p3extb.sh
+accept_min_ratio: 1.15
+gold_step_ratio: 1.709
+master_addr: 127.0.0.1

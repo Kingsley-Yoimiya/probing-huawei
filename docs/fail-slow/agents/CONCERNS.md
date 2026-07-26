@@ -19,8 +19,9 @@
 **满配峰值**：约 **48 卡**（16×3）+ 可选 FR；卡不够时砍 Baseline 池，**保 Case 16 卡**。  
 
 **空闲含义**：我们管的 64 卡 = **`yysong`**（SYY 借权发射的占卡作业）。调度器常显示空闲=0。  
-**`yysong` 内无活训练 = 可以跑**。`a3-megatron` / `grj-megatron` 是别人的，禁止碰。  
-落盘仍 `yinjinrun.p-huawei`。跳板 kubectl：`/root/.cache/volcano/kubectl/kubectl`。
+**`yysong` 内无活训练 = 可以跑**。  
+**`grj-megatron-32card-0716`**：2026-07-25 起允许**空闲借用**（无对方训练才可跑；落盘仍 `yinjinrun.p-huawei`；对方再现立刻让路）。  
+**`a3-megatron` 仍禁止碰**。跳板 kubectl：`/root/.cache/volcano/kubectl/kubectl`。
 
 ### 会不会和沐曦脚本/文件冲突？
 

@@ -15,86 +15,90 @@ cases:
     inject_kind: "2a"
     mode: gpu_bound
     loud:   { args: "chunks=12,stall_mb=768,stall_s=0.25", accept_min_ratio: 1.3, status: calibrated, note: "INLINE@114556 C1/C0=4.20 PASS; chunks=12 stall_mb=768 stall_s=0.25" }
-    quiet:  { args: "chunks=3,stall_mb=128,stall_s=0.05", accept_min_ratio: 1.15 }
-    masked: { args: "chunks=1,stall_mb=64,stall_s=0.02", accept_min_ratio: 1.05 }
+    quiet:  { args: "chunks=3,stall_mb=128,stall_s=0.05", accept_min_ratio: 1.15, status: calibrated, measured_c1_c0: 1.638, note: "formal@042922 C1/C0=1.638 PASS(thr1.15) SCORED D3; pilot@042251=1.639; chunks=3 stall_mb=128 stall_s=0.05; C0≈76 C1≈124 C2≈127; offline D3 min_compute→rank_7; SQL_NO_EXT_EVIDENCE no D4; GH@044118 detect_ok=yes (Rbeast); XPU@044734 detect_ok=no (cross_run); <loud4.20; 未回调SQL" }
+    masked: { args: "chunks=1,stall_mb=64,stall_s=0.02", accept_min_ratio: 1.05, status: calibrated, measured_c1_c0: 1.259, note: "formal@044454 C1/C0=1.259 PASS(thr1.05) SCORED D3; pilot@044124=1.250; chunks=1 stall_mb=64 stall_s=0.02; C0≈76 C1≈95 C2≈96; offline D3 min_compute→rank_7; SQL_NO_EXT_EVIDENCE no D4; <quiet1.638/<loud4.20; 未回调SQL" }
 
   P1-SW-B:
     inject_kind: "2b"
     mode: gpu_bound
     loud:   { args: "rare_seq=1536,every=1", accept_min_ratio: 1.15, status: calibrated, note: "INLINE@115732 C1/C0=1.36 PASS; rare_seq=1536 every=1; SCORED D3" }
-    quiet:  { args: "rare_seq=1280,every=4", accept_min_ratio: 1.15 }
-    masked: { args: "rare_seq=1152,every=8", accept_min_ratio: 1.05 }
+    quiet:  { args: "rare_seq=1408,every=1", accept_min_ratio: 1.15, status: calibrated, measured_c1_c0: 1.288, note: "formal@052307 C1/C0=1.288 PASS(thr1.15) SCORED D3; pilot@051822=1.284; rare_seq=1408 every=1; C0≈76 C1≈98 C2≈100; offline D3 shape_seq_rare→rank_7 (recipes rare_seq); SQL_NO_EXT_EVIDENCE no D4; stub@045940 1280/4=1.023 / retune@050506 1408/2=1.057 / retune2@051023 1536/2=1.077 ineffective 保留; 045618作废; <loud1.36; GH/XPU PENDING" }
+    masked: { args: "rare_seq=1408,every=1", accept_min_ratio: 1.05, status: calibrated, measured_c1_c0: 1.287, note: "formal@072137 C1/C0=1.287 PASS(thr1.05) SCORED D3; pilot@071428=1.283; =quiet dose（rank0 闸门）；C0≈76 C1≈98 C2≈100；offline D3 shape_seq_rare→rank_7；SQL_PENDING（C2 dump 窗本地 hold 断）；stub@070504 1152/8=1.013 / retune@070958 1408/2=1.033 ineffective 保留；未回调SQL" }
 
   P1-SW-C:
     inject_kind: "2c"
     mode: gpu_bound
-    # tip 叙事：median 盲、max 可见；闸门 med≥1.3|p99≥1.5|max≥2.5
+    # tip 叙事：median 盲、max 可见；闸门 med≥accept_min_ratio|p99≥1.5|max≥2.5（辅闸 Loud 固定）
     loud:   { args: "n=1024,every=1,fallback_s=0.25", accept_min_ratio: 1.3, status: calibrated, note: "INLINE@121105 tip max=4.63 PASS; SPIKE_OK×200; SCORED D3; median盲=1.02" }
-    quiet:  { args: "n=768,every=4,fallback_s=0.1", accept_min_ratio: 1.15 }
-    masked: { args: "n=512,every=8,fallback_s=0.05", accept_min_ratio: 1.05 }
+    quiet:  { args: "n=768,every=4,fallback_s=0.1", accept_min_ratio: 1.15, status: calibrated, measured_c1_c0: 2.61, note: "formal@021606 tip max=2.61 PASS SCORED D3; pilot@015328 tip max=5.72; formal@020857 tip max=2.28→D0 tip_fail 保留; med盲; SQL_NO_EXT; retune@020226 n=512→2.34 ineffective 保留; 未回调SQL" }
+    masked: { args: "n=768,every=4,fallback_s=0.05", accept_min_ratio: 1.05, status: calibrated, measured_c1_c0: 2.61, note: "formal@025116 tip max=2.61 PASS SCORED D3; pilot@024514=2.53; n/every同quiet fallback0.1→0.05; stub@023225→2.45 / retune@023811→1.32 ineffective 保留; SQL_NO_EXT; 未回调SQL" }
 
   P1-EXT-A:
     inject_kind: inline_cube
     mode: gpu_bound
     loud:   { args: "inline_cube_size=8192,inline_cube_mm=64", accept_min_ratio: 1.5, status: calibrated, note: "INLINE@011129 C1/C0=3.87 PASS; SCORED D2; final dose after 4096x16=1.06" }
-    quiet:  { args: "inline_cube_size=2048,inline_cube_mm=4", accept_min_ratio: 1.15 }
-    masked: { args: "inline_cube_size=2048,inline_cube_mm=1", accept_min_ratio: 1.05 }
+    quiet:  { args: "inline_cube_size=4096,inline_cube_mm=32", accept_min_ratio: 1.15, status: calibrated, measured_c1_c0: 1.156, note: "formal@013034 C1/C0=1.156 PASS(thr1.15) SCORED D3; pilot@012545=1.159; size=4096 mm=32; C0≈76 C1≈88 C2≈89; offline D3 min_wait→rank_7; SQL_NO_EXT_EVIDENCE no D4; stub@012159 2048×4→0.990 ineffective 保留; 未回调SQL" }
+    masked: { args: "inline_cube_size=4096,inline_cube_mm=16", accept_min_ratio: 1.05, status: calibrated, measured_c1_c0: 1.078, note: "formal@014611 C1/C0=1.078 PASS(thr1.05) SCORED D3; pilot@014128=1.078; size=4096 mm=16; C0≈75.5 C1≈81.4 C2≈82.0; offline D3 min_wait→rank_8 (±1 hit victim=7); SQL_NO_EXT_EVIDENCE no D4; stub@013734 2048×1→0.998 ineffective 保留; 未回调SQL" }
 
   P1-EXT-B:
     inject_kind: inline_hbm
     mode: gpu_bound
     loud:   { args: "inline_hbm_mb=512,inline_hbm_copies=48", accept_min_ratio: 1.6, status: calibrated, note: "INLINE@014350 C1/C0=2.02 PASS; SCORED D3; SQL attach fail no D4" }
-    quiet:  { args: "inline_hbm_mb=128,inline_hbm_copies=3", accept_min_ratio: 1.15 }
-    masked: { args: "inline_hbm_mb=64,inline_hbm_copies=1", accept_min_ratio: 1.05 }
+    quiet:  { args: "inline_hbm_mb=256,inline_hbm_copies=16", accept_min_ratio: 1.15, status: calibrated, measured_c1_c0: 1.161, note: "formal@033758 C1/C0=1.161 PASS(thr1.15) SCORED D3; pilot@033227=1.174; <loud2.02; stub@032111 mb=128 copies=3→1.015 ineffective 保留; SQL_NO_EXT; GH@035533 detect_ok=yes (Rbeast); XPU@040543 detect_ok=no (cross_run); 未回调SQL" }
+    masked: { args: "inline_hbm_mb=192,inline_hbm_copies=10", accept_min_ratio: 1.05, status: calibrated, measured_c1_c0: 1.070, note: "formal@040309 C1/C0=1.070 PASS(thr1.05) SCORED D3; pilot@035440=1.075; mb=192 copies=10; C0≈76 C1≈81 C2≈83; offline D3 min_compute→rank_7; SQL_NO_EXT_EVIDENCE no D4; <quiet1.161/<loud2.02; stub 64x1 skipped(quiet stub ineffective); 未回调SQL" }
 
   P1-HW-B:
     inject_kind: "1b"
     mode: gpu_bound
     # OUTLINE 1B：渐进 HBM（非改频）。移植自隔离仓 p1hwb_p3swc；Ascend INLINE ramp copies 6→48
     loud:   { args: "inline_hbm_mb=512,inline_hbm_copies=6,inline_hbm_copies_max=48,ramp=1", accept_min_ratio: 1.3, status: calibrated, note: "INLINE_RAMP@142359 C1/C0=1.57 PASS; SCORED D3; SQL_NO_EXT_EVIDENCE no D4; pilot141406 copies48 flat C1/C0=2.04 retained" }
-    quiet:  { args: "inline_hbm_mb=256,inline_hbm_copies=4,inline_hbm_copies_max=24,ramp=1", accept_min_ratio: 1.15 }
-    masked: { args: "inline_hbm_mb=128,inline_hbm_copies=2,inline_hbm_copies_max=12,ramp=1", accept_min_ratio: 1.05 }
+    quiet:  { args: "inline_hbm_mb=320,inline_hbm_copies=5,inline_hbm_copies_max=30,ramp=1", accept_min_ratio: 1.15, status: calibrated, measured_c1_c0: 1.219, note: "formal@005203 C1/C0=1.219 PASS(thr1.15) SCORED D3; pilot@004220=1.218; mb=320 copies=5→30; C0≈76 C1≈92 C2≈94; offline D3 min_compute→rank_7; SQL_NO_EXT_EVIDENCE no D4; stub@003744→1.129 FAIL_WEAK 保留; 未回调SQL" }
+    masked: { args: "inline_hbm_mb=256,inline_hbm_copies=4,inline_hbm_copies_max=24,ramp=1", accept_min_ratio: 1.05, status: calibrated, measured_c1_c0: 1.129, note: "formal@011501 C1/C0=1.129 PASS(thr1.05) SCORED D3; pilot@011036=1.128; mb=256 copies=4→24; C0≈76 C1≈86 C2≈88; offline D3 min_compute→rank_7; SQL_NO_EXT_EVIDENCE no D4; stub@010252→1.025 ineffective 保留; 未回调SQL" }
 
   P3-EXT-A:
     inject_kind: stress_cpu
     mode: host_bound
     loud:   { args: "cpu_load=90", accept_min_ratio: 1.3, status: calibrated, note: "yysong-master-0 nproc=256 全核; C1/C0≈1.97 @20260724_231918; data_ms 1.2→13" }
-    quiet:  { args: "cpu_frac=0.5,cpu_load=70", accept_min_ratio: 1.15 }
-    masked: { args: "cpu_n=2,cpu_load=50", accept_min_ratio: 1.05 }
+    quiet:  { args: "cpu_frac=0.5,cpu_load=70,cpu_n=128", accept_min_ratio: 1.15, status: calibrated, measured_c1_c0: 1.256, note: "formal@075912 C1/C0=1.256 PASS(thr1.15) SCORED D3; pilot@074315=1.674; 128@70; C0≈82 C1≈103 C2≈148; offline D3+SQL_NO_EXT; stub formal@074957=1.131 FAIL_WEAK 保留; 未回调SQL" }
+    masked: { args: "cpu_frac=0.5,cpu_n=128,cpu_load=70", accept_min_ratio: 1.05, status: calibrated, measured_c1_c0: 1.470, note: "formal@094648 C1/C0=1.470 PASS(thr1.05) SCORED D3; pilot@083742=1.073 lean-quiet(=quiet剂量); C0≈85 C1≈125 C2≈163; offline D3+SQL_PENDING(DUMP=0避attach挂); stub@080947 2@50=1.01 / @50 formals FAIL_WEAK / @70+DUMP hang stubs 保留; 未回调SQL" }
 
   P3-EXT-B:
     inject_kind: stress_io
     mode: host_bound
     loud:   { args: "fio_nj=16,iodepth=64,bs=4k,size=4G,ckpt_every=20,io_read_kb=1024", accept_min_ratio: 1.3, status: calibrated, note: "fio@020212 C1/C0=2.13 PASS; SCORED D3; SQL_NO_EXT_EVIDENCE no D4" }
-    quiet:  { args: "fio_nj=4,iodepth=16,bs=4k,size=1G,ckpt_every=50,io_read_kb=256", accept_min_ratio: 1.15 }
+    quiet:  { args: "fio_nj=4,iodepth=16,bs=4k,size=1G,ckpt_every=50,io_read_kb=256", accept_min_ratio: 1.15, status: calibrated, measured_c1_c0: 1.709, note: "formal@065841 C1/C0=1.709 PASS(thr1.15) SCORED D3; pilot@063057=1.709; C0≈106 C1≈181 C2≈147; offline D3+SQL_PENDING(DUMP=0); fio-3.29@grj-m0 via probe-bundle; stub@142450/@063756/@064626 C0_noise 保留; 未回调SQL" }
+    masked: { args: "fio_nj=4,iodepth=16,bs=4k,size=1G,ckpt_every=50,io_read_kb=256", accept_min_ratio: 1.05, status: calibrated, measured_c1_c0: 1.078, note: "formal@154204 C1/C0=1.078 PASS(thr1.05) SCORED D3; =quiet lean；pilot@153104=1.078; C0≈100 C1≈108 C2≈107; offline D3+SQL_PENDING(DUMP=0); fio-3.29@grj-m0; stub@150542/@071104/@151239 C0_noise 保留; 未回调SQL" }
 
   P3-EXT-C:
     inject_kind: stress_vm
     mode: host_bound
     loud:   { args: "vm_n=96,vm_bytes=6G", accept_min_ratio: 1.3, status: calibrated, note: "20260725_021906 C1/C0=1.59 PASS; 2Ti; PSI_UNAVAIL" }
-    quiet:  { args: "vm_n=32,vm_bytes=4G", accept_min_ratio: 1.15 }
-    masked: { args: "vm_n=8,vm_bytes=2G", accept_min_ratio: 1.05 }
+    quiet:  { args: "vm_n=32,vm_bytes=4G", accept_min_ratio: 1.15, status: calibrated, measured_c1_c0: 1.906, note: "formal@102936 C1/C0=1.906 PASS(thr1.15) SCORED D3; pilot@095909=1.722; C0≈83 C1≈159 C2≈91; offline D3+SQL_PENDING(DUMP=0); stub@100606/@101737 C0_noise ineffective 保留; 未回调SQL" }
+    masked: { args: "vm_n=32,vm_bytes=4G", accept_min_ratio: 1.05, status: calibrated, measured_c1_c0: 1.744, note: "formal@122130 C1/C0=1.744 PASS(thr1.05) SCORED D3; =quiet lean；pilot@110355=1.085; C0≈84 C1≈147 C2≈158; offline D3+SQL_PENDING(DUMP=0); stub@104125 8x2G /@104844 16x3G C0_noise /@105713 24x4G=1.014 dose_WEAK / formals C0_noise+C2_crash 保留; 未回调SQL" }
 
   P3-SW-A:
     inject_kind: "8a"
     mode: host_bound
     loud:   { args: "inline_gc_every=1,inline_gc_stall_s=0.25", accept_min_ratio: 1.3, status: calibrated, note: "INLINE@012957 C1/C0=2.93 PASS; SCORED D4; stall=0.25 every=1" }
+    # quiet：every 必须=1（median 闸门；every=2@214126 隔步注入→中位落未注入步假阴）；仅减弱 stall 0.25→0.1
+    quiet:  { args: "inline_gc_every=1,inline_gc_stall_s=0.1", accept_min_ratio: 1.15, status: calibrated, measured_c1_c0: 1.962, note: "retune@214923 C1/C0=1.962 PASS(thr1.15); every=1 stall=0.1; C0≈151 C1≈296; <loud2.93; 前序@214126 every=2→0.549 ineffective 保留; accept --dose quiet 重验" }
+    masked: { args: "inline_gc_every=1,inline_gc_stall_s=0.05", accept_min_ratio: 1.05, status: calibrated, measured_c1_c0: 1.768, note: "formal@224156 C1/C0=1.768 PASS(thr1.05) SCORED D4; pilot@222736=1.856; every=1 stall=0.05; <quiet1.95/<loud2.93; 未retune; 未回调SQL" }
 
   P3-SW-B:
     inject_kind: "8b"
     mode: host_bound
     # INLINE 8b：进程内 leak MB/step + data_stall；首轮 loud 即咬合
     loud:   { args: "mb=16,stall_s=0.25", accept_min_ratio: 1.3, status: calibrated, note: "INLINE@125558 C1/C0=2.06 PASS; SCORED D4; mb=16 stall_s=0.25" }
-    quiet:  { args: "mb=8,stall_s=0.1", accept_min_ratio: 1.15 }
-    masked: { args: "mb=4,stall_s=0.05", accept_min_ratio: 1.05 }
+    quiet:  { args: "mb=8,stall_s=0.1", accept_min_ratio: 1.15, status: calibrated, measured_c1_c0: 2.101, note: "formal@232814 C1/C0=2.101 PASS(thr1.15) SCORED D4; pilot@230345=1.715; mb=8 stall=0.1; C0≈85 C1≈178; 未retune; 未回调SQL; 前序231336 C0噪声作废" }
+    masked: { args: "mb=6,stall_s=0.1", accept_min_ratio: 1.05, status: calibrated, measured_c1_c0: 1.909, note: "formal@000113 C1/C0=1.909 PASS(thr1.05) SCORED D3; pilot@235216=1.389; mb=6 stall=0.1; C0≈93 C1≈177 C2≈181; SQL_PENDING(dump挂 SHOW TABLES); stub@234531 ineffective 保留; 未回调SQL" }
 
   P3-SW-C:
     inject_kind: "8c"
     mode: host_bound
     # 监控泄漏：stress-ng CPU(nproc@90) + 主进程 1MB/s RSS；pilot1 pure-busy×128 咬空
-    loud:   { args: "cpu_n=nproc,cpu_load=90,mb=1,leak_every=1.0,max_chunks=64", accept_min_ratio: 1.3, status: calibrated, note: "jump@135238 C1/C0=2.49 PASS; stress-ng nproc@90 + 1MB/s leak; host_bound" }
-    quiet:  { args: "cpu_n=80,cpu_load=70,mb=1,leak_every=2.0,max_chunks=32", accept_min_ratio: 1.15 }
-    masked: { args: "cpu_n=32,cpu_load=30,mb=1,leak_every=3.0,max_chunks=16", accept_min_ratio: 1.05 }
+    loud:   { args: "cpu_n=nproc,cpu_load=90,mb=1,leak_every=1.0,max_chunks=64", accept_min_ratio: 1.3, status: calibrated, note: "pod-sup@135238 C1/C0=2.33 PASS (inject@step100); stress-ng nproc@90 + 1MB/s leak; SCORED D4; host_bound" }
+    quiet:  { args: "cpu_n=80,cpu_load=70,mb=1,leak_every=2.0,max_chunks=32", accept_min_ratio: 1.15, status: calibrated, measured_c1_c0: 1.95, note: "formal@125953 C1/C0=1.95 PASS(thr1.15) SCORED D3; pilot@123508=1.91; C0≈84 C1≈163 C2≈88; offline D3 max_data→rank_7 + SQL_PENDING(DUMP=0); stub@124037=1.01/@124908=1.14 FAIL_WEAK 保留; GH@131244 detect_ok=no (no_bite; dose_WEAK); XPU@132040 detect_ok=no (cross_run; coll=1.000; step=1.960 PASS); 未回调SQL" }
+    masked: { args: "cpu_n=80,cpu_load=70,mb=1,leak_every=2.0,max_chunks=32", accept_min_ratio: 1.05, status: calibrated, measured_c1_c0: 1.649, note: "formal@135016 C1/C0=1.649 PASS(thr1.05) SCORED D3; =quiet lean；C0=90.26 CLEAN；pilot@131921=1.050；stub@131312=1.02/@132433=1.03/@133349=0.576 C0_noise 保留；offline D3+SQL_PENDING(DUMP=0)；GH@140713 detect_ok=no (no_bite; dose_WEAK)；XPU@141517 detect_ok=yes (cross_run; coll=1.056 PASS; step=1.517 PASS)；未回调SQL" }
 
 
   P2-SW-B:

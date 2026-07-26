@@ -1,0 +1,7 @@
+sending ctrl commands via unix socket...
+Traceback (most recent call last):
+  File "/afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/pydeps/bin/probing", line 7, in <module>
+    sys.exit(main())
+  File "/afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/pydeps/probing/cli/__main__.py", line 14, in main
+    probing.cli_main(["probing"] + sys.argv[1:])
+RuntimeError: connection closed before message completed

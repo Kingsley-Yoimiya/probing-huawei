@@ -1,0 +1,44 @@
+SIDECAR_START stress_vm_n=32_bytes=4G
+PSI_UNAVAIL no_/proc/pressure
+stress-ng: info:  [3139446] setting to a 900 second (15 mins, 0.00 secs) run per stressor
+stress-ng: info:  [3139446] dispatching hogs: 32 vm
+---AFTER_INJECT---
+2026-07-26T10:33:16+08:00
+               total        used        free      shared  buff/cache   available
+Mem:           2.0Ti       391Gi       1.5Ti       4.8Gi       409Gi       1.6Ti
+Swap:             0B          0B          0B
+PSI_UNAVAIL
+stress-ng: error: [3139446] process 3139447 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139448 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139449 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139450 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139452 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139454 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139457 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139458 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139459 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139461 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139463 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139467 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139468 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139470 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139473 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139475 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139477 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139479 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139481 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139483 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139485 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139488 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139489 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139491 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139492 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139495 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139498 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139500 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139501 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139503 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139505 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [3139446] process 3139506 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: info:  [3139446] unsuccessful run completed in 32.24s
+SIDECAR_STOP

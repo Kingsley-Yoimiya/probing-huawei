@@ -1,0 +1,68 @@
+   70416 /data/yinjinrun.p-huawei/results/ascend-ais/baseline/greyhound/contrast-p3-sw-a-quiet-20260725_222610/C0_baseline/greyhound/hcclprobe.collect.jsonl
+   70416 /data/yinjinrun.p-huawei/results/ascend-ais/baseline/greyhound/contrast-p3-sw-a-quiet-20260725_222610/C1_inject_none/greyhound/hcclprobe.collect.jsonl
+  140832 total
+-rw-r--r-- 1 root root 246 Jul 25 22:31 /data/yinjinrun.p-huawei/results/ascend-ais/baseline/greyhound/contrast-p3-sw-a-quiet-20260725_222610/C0_baseline/greyhound/rbeast_c0.json
+-rw-r--r-- 1 root root 366 Jul 25 22:30 /data/yinjinrun.p-huawei/results/ascend-ais/baseline/greyhound/contrast-p3-sw-a-quiet-20260725_222610/C1_inject_none/greyhound/rbeast_c1.json
+-rw-r--r-- 1 root root  58 Jul 25 22:29 /data/yinjinrun.p-huawei/results/ascend-ais/baseline/greyhound/contrast-p3-sw-a-quiet-20260725_222610/C1_inject_none/injection.log
+{
+  "coll_ratio": 0.9832384344416587,
+  "coll_pass": false,
+  "step_ratio": 2.4192397798296033,
+  "dose_ok": true,
+  "rbeast_c1": {
+    "ran": true,
+    "n_changepoints": 2,
+    "changepoints": [
+      {
+        "id": 149,
+        "t": 30.97492289543152
+      },
+      {
+        "id": 349,
+        "t": 95.54513883590698
+      }
+    ],
+    "error": null,
+    "rep_rank_pid": 178541,
+    "n_ranks": 16,
+    "n_calls": 4401,
+    "n_uniq_sig": 10,
+    "acf_start": 7,
+    "acf_period": 8,
+    "rbeast_last10_avg_ts": 0.16695451736450195
+  },
+  "rbeast_c0": {
+    "ran": true,
+    "n_changepoints": 0,
+    "changepoints": [],
+    "error": null,
+    "rep_rank_pid": 174257,
+    "n_ranks": 16,
+    "n_calls": 4401,
+    "n_uniq_sig": 10,
+    "acf_start": 7,
+    "acf_period": 8,
+    "rbeast_last10_avg_ts": 0.16452550888061523
+  },
+  "rbeast_hit": true,
+  "rbeast_fp": false,
+  "autonomous_detect": true,
+  "detect_mode": "autonomous",
+  "oracle_trigger": false,
+  "case_id": "P3-SW-A",
+  "tool": "greyhound",
+  "dose": "quiet",
+  "frozen": "INLINE 8a gc_every=1 stall_s=0.1 victim=7; window [100,300]",
+  "case_ref": "20260725_215903-yjr-as-c-p3-sw-a-quiet",
+  "world_size": 16,
+  "pool": "pool-gh",
+  "pod": "yysong-worker-2",
+  "run_id": "contrast-p3-sw-a-quiet-20260725_222610",
+  "detect_ok": true,
+  "fairness": "collect_seq_real_per_rank + C0_fp_control"
+}
+{"step": 0, "data_ms": 1.344, "compute_ms": 128.289, "comm_ms": 6.793, "wait_ms": 0.959, "step_ms": 138.533, "loss": 0.0, "ts": 1784989600.755, "npu_alloc_bytes": 1277868032, "npu_reserved_bytes": 10770972672, "cuda_frag_gap_bytes": 9493104640, "frag_stall_ms": 0.0, "shape_seq": 1024, "rank": 0, "local_rank": 0, "node_rank": 0, "world_size": 16, "run_id": "contrast-p3-sw-a-quiet-20260725_222610", "group": "C0_baseline", "config": "C0_baseline", "round": 1, "mode": "host_bound", "backend": "npu_hccl"}
+{"step": 1, "data_ms": 1.049, "compute_ms": 121.292, "comm_ms": 6.676, "wait_ms": 0.762, "step_ms": 130.701, "loss": 0.0, "ts": 1784989600.887, "npu_alloc_bytes": 1277868032, "npu_reserved_bytes": 10770972672, "cuda_frag_gap_bytes": 9493104640, "frag_stall_ms": 0.0, "shape_seq": 1024, "rank": 0, "local_rank": 0, "node_rank": 0, "world_size": 16, "run_id": "contrast-p3-sw-a-quiet-20260725_222610", "group": "C0_baseline", "config": "C0_baseline", "round": 1, "mode": "host_bound", "backend": "npu_hccl"}
+---
+16
+16

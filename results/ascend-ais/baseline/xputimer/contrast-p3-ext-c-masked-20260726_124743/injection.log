@@ -1,0 +1,45 @@
+SIDECAR_START stress_vm_n=32_bytes=4G dose=masked
+PSI_UNAVAIL no_/proc/pressure
+SC=577344
+---AFTER_INJECT---
+2026-07-26T12:50:36+08:00
+stress-ng: info:  [577344] setting to a 900 second (15 mins, 0.00 secs) run per stressor
+stress-ng: info:  [577344] dispatching hogs: 32 vm
+               total        used        free      shared  buff/cache   available
+Mem:           2.0Ti       316Gi       1.8Ti       4.2Gi        80Gi       1.7Ti
+Swap:             0B          0B          0B
+PSI_UNAVAIL
+stress-ng: error: [577344] process 577352 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577353 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577354 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577355 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577357 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577358 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577362 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577363 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577364 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577367 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577370 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577371 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577374 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577376 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577378 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577379 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577381 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577384 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577386 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577388 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577390 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577392 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577394 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577395 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577398 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577400 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577402 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577404 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577406 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577408 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577409 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: error: [577344] process 577412 (stress-ng-vm) terminated with an error, exit status=5 (killed by signal)
+stress-ng: info:  [577344] unsuccessful run completed in 34.47s
+SIDECAR_STOP ts=1785041472 held_s=31

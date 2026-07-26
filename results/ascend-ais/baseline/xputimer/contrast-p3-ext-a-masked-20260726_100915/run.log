@@ -1,0 +1,61 @@
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+MASTER_ADDR=127.0.0.1 NPROC=16 RUN=contrast-p3-ext-a-masked-20260726_100915 dose=masked pod=yysong-worker-2 cpu_n=128 cpu_load=70
+========== C0_baseline port=30294 inject=0 stress_cpu cpu_n=128 cpu_load=70 ==========
+  warmup ok (29s)
+  waiting… t=30s prom=16 ranks=16
+  waiting… t=60s prom=16 ranks=16
+  waiting… t=90s prom=16 ranks=16
+  done (95s) prom=16
+========== C1_inject_none port=30295 inject=1 stress_cpu cpu_n=128 cpu_load=70 ==========
+  warmup ok (30s)
+  measure step 100 (17s) → start stress-ng
+SC=535962
+  measure step 300 → stop stress (34s)
+  waiting… t=30s prom=16 ranks=16
+  done (50s) prom=16
+# XPUTimer contrast · P3-EXT-A masked
+
+- case_id: `P3-EXT-A`
+- case_ref: `20260726_094648-yjr-as-c-p3-ext-a-masked`
+- dose: `masked` — stress_cpu cpu_n=128 cpu_load=70 victim=7; window [100,300]; gold≈1.470
+- detect_mode: **cross_run_contrast** （自主=prom hang/slow flags；跨-run=C1/C0 中位比≥1.05，需外部健康基线 C0）
+- metric: jsonl `dur_us` of `HcclAllReduce` (host-wall around Hccl*)
+
+## A) XPUTimer 自主信号（.prom hang/slow flags；无需外部基线）
+
+| arm | coll_events | hang_flags | slow_flags |
+|-----|-----------:|-----------:|-----------:|
+| C0  | 81401 | 0 | 0 |
+| C1  | 81401 | 0 | 0 |
+
+**autonomous_flag (C1 hang+slow>0) = False** （SLOW_REPORT_US=0 关、HANG_TIMEOUT_MS=60000；未开 oracle INJECT_STALL）
+
+## B) cross-run 中位对照（需外部健康基线 C0，非自主）
+
+| arm | n | median dur_us | ≥1.5×C0med（噪声诊断，非判据） |
+|-----|--:|-------------:|------------------------------:|
+| C0  | 70336 | 132.0 | 12635 |
+| C1  | 70336 | 124.0 | 7095 |
+
+**C1/C0 coll ratio = 0.939** → FAIL (thr 1.05)
+
+> ⚠️ `≥1.5×C0med` 计数仅作噪声诊断：C0 健康线自身就有 12635 个，说明该线在集合通信 host-wall 上可能大面积误报，**不作判据**。
+
+## C) dose_check（step_ms 窗内中位；非 XPUTimer 规则）
+
+- window: [100, 300)
+- C0 median step_ms: 152.888 (n=3200)
+- C1 median step_ms: 102.972 (n=3200)
+- C1/C0 step_ms = 0.674 → FAIL/NA (thr 1.05)
+
+## Verdict
+
+- **autonomous_detect**: NO (XPUTimer 自己的 hang/slow flags)
+- **cross_run_contrast**: FAIL (C1/C0=0.939；需外部基线)
+- **dose_check**: FAIL/NA (step_ms C1/C0=0.674)
+- **detect_ok**: false (autonomous OR cross_run；dose_check 单独记)
+- **detect_mode**: `cross_run_contrast`
+
+Note: 如实记能力边界；无咬合也是 DONE。不改对手阈值、不覆盖 Probing 分。
+
+CONTRAST_DONE RUN=contrast-p3-ext-a-masked-20260726_100915 DUMP=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-ext-a-masked-20260726_100915 verdict_rc=2

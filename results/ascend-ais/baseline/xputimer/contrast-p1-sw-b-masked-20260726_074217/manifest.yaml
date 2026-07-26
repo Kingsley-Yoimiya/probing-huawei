@@ -1,0 +1,22 @@
+case_id: P1-SW-B
+dose: masked
+phase: contrast
+run_id: contrast-p1-sw-b-masked-20260726_074217
+case_ref: 20260726_072137-yjr-as-c-p1-sw-b-masked
+world_size: 16
+pod: yysong-worker-2
+pool: pool-xpu
+mode: gpu_bound
+inject_kind: inline_2b
+inject_args: "rare_seq=1408,every=1"
+inject_window_measure: [100, 300]
+victim_local_rank: 7
+host_bound_matmul: 768
+seed: 42
+iters: 500
+warmup: 50
+tool: XPUTimer
+label_prefix: yjr-as-b-xpu
+script: platform/ascend/xputimer/contrast_p1swb.sh
+accept_min_ratio: 1.05
+gold_step_ratio: 1.287

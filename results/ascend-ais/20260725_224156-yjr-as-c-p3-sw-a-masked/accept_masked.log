@@ -1,0 +1,18 @@
+# Acceptance (masked): P3-SW-A
+
+- window: measure step [100, 300] rank0 `step_ms` median
+- dose: `masked`
+- threshold C1/C0 ≥ **1.05** (recipes:project/probing-huawei/scripts/fail-slow/dose_recipes.yaml:P3-SW-A.masked)
+- recipes: `project/probing-huawei/scripts/fail-slow/dose_recipes.yaml`
+- injection.log: `started`
+- verdict: **PASS**
+
+| config | median step_ms | vs C0 |
+|---|---:|---:|
+| C0_baseline | 147.98 | 1.00 |
+| C1_inject_none | 261.63 | 1.77 |
+| C2_probing | 252.65 | 1.71 |
+
+C1/C0 = 1.768
+C2/C0 = 1.707
+

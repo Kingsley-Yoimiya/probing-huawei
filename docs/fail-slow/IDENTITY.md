@@ -33,7 +33,9 @@ export KUBECONFIG=/tmp/config-vc-a3-241ceshi-songyiyang.yaml
 | Greyhound | `yysong-worker-1` |
 | XPUTimer | `yysong-worker-2` |
 
-作业前缀标签：`yjr-as-c-*`（Case）、`yjr-as-b-*`（Baseline）。**禁止**碰 `a3-*` / `grj-*`。
+作业前缀标签：`yjr-as-c-*`（Case）、`yjr-as-b-*`（Baseline）。  
+**禁止**碰 `a3-megatron-*`。  
+**`grj-megatron-32card-0716`**：允许空闲借用（见 `agents/RESOURCE.md`）；不写对方盘、不删对方 vcjob。
 
 ## 落盘
 

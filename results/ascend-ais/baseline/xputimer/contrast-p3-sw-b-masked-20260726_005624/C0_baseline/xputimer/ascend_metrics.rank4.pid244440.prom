@@ -1,0 +1,29 @@
+# XPUTimer Ascend backend metrics (Prometheus text exposition)
+# device=Ascend910 pid=244440 events=5056 hang_flags=0 slow_flags=0
+xpu_timer_common_kernel_count{name="coll:HcclAllReduce",type="coll"} 4396
+xpu_timer_common_kernel_avg_us{name="coll:HcclAllReduce",type="coll"} 323.689
+xpu_timer_common_kernel_max_us{name="coll:HcclAllReduce",type="coll"} 787748
+xpu_timer_common_kernel_hang{name="coll:HcclAllReduce",type="coll"} 0
+xpu_timer_common_kernel_slow{name="coll:HcclAllReduce",type="coll"} 0
+xpu_timer_common_kernel_count{name="coll:HcclBroadcast",type="coll"} 4
+xpu_timer_common_kernel_avg_us{name="coll:HcclBroadcast",type="coll"} 51215.5
+xpu_timer_common_kernel_max_us{name="coll:HcclBroadcast",type="coll"} 169486
+xpu_timer_common_kernel_hang{name="coll:HcclBroadcast",type="coll"} 0
+xpu_timer_common_kernel_slow{name="coll:HcclBroadcast",type="coll"} 0
+xpu_timer_common_kernel_count{name="coll:HcclAllGather",type="coll"} 1
+xpu_timer_common_kernel_avg_us{name="coll:HcclAllGather",type="coll"} 1.44975e+06
+xpu_timer_common_kernel_max_us{name="coll:HcclAllGather",type="coll"} 1.44975e+06
+xpu_timer_common_kernel_hang{name="coll:HcclAllGather",type="coll"} 0
+xpu_timer_common_kernel_slow{name="coll:HcclAllGather",type="coll"} 0
+xpu_timer_common_kernel_count{name="coll:aclrtSynchronizeStream",type="coll"} 655
+xpu_timer_common_kernel_avg_us{name="coll:aclrtSynchronizeStream",type="coll"} 30.0015
+xpu_timer_common_kernel_max_us{name="coll:aclrtSynchronizeStream",type="coll"} 7681
+xpu_timer_common_kernel_hang{name="coll:aclrtSynchronizeStream",type="coll"} 0
+xpu_timer_common_kernel_slow{name="coll:aclrtSynchronizeStream",type="coll"} 0
+xpu_timer_common_coll_bytes_total{name="HcclAllReduce"} 136792552608
+xpu_timer_common_coll_bytes_total{name="HcclBroadcast"} 248716560
+xpu_timer_common_coll_bytes_total{name="HcclAllGather"} 512
+xpu_timer_common_coll_bytes_total{name="aclrtSynchronizeStream"} 0
+xpu_timer_ascend_coll_events_total 5056
+xpu_timer_ascend_hang_flags_total 0
+xpu_timer_ascend_slow_flags_total 0

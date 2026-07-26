@@ -9,10 +9,11 @@
 | [`IDENTITY.md`](IDENTITY.md) | kube / 跳板 / 落盘约定 |
 | [`rules.md`](rules.md) | 不变的方法论（红线 / 控变 / 三阶段 / D0–D5） |
 | [`ledger.md`](ledger.md) | 华为环境门禁、剂量、已跑 case 速览 |
-| [`CASE_QUEUE.md`](CASE_QUEUE.md) | 27-case 排期与权限跳过表 |
-| [`CONTRAST_QUEUE.md`](CONTRAST_QUEUE.md) | **流水线 2**：竞品同剂量对照队列 |
-| [`LOOP.md`](LOOP.md) | → [`agents/LOOP.md`](agents/LOOP.md) |
-| [`agents/`](agents/README.md) | 双流水线任务卡 + `/loop` 提示词 |
+| [`CASE_QUEUE.md`](CASE_QUEUE.md) | 27-case Loud 排期（已收官参考） |
+| [`CONTRAST_QUEUE.md`](CONTRAST_QUEUE.md) | Loud 竞品对照队列（已收官参考） |
+| [`DOSE_QUEUE.md`](DOSE_QUEUE.md) | **现役流水线 1**：Quiet/Masked 队列 |
+| [`LOOP.md`](LOOP.md) | → [`agents/LOOP.md`](agents/LOOP.md)（Dose ∥ Pillar C） |
+| [`agents/`](agents/README.md) | 现役任务卡 + `/loop` 提示词 |
 
 ## 和沐曦的分工（别混）
 
@@ -30,13 +31,14 @@
 故障定义真相源仍是论文侧  
 `project/reading-paper/writing/probing-paper/OUTLINE-v3-27-cases-per-cell.md`。
 
-## Agent 开跑顺序
+## Agent 开跑顺序（现役 · Dose + Pillar C）
 
 1. 读 `rules.md` + `ledger.md` 门禁  
-2. 读 [`agents/LOOP.md`](agents/LOOP.md) + [`CONTRAST_QUEUE.md`](CONTRAST_QUEUE.md)：双流水线  
+2. 读 [`agents/LOOP.md`](agents/LOOP.md) + [`DOSE_QUEUE.md`](DOSE_QUEUE.md)  
 3. 同级 clone `probing-test`（或 `export FS_SHARED_SCRIPTS=…`）  
 4. `source scripts/fail-slow/env.sh`  
 5. 跳板 + SYY kube：[`IDENTITY.md`](IDENTITY.md)  
-6. `/loop` 粘贴 [`agents/LOOP_PROMPT.md`](agents/LOOP_PROMPT.md)  
+6. `/loop 15m` 粘贴 [`agents/LOOP_PROMPT.md`](agents/LOOP_PROMPT.md)  
 
-流水线 1 与 2 **并行**；已 SCORED 跳过 Case 直入对照。
+流水线 1（Dose @ master/w1/w2）与 流水线 2（Pillar C @ worker-0）**并行**。  
+Loud 战役见 [`agents/LOOP_LOUD.md`](agents/LOOP_LOUD.md)（归档，勿再开）。

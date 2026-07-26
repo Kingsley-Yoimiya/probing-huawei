@@ -8,6 +8,6 @@
 | config | median step_ms | vs C0 |
 |---|---:|---:|
 | C0_baseline | 102.26 | 1.00 |
-| C1_inject_none | 254.98 | 2.49 |
+| C1_inject_none | 237.99 | 2.33 |
 
-C1/C0 = 2.493
+C1/C0 = 2.327

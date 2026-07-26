@@ -280,8 +280,14 @@ echo "[hold-exec] RUN_ID=$RUN_ID POD=$POD CASE=$CASE_ID configs=$ABC_CONFIGS"
 
 jexec() {
   local cmd="$1"
-  ssh -o BatchMode=yes -o ConnectTimeout=30 "${JUMP_HOST}" \
-    "export KUBECONFIG='${JUMP_KUBECONFIG}'; K='${JUMP_KUBECTL}'; \$K -n '${NS}' exec '${POD}' -- bash -lc $(printf '%q' "$cmd")"
+  if [[ "${JUMP_HOST}" == "localhost" || "${JUMP_HOST}" == "127.0.0.1" ]]; then
+    export KUBECONFIG="${JUMP_KUBECONFIG:-${KUBECONFIG}}"
+    K="${JUMP_KUBECTL:-kubectl}"
+    "$K" -n "${NS}" exec "${POD}" -- bash -lc "$cmd"
+  else
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 "${JUMP_HOST}" \
+      "export KUBECONFIG='${JUMP_KUBECONFIG}'; K='${JUMP_KUBECTL}'; \$K -n '${NS}' exec '${POD}' -- bash -lc $(printf '%q' "$cmd")"
+  fi
 }
 
 jsync_file() {
@@ -291,9 +297,16 @@ jsync_file() {
   ddir=$(dirname "$dst")
   # extract to a staging dir then install — avoids "same file" when dst name == tar member
   set +e
-  COPYFILE_DISABLE=1 tar -C "$(dirname "$src")" -cf - "$bname" \
-    | ssh -o BatchMode=yes -o ConnectTimeout=30 "${JUMP_HOST}" \
-      "export KUBECONFIG='${JUMP_KUBECONFIG}'; K='${JUMP_KUBECTL}'; \$K -n '${NS}' exec -i '${POD}' -- bash -lc $(printf '%q' "mkdir -p '$ddir' /tmp/yjr_sync && tar -C /tmp/yjr_sync -xf - && install -m 0755 /tmp/yjr_sync/$bname '$dst' && rm -f /tmp/yjr_sync/$bname")"
+  if [[ "${JUMP_HOST}" == "localhost" || "${JUMP_HOST}" == "127.0.0.1" ]]; then
+    export KUBECONFIG="${JUMP_KUBECONFIG:-${KUBECONFIG}}"
+    K="${JUMP_KUBECTL:-kubectl}"
+    COPYFILE_DISABLE=1 tar -C "$(dirname "$src")" -cf - "$bname" \
+      | "$K" -n "${NS}" exec -i "${POD}" -- bash -lc "mkdir -p '$ddir' /tmp/yjr_sync && tar -C /tmp/yjr_sync -xf - && install -m 0755 /tmp/yjr_sync/$bname '$dst' && rm -f /tmp/yjr_sync/$bname"
+  else
+    COPYFILE_DISABLE=1 tar -C "$(dirname "$src")" -cf - "$bname" \
+      | ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 "${JUMP_HOST}" \
+        "export KUBECONFIG='${JUMP_KUBECONFIG}'; K='${JUMP_KUBECTL}'; \$K -n '${NS}' exec -i '${POD}' -- bash -lc $(printf '%q' "mkdir -p '$ddir' /tmp/yjr_sync && tar -C /tmp/yjr_sync -xf - && install -m 0755 /tmp/yjr_sync/$bname '$dst' && rm -f /tmp/yjr_sync/$bname")"
+  fi
   rc=$?
   set -e
   echo "[hold-exec] jsync $bname -> $dst rc=$rc"
@@ -301,8 +314,14 @@ jsync_file() {
 }
 
 pod_ip() {
-  ssh -o BatchMode=yes -o ConnectTimeout=30 "${JUMP_HOST}" \
-    "export KUBECONFIG='${JUMP_KUBECONFIG}'; K='${JUMP_KUBECTL}'; \$K -n '${NS}' get pod '${POD}' -o jsonpath='{.status.podIP}'"
+  if [[ "${JUMP_HOST}" == "localhost" || "${JUMP_HOST}" == "127.0.0.1" ]]; then
+    export KUBECONFIG="${JUMP_KUBECONFIG:-${KUBECONFIG}}"
+    K="${JUMP_KUBECTL:-kubectl}"
+    "$K" -n "${NS}" get pod "${POD}" -o jsonpath='{.status.podIP}'
+  else
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 "${JUMP_HOST}" \
+      "export KUBECONFIG='${JUMP_KUBECONFIG}'; K='${JUMP_KUBECTL}'; \$K -n '${NS}' get pod '${POD}' -o jsonpath='{.status.podIP}'"
+  fi
 }
 
 echo "[hold-exec] sync train → ${POD_BUNDLE}/train_bench_probe_npu.py"
@@ -338,7 +357,34 @@ fire_config() {
 
   local denv="unset PROBING PROBING_TORCH_PROFILING PROBING_GPU INLINE_INJECT 2>/dev/null || true; export PROBING=0;"
   if [ "$cfg" = "C2_probing" ]; then
-    denv="export PROBING=2; unset PROBING_TORCH_PROFILING; export PROBING_GPU=on; export PROBING_GPU_BACKEND=npu; export PROBING_NPU_SOURCE=auto; export PROBING_GPU_SAMPLE_MS=1000; export PROBING_CPU=on; export PROBING_CPU_SAMPLE_MS=1000; export PYTHONPATH=${POD_PYDEPS}:\${PYTHONPATH:-}; export PATH=${POD_PYDEPS}/bin:${PYBIN}:\${PATH};"
+    # 默认 C2；Pillar-C 三臂可经环境覆盖（PROBING / SAMPLE_MS / TORCH / COLD_MAX / DATA_DIR）
+    local _p="${PROBING:-2}"
+    local _sms="${PROBING_GPU_SAMPLE_MS:-1000}"
+    local _csms="${PROBING_CPU_SAMPLE_MS:-${_sms}}"
+    denv="export PROBING=${_p}; export PROBING_GPU=on; export PROBING_GPU_BACKEND=npu; export PROBING_NPU_SOURCE=auto; export PROBING_GPU_SAMPLE_MS=${_sms}; export PROBING_CPU=on; export PROBING_CPU_SAMPLE_MS=${_csms}; export PYTHONPATH=${POD_PYDEPS}:\${PYTHONPATH:-}; export PATH=${POD_PYDEPS}/bin:${PYBIN}:\${PATH};"
+    if [[ -n "${PROBING_TORCH_PROFILING+x}" ]]; then
+      if [[ -n "${PROBING_TORCH_PROFILING}" ]]; then
+        denv="${denv} export PROBING_TORCH_PROFILING='${PROBING_TORCH_PROFILING}';"
+      else
+        denv="${denv} unset PROBING_TORCH_PROFILING;"
+      fi
+    else
+      denv="${denv} unset PROBING_TORCH_PROFILING;"
+    fi
+    if [[ -n "${PROBING_COLD_MAX_TOTAL_MB:-}" ]]; then
+      denv="${denv} export PROBING_COLD_MAX_TOTAL_MB=${PROBING_COLD_MAX_TOTAL_MB};"
+    else
+      denv="${denv} unset PROBING_COLD_MAX_TOTAL_MB 2>/dev/null || true;"
+    fi
+    if [[ -n "${PROBING_DATA_DIR:-}" ]]; then
+      denv="${denv} export PROBING_DATA_DIR='${PROBING_DATA_DIR}';"
+    fi
+    # 冷层默认开（GATE G1）；显式 PROBING_COLD=off 才关
+    if [[ -n "${PROBING_COLD:-}" ]]; then
+      denv="${denv} export PROBING_COLD='${PROBING_COLD}';"
+    else
+      denv="${denv} unset PROBING_COLD 2>/dev/null || true;"
+    fi
   fi
   # C1/C2：inline cube（同进程）
   if [[ "$cfg" == C1_* || "$cfg" == C2_* ]] && [[ "$INJECT_KIND" == inline_cube ]]; then
@@ -528,9 +574,9 @@ LAUNCH
       fi
       echo "  stress-ng started (host-wide; manifest victim_local_rank=${SIDECAR_LOCAL_RANK})"
     elif [[ "$INJECT_KIND" == stress_io ]]; then
-      # 镜像无 fio/apt：stress-ng hdd+iomix；temp-path 钉到与 ckpt/payload 同盘
-      jexec "mkdir -p '${IO_STRESS_DIR}'; : >'${out}/injection.log'; if command -v fio >/dev/null 2>&1; then nohup fio --name=io_stress --rw=randrw --bs=4k --size=4G --numjobs=16 --iodepth=64 --time_based --runtime=900 --directory='${IO_STRESS_DIR}' --group_reporting >'${out}/injection.log' 2>&1 & echo SC=\$!; echo SIDECAR_START fio_loud_nj16 dir=${IO_STRESS_DIR} >>'${out}/injection.log'; else nohup stress-ng --temp-path '${IO_STRESS_DIR}' --hdd ${HDD_N} --hdd-bytes ${HDD_BYTES} --iomix ${IOMIX_N} --iomix-bytes ${HDD_BYTES} --timeout 900s >'${out}/injection.log' 2>&1 & echo SC=\$!; echo SIDECAR_START stress_io hdd_n=${HDD_N} hdd_bytes=${HDD_BYTES} iomix_n=${IOMIX_N} dir=${IO_STRESS_DIR} >>'${out}/injection.log'; fi; exit 0"
-      echo "  stress_io started (dir=${IO_STRESS_DIR} hdd_n=${HDD_N} iomix_n=${IOMIX_N})"
+      # 剂量走 FIO_* / HDD_*（quiet/masked 可弱化）；无 fio 时回退 stress-ng；temp-path 钉同盘
+      jexec "mkdir -p '${IO_STRESS_DIR}'; : >'${out}/injection.log'; if command -v fio >/dev/null 2>&1; then nohup fio --name=io_stress --rw=randrw --bs=${FIO_BS} --size=${FIO_SIZE} --numjobs=${FIO_NUMJOBS} --iodepth=${FIO_IODEPTH} --time_based --runtime=900 --directory='${IO_STRESS_DIR}' --group_reporting >'${out}/injection.log' 2>&1 & echo SC=\$!; echo SIDECAR_START fio_nj=${FIO_NUMJOBS} iodepth=${FIO_IODEPTH} bs=${FIO_BS} size=${FIO_SIZE} dir=${IO_STRESS_DIR} >>'${out}/injection.log'; else nohup stress-ng --temp-path '${IO_STRESS_DIR}' --hdd ${HDD_N} --hdd-bytes ${HDD_BYTES} --iomix ${IOMIX_N} --iomix-bytes ${HDD_BYTES} --timeout 900s >'${out}/injection.log' 2>&1 & echo SC=\$!; echo SIDECAR_START stress_io hdd_n=${HDD_N} hdd_bytes=${HDD_BYTES} iomix_n=${IOMIX_N} dir=${IO_STRESS_DIR} >>'${out}/injection.log'; fi; exit 0"
+      echo "  stress_io started (dir=${IO_STRESS_DIR} fio_nj=${FIO_NUMJOBS} iodepth=${FIO_IODEPTH} size=${FIO_SIZE} hdd_n=${HDD_N} iomix_n=${IOMIX_N})"
       e=0
       while [ "$e" -lt 30 ]; do
         if jexec "grep -q 'SIDECAR_START' '${out}/injection.log'" 2>/dev/null; then
@@ -577,6 +623,85 @@ LAUNCH
       fi
       # 旁证：npu-smi util（不升 D）
       jexec "npu-smi info -t usages -i ${SIDECAR_LOCAL_RANK} 2>/dev/null | head -40 >'${out}/npu_smi_util_inject.txt' || npu-smi info 2>/dev/null | head -80 >'${out}/npu_smi_util_inject.txt'; exit 0" || true
+    fi
+
+    # Pillar-C SET↑：SHOW TABLES→worker。
+    # C-3：PILLAR_C_SET_AT_STEP=N → 等 jsonl 行数 L≥N（禁止等 step_N.marker，训练不写）。
+    if [[ "$cfg" == "C2_probing" ]] && [[ "${PILLAR_C_SET_UPGRADE:-0}" == "1" ]]; then
+      local set_at_l="${PILLAR_C_SET_AT_STEP:-}"
+      if [[ -n "$set_at_l" ]]; then
+        echo "  Pillar-C SET↑ wait L>=${set_at_l} (jsonl lines; NOT step marker)…"
+        e=0
+        while [ "$e" -lt 2400 ]; do
+          local cur_l
+          cur_l=$(jexec "wc -l <'${out}/ranks/rank_0000.jsonl' 2>/dev/null || echo 0" 2>/dev/null | tr -d '[:space:]')
+          cur_l=${cur_l:-0}
+          if [[ "$cur_l" =~ ^[0-9]+$ ]] && [ "$cur_l" -ge "$set_at_l" ]; then
+            echo "  L=${cur_l} >= ${set_at_l} (${e}s) → attach/SET"
+            break
+          fi
+          if jexec "test -f '${out}/node_0.done' -o -f '${out}/node_0.fail'" 2>/dev/null; then
+            echo "  SET aborted: training ended before L>=${set_at_l} (L=${cur_l})"
+            break
+          fi
+          sleep 2; e=$((e + 2))
+          if [ $((e % 60)) -eq 0 ]; then echo "  waiting L>=${set_at_l}… t=${e}s L=${cur_l}"; fi
+        done
+      else
+        echo "  Pillar-C SET↑ at inject start…"
+      fi
+      echo "  Pillar-C SET upgrade torch.profiling → on,rate=1.0 (SHOW TABLES→worker)…"
+      jexec "export PATH='${POD_PYDEPS}/bin:${PYBIN}:\${PATH:-}' PYTHONPATH='${POD_PYDEPS}:\${PYTHONPATH:-}'
+: >'${out}/set_upgrade.log'
+TS0=\$(date -Iseconds); echo SET_BEGIN ts=\$TS0 trigger=L_ge_${set_at_l:-inject} >>'${out}/set_upgrade.log'
+L=\$(wc -l <'${out}/ranks/rank_0000.jsonl' 2>/dev/null || echo 0); echo SET_L=\$L >>'${out}/set_upgrade.log'
+T_MARK=\$(python3 -c 'import time;print(int(time.time()*1000))')
+echo SET_T0_MS=\$T_MARK >>'${out}/set_upgrade.log'
+cands=\$(ps -eo pid,args | awk '/\\/tmp\\/tbp_npu\\.py|train_bench_probe_npu/ && \$0 !~ /awk|bash|torchrun/ {print \$1}')
+echo CANDS=\$cands >>'${out}/set_upgrade.log'
+OK=
+for pid in \$cands; do
+  if probing -t \$pid query 'SHOW TABLES' >/tmp/probe_ping_\$pid.txt 2>&1; then
+    echo ATTACH_OK pid=\$pid >>'${out}/set_upgrade.log'
+    T_ATT=\$(python3 -c 'import time;print(int(time.time()*1000))')
+    echo ATTACH_T_MS=\$T_ATT >>'${out}/set_upgrade.log'
+    probing -t \$pid config torch.profiling=on,rate=1.0 >>'${out}/set_upgrade.log' 2>&1
+    probing -t \$pid config probing.torch.profiling >>'${out}/set_upgrade.log' 2>&1
+    T_SET=\$(python3 -c 'import time;print(int(time.time()*1000))')
+    echo SET_T1_MS=\$T_SET >>'${out}/set_upgrade.log'
+    echo SET_OK_WORKER pid=\$pid >>'${out}/set_upgrade.log'
+    python3 -c \"t0=int('\$T_MARK'); t1=int('\$T_SET'); print(f'SET_LATENCY_MS={t1-t0}')\" >>'${out}/set_upgrade.log' 2>/dev/null || echo SET_LATENCY_MS=? >>'${out}/set_upgrade.log'
+    OK=\$pid
+    break
+  else
+    echo ATTACH_FAIL pid=\$pid >>'${out}/set_upgrade.log'
+  fi
+done
+if [[ -z \"\$OK\" ]]; then echo SET_FAIL_ALL >>'${out}/set_upgrade.log'; fi
+echo SET_END ts=\$(date -Iseconds) >>'${out}/set_upgrade.log'
+exit 0" || true
+      if [[ -n "${PROBING_DATA_DIR:-}" ]]; then
+        jexec "DATA='${PROBING_DATA_DIR}'; OUTF='${out}/volume_at_upgrade.txt'; python3 -c \"
+import os,struct
+root='\$DATA'; hots=segs=0; hot_b=cold_b=ro=0
+print('DATA_ROOT', root)
+if os.path.isdir(root):
+  for dp,_,fns in os.walk(root):
+    for fn in fns:
+      p=os.path.join(dp,fn)
+      try: sz=os.path.getsize(p)
+      except OSError: continue
+      if fn.endswith('.memc'):
+        segs+=1; cold_b+=sz
+      else:
+        try:
+          hdr=open(p,'rb').read(64)
+          if len(hdr)>=64 and hdr[:4]==b'MEMT':
+            _,r=struct.unpack_from('<II',hdr,56); hots+=1; hot_b+=sz; ro+=r
+        except Exception: pass
+print(f'hot_memt={hots} hot_bytes={hot_b} cold_segs={segs} cold_bytes={cold_b} rows_overwritten_sum={ro}')
+\" >\"\$OUTF\" 2>&1; exit 0" || true
+      fi
     fi
 
     # C2：注入窗内 dump Probing SQL + host_psi（对齐共享 pipeline）
@@ -645,9 +770,15 @@ LAUNCH
 
 pull_results() {
   echo "[hold-exec] pull ${POD_OUT} → ${LOCAL_RESULT_ROOT}"
-  ssh -o BatchMode=yes -o ConnectTimeout=60 "${JUMP_HOST}" \
-    "export KUBECONFIG='${JUMP_KUBECONFIG}'; K='${JUMP_KUBECTL}'; \$K -n '${NS}' exec '${POD}' -- bash -lc $(printf '%q' "cd '${POD_OUT}' && tar -cf - .")" \
-    >"${LOCAL_RESULT_ROOT}/.pull.tar"
+  if [[ "${JUMP_HOST}" == "localhost" || "${JUMP_HOST}" == "127.0.0.1" ]]; then
+    export KUBECONFIG="${JUMP_KUBECONFIG:-${KUBECONFIG}}"
+    K="${JUMP_KUBECTL:-kubectl}"
+    "$K" -n "${NS}" exec "${POD}" -- bash -lc "cd '${POD_OUT}' && tar -cf - ." >"${LOCAL_RESULT_ROOT}/.pull.tar"
+  else
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=60 "${JUMP_HOST}" \
+      "export KUBECONFIG='${JUMP_KUBECONFIG}'; K='${JUMP_KUBECTL}'; \$K -n '${NS}' exec '${POD}' -- bash -lc $(printf '%q' "cd '${POD_OUT}' && tar -cf - .")" \
+      >"${LOCAL_RESULT_ROOT}/.pull.tar"
+  fi
   tar -C "$LOCAL_RESULT_ROOT" -xf "${LOCAL_RESULT_ROOT}/.pull.tar"
   rm -f "${LOCAL_RESULT_ROOT}/.pull.tar"
   find "$LOCAL_RESULT_ROOT" -name 'rank_*.jsonl' | wc -l | awk '{print "[hold-exec] jsonl_files="$1}'

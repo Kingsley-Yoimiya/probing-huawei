@@ -1,0 +1,56 @@
+MASTER_ADDR=127.0.0.1 NPROC=16 RUN=contrast-p1-sw-b-masked-20260726_074217 dose=masked pod=yysong-worker-2 rare_seq=1408 every=1
+========== C0_baseline port=30282 inject=0 2b rare_seq=1408 every=1 ==========
+  warmup ok (26s)
+  waiting… t=30s prom=16 ranks=16
+  done (50s)
+========== C1_inject_none port=30283 inject=1 2b rare_seq=1408 every=1 ==========
+  warmup ok (24s)
+  measure step 100 (8s) — inline 2b rare_shape active
+  waiting… t=30s prom=16 ranks=16
+  done (50s)
+# XPUTimer contrast · P1-SW-B masked
+
+- case_id: `P1-SW-B`
+- case_ref: `20260726_072137-yjr-as-c-p1-sw-b-masked`
+- dose: `masked` — INLINE 2b rare_seq=1408 every=1 victim=7; window [100,300]; gold≈1.287
+- detect_mode: **cross_run_contrast** （自主=prom hang/slow flags；跨-run=C1/C0 中位比≥1.05，需外部健康基线 C0）
+- metric: jsonl `dur_us` of `HcclAllReduce` (host-wall around Hccl*)
+
+## A) XPUTimer 自主信号（.prom hang/slow flags；无需外部基线）
+
+| arm | coll_events | hang_flags | slow_flags |
+|-----|-----------:|-----------:|-----------:|
+| C0  | 81401 | 0 | 0 |
+| C1  | 81401 | 0 | 0 |
+
+**autonomous_flag (C1 hang+slow>0) = False** （SLOW_REPORT_US=0 关、HANG_TIMEOUT_MS=60000；未开 oracle INJECT_STALL）
+
+## B) cross-run 中位对照（需外部健康基线 C0，非自主）
+
+| arm | n | median dur_us | ≥1.5×C0med（噪声诊断，非判据） |
+|-----|--:|-------------:|------------------------------:|
+| C0  | 70336 | 112.0 | 1640 |
+| C1  | 70336 | 113.0 | 1252 |
+
+**C1/C0 coll ratio = 1.009** → FAIL (thr 1.05)
+
+> ⚠️ `≥1.5×C0med` 计数仅作噪声诊断：C0 健康线自身就有 1640 个，说明该线在集合通信 host-wall 上可能大面积误报，**不作判据**。
+
+## C) dose_check（step_ms 窗内中位；非 XPUTimer 规则）
+
+- window: [100, 300)
+- C0 median step_ms: 75.315 (n=3200)
+- C1 median step_ms: 98.171 (n=3200)
+- C1/C0 step_ms = 1.303 → PASS (thr 1.05)
+
+## Verdict
+
+- **autonomous_detect**: NO (XPUTimer 自己的 hang/slow flags)
+- **cross_run_contrast**: FAIL (C1/C0=1.009；需外部基线)
+- **dose_check**: PASS (step_ms C1/C0=1.303)
+- **detect_ok**: false (autonomous OR cross_run；dose_check 单独记)
+- **detect_mode**: `cross_run_contrast`
+
+Note: 如实记能力边界；无咬合也是 DONE。不改对手阈值、不覆盖 Probing 分。
+
+CONTRAST_DONE RUN=contrast-p1-sw-b-masked-20260726_074217 DUMP=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p1-sw-b-masked-20260726_074217 verdict_rc=2

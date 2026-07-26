@@ -1,0 +1,26 @@
+case_id: P3-SW-C
+dose: masked
+phase: contrast
+run_id: contrast-p3-sw-c-masked-20260726_140713
+case_ref: 20260726_135016-yjr-as-c-p3-sw-c-masked
+world_size: 16
+pod: yysong-worker-2
+pool: pool-gh
+mode: host_bound
+inject_kind: sidecar_8c
+inject_args: "cpu_n=80,cpu_load=70,mb=1,leak_every=2.0,max_chunks=32"
+inject_window_measure: [100, 300]
+victim_local_rank: 7
+host_bound_matmul: 768
+seed: 42
+iters: 500
+warmup: 50
+tool: Greyhound
+label_prefix: yjr-as-b-gh
+preload: /data/yinjinrun.p-huawei/opt/rbeast-fix/libbuiltin_readcyclecounter.so:/data/yinjinrun.p-huawei/probe-bundle/greyhound/libhcclprobe.so
+redis: 127.0.0.1:16379
+fairness: collect_seq_real_per_rank + C0_fp_control
+script: platform/ascend/greyhound/contrast_p3swc.sh
+accept_min_ratio: 1.05
+gold_step_ratio: 1.649
+master_addr: 127.0.0.1

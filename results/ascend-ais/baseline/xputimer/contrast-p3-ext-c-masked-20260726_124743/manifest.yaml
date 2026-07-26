@@ -1,0 +1,23 @@
+case_id: P3-EXT-C
+dose: masked
+phase: contrast
+run_id: contrast-p3-ext-c-masked-20260726_124743
+case_ref: 20260726_122130-yjr-as-c-p3-ext-c-masked
+world_size: 16
+pod: yysong-worker-2
+pool: pool-xpu
+mode: host_bound
+inject_kind: stress_vm
+inject_args: "vm_n=32,vm_bytes=4G"
+inject_window_measure: [100, 300]
+victim_local_rank: 7
+host_bound_matmul: 768
+seed: 42
+iters: 500
+warmup: 50
+tool: XPUTimer
+label_prefix: yjr-as-b-xpu
+script: platform/ascend/xputimer/contrast_p3extc.sh
+accept_min_ratio: 1.05
+gold_step_ratio: 1.744
+master_addr: 127.0.0.1

@@ -1,0 +1,74 @@
+preflight zombie_stress=433 live_stress=0
+MASTER_ADDR=127.0.0.1 NPROC=16 RUN=contrast-p3-ext-c-masked-20260726_123500 dose=masked pod=yysong-worker-2 vm_n=32 vm_bytes=4G
+========== C0_baseline port=30412 inject=0 vm_n=32 vm_bytes=4G dose=masked ==========
+  warmup ok (29s)
+  waiting… t=30s dump=29696
+  waiting… t=60s dump=52976
+  waiting… t=90s dump=70416
+  done (95s) dump_lines=70416
+========== C1_inject_none port=30413 inject=1 vm_n=32 vm_bytes=4G dose=masked ==========
+  warmup ok (29s)
+  warmup reached — prestart stress_vm for page-in ramp (target≥40Gi)
+SC=567473
+  stress_vm PRESTART ok (0s)
+  page-in partial used+4Gi at step100 (30s) — continue
+  measure step 100 (0s) — stress_vm already active
+               total        used        free      shared  buff/cache   available
+Mem:           2.0Ti       320Gi       1.8Ti       4.2Gi        80Gi       1.7Ti
+Swap:             0B          0B          0B
+  measure step 300 → stop vm (21s)
+               total        used        free      shared  buff/cache   available
+Mem:           2.0Ti       321Gi       1.8Ti       4.2Gi        80Gi       1.7Ti
+Swap:             0B          0B          0B
+  waiting… t=30s dump=70384
+  done (45s) dump_lines=70416
+post_run live_stress=0 zombie_stress=433
+# Greyhound Contrast · P3-EXT-C masked
+
+- run_id: `contrast-p3-ext-c-masked-20260726_123500`
+- case_ref: `20260726_122130-yjr-as-c-p3-ext-c-masked`
+- dose_label: `masked`；dose: stress_vm vm_n=32,vm_bytes=4G; window [100,300]; gold≈1.744；窗对齐 Case [100,300]
+- fairness: `collect_seq` 真实 per-rank 序列 + C0 假阳性对照
+- detect_ok: **no**；detect_mode: **no_bite**（自主= coll 比≥1.05 或 Rbeast 变点[C1有/C0无]）
+- oracle_trigger: **no**（未把注入窗写入判定）；注入窗 [100,300] 仅标注；step_ms 窗比=1.542（剂量核对，非 Greyhound 规则）
+- preload: cyclecounter stub + libhcclprobe.so；Redis :16379；pod=`yysong-worker-2`
+
+## A) autonomous · collect-min AllReduce host-wall
+
+| arm | n | median dur_us |
+|-----|--:|-------------:|
+| C0  | 70336 | 131.1 |
+| C1  | 70336 | 134.9 |
+
+**C1/C0 coll ratio = 1.029** → FAIL (thr 1.05)
+
+## B) autonomous · Greyhound Rbeast（真实 per-rank 序列；C0 假阳性对照）
+
+> call_id 用真实 (op,count) 签名序列、call_time 用真实 t0（`collect_seq`），跑 Greyhound 自带 find_period+find_performance_drop。健康线 C0 同跑作对照。
+
+| arm | rep_rank | n_calls | uniq_sig | acf_period | n_changepoints |
+|-----|---------:|--------:|---------:|-----------:|---------------:|
+| C0  | 559070 | 4401 | 10 | 8 | 0 |
+| C1  | 563375 | 4401 | 10 | 8 | 0 |
+
+- C1 changepoints: []
+- C0 changepoints: []
+- rbeast_hit (C1有/C0无): **False**
+- error: C1=None C0=None
+
+## C) dose check · step_ms in oracle window (not Greyhound rule)
+
+| arm | window median step_ms |
+|-----|----------------------:|
+| C0  | 98.49 |
+| C1  | 151.86 |
+| C1/C0 | 1.542 → dose_OK |
+
+## Verdict
+
+- **autonomous_detect**: NO (coll_pass=False, rbeast_hit=False, rbeast_fp=False)
+- **dose_reproduced**: YES (step_ms)
+
+Note: P3-EXT-C 注入下 Greyhound 主路径是 CCL 时间戳+变点。若 coll/Rbeast 无咬合而 step_ms 有抬升，记能力边界，不焊 D4。
+
+CONTRAST_DONE RUN=contrast-p3-ext-c-masked-20260726_123500 DUMP=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/baseline/greyhound/contrast-p3-ext-c-masked-20260726_123500

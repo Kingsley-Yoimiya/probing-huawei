@@ -1,0 +1,3 @@
+dump_probing_sql case=P3-SW-B out=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/20260725_232814-yjr-as-c-p3-sw-b-quiet/P3-SW-B/by_pod/grj-megatron-32card-0716-master-0/round_1/C2_probing/probing pid=639638 attach=ok ts=2026-07-25T23:35:33+08:00
+WARN: mx-smi not found
+WARN: host_gpu collect failed

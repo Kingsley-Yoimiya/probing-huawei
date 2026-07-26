@@ -1,0 +1,44 @@
+{
+  "case_id": "P1-HW-B",
+  "tool": "xputimer",
+  "dose": "quiet",
+  "case_ref": "20260726_005203-yjr-as-c-p1-hw-b-quiet",
+  "metric_name": "HcclAllReduce",
+  "median_c0": 111.0,
+  "median_c1": 111.0,
+  "coll_ratio": 1.0,
+  "cross_run_contrast_pass": false,
+  "detect_mode": "cross_run_contrast",
+  "autonomous_flag": false,
+  "autonomous_detect": false,
+  "hang_flags": {
+    "c0": 0,
+    "c1": 0
+  },
+  "slow_flags": {
+    "c0": 0,
+    "c1": 0
+  },
+  "coll_events": {
+    "c0": 81401,
+    "c1": 81401
+  },
+  "noise_diag_slow_ge_1p5xc0": {
+    "c0": 1525,
+    "c1": 1359
+  },
+  "dose_check": {
+    "step_ms_median_c0": 75.606,
+    "step_ms_median_c1": 93.561,
+    "step_ms_ratio": 1.237481152289501,
+    "pass": true,
+    "n_c0": 3200,
+    "n_c1": 3200,
+    "window": [
+      100,
+      300
+    ]
+  },
+  "accept_min_ratio": 1.15,
+  "detect_ok": false
+}

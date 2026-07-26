@@ -1,0 +1,4 @@
+tool=greyhound
+phase=S2_collect_min
+version=ascend-collect-min-0.2
+pid=538568

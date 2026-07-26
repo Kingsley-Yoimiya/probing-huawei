@@ -1,0 +1,44 @@
+{
+  "case_id": "P3-EXT-C",
+  "tool": "xputimer",
+  "dose": "quiet",
+  "case_ref": "20260726_102936-yjr-as-c-p3-ext-c-quiet",
+  "metric_name": "HcclAllReduce",
+  "median_c0": 129.0,
+  "median_c1": 128.0,
+  "coll_ratio": 0.9922480620155039,
+  "cross_run_contrast_pass": false,
+  "detect_mode": "cross_run_contrast",
+  "autonomous_flag": false,
+  "autonomous_detect": false,
+  "hang_flags": {
+    "c0": 0,
+    "c1": 0
+  },
+  "slow_flags": {
+    "c0": 0,
+    "c1": 0
+  },
+  "coll_events": {
+    "c0": 81401,
+    "c1": 81401
+  },
+  "noise_diag_slow_ge_1p5xc0": {
+    "c0": 10705,
+    "c1": 10926
+  },
+  "dose_check": {
+    "step_ms_median_c0": 145.1135,
+    "step_ms_median_c1": 156.014,
+    "step_ms_ratio": 1.075117063539919,
+    "pass": false,
+    "n_c0": 3200,
+    "n_c1": 3200,
+    "window": [
+      100,
+      300
+    ]
+  },
+  "accept_min_ratio": 1.15,
+  "detect_ok": false
+}

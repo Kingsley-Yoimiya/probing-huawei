@@ -1,0 +1,87 @@
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=519868 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=519937 (Hccl* interpose → GREYHOUND_DUMP)
+W0726 10:01:09.283000 519868 site-packages/torch/distributed/run.py:766] 
+W0726 10:01:09.283000 519868 site-packages/torch/distributed/run.py:766] *****************************************
+W0726 10:01:09.283000 519868 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0726 10:01:09.283000 519868 site-packages/torch/distributed/run.py:766] *****************************************
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520008 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520009 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520010 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520011 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520012 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520013 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520014 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520015 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520016 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520017 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520018 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520019 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520020 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520021 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520022 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520023 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520175 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520173 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520174 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520190 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520189 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520191 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520192 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520193 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520202 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520195 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520194 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520203 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520216 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520239 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520244 (Hccl* interpose → GREYHOUND_DUMP)
+[hcclprobe-collect] loaded version=ascend-collect-min-0.2 pid=520249 (Hccl* interpose → GREYHOUND_DUMP)
+[rank6]:[W726 10:01:15.965263441 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank1]:[W726 10:01:15.996509788 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank2]:[W726 10:01:15.044277424 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank11]:[W726 10:01:16.363489476 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank15]:[W726 10:01:16.364863919 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank8]:[W726 10:01:16.375730719 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank12]:[W726 10:01:16.397629655 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank14]:[W726 10:01:16.413963526 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank10]:[W726 10:01:16.437960743 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank7]:[W726 10:01:16.443478406 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank3]:[W726 10:01:16.586887377 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank0]:[W726 10:01:16.682381056 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank4]:[W726 10:01:16.709903879 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank13]:[W726 10:01:16.758335860 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank5]:[W726 10:01:16.826328937 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank9]:[W726 10:01:16.868191854 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+DONE world=16 out=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/baseline/greyhound/contrast-p3-ext-a-masked-20260726_095858/C1_inject_none/ranks/rank_0000.jsonl

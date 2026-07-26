@@ -1,0 +1,25 @@
+MASTER_ADDR=127.0.0.1 NPROC=16 RUN=contrast-p3-ext-b-quiet-20260726_073224 dose=quiet pod=yysong-worker-2 IO_ENGINE=fio fio_nj=4 ckpt_every=50
+========== C0_baseline port=30370 inject=0 fio_nj=4 ckpt_every=50 dose=quiet ==========
+  warmup ok (31s)
+  waiting… t=30s prom=16 ranks=16
+  waiting… t=60s prom=16 ranks=16
+  waiting… t=90s prom=16 ranks=16
+  done (105s) prom=16
+========== C1_inject_none port=30371 inject=1 fio_nj=4 ckpt_every=50 dose=quiet ==========
+  warmup ok (32s)
+  measure step 100 (19s) — start stress_io
+SC=657947
+  stress_io START ok (0s)
+  measure step 300 → stop io (38s)
+  waiting… t=30s prom=16 ranks=16
+  done (50s) prom=16
+usage: s4_verdict.py [-h] --dump-root DUMP_ROOT [--inject-start INJECT_START]
+                     [--inject-stop INJECT_STOP]
+                     [--accept-min-ratio ACCEPT_MIN_RATIO] --out OUT
+                     [--summary SUMMARY] [--case-id CASE_ID]
+                     [--case-ref CASE_REF] [--dose-desc DOSE_DESC]
+                     [--tool TOOL] [--run-id RUN_ID] [--pod POD] [--dose DOSE]
+                     [--frozen FROZEN] [--note NOTE]
+s4_verdict.py: error: the following arguments are required: --dump-root
+missing VERDICT rc=2
+CONTRAST_DONE RUN=contrast-p3-ext-b-quiet-20260726_073224 DUMP=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/baseline/xputimer/contrast-p3-ext-b-quiet-20260726_073224 verdict_rc=2

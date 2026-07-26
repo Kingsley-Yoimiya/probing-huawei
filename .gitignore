@@ -38,3 +38,8 @@ results/ascend-ais/_prep/
 results/ascend-ais/baseline/**/ascend_trace*
 results/ascend-ais/baseline/**/collect_*.bin
 results/ascend-ais/baseline/**/*.so
+
+# Greyhound/XPU 原始采集大文件（对照只入库 VERDICT/SUMMARY/manifest/日志）
+results/ascend-ais/baseline/**/hcclprobe.collect*
+results/ascend-ais/baseline/**/ascend_trace*
+results/ascend-ais/pillar_c/

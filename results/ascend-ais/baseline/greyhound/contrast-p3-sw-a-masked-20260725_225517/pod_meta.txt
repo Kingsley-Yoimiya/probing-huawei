@@ -1,0 +1,8 @@
+pod=yysong-worker-2
+run=contrast-p3-sw-a-masked-20260725_225517
+   70416 /data/yinjinrun.p-huawei/results/ascend-ais/baseline/greyhound/contrast-p3-sw-a-masked-20260725_225517/C0_baseline/greyhound/hcclprobe.collect.jsonl
+   70416 /data/yinjinrun.p-huawei/results/ascend-ais/baseline/greyhound/contrast-p3-sw-a-masked-20260725_225517/C1_inject_none/greyhound/hcclprobe.collect.jsonl
+  140832 total
+/data/yinjinrun.p-huawei/results/ascend-ais/baseline/greyhound/contrast-p3-sw-a-masked-20260725_225517/C0_baseline/node_0.done
+/data/yinjinrun.p-huawei/results/ascend-ais/baseline/greyhound/contrast-p3-sw-a-masked-20260725_225517/C1_inject_none/node_0.done
+SIDECAR_START kind=inline_8a every=1 stall_s=0.05 victim=7
