@@ -50,3 +50,15 @@ results/ascend-ais/pillar_c_v2/**/*.memc
 results/ascend-ais/pillar_c_v2/**/python.variables
 results/ascend-ais/pillar_c_v2/**/python.trace_event
 results/ascend-ais/pillar_c_v2/**/*.tar
+
+# Param-Calib：大 dump / 中转 tar 不入库（瘦身 PARAM 入库；全量在 AFS + myportal/_backup）
+results/ascend-ais/param_calib/**/probing_data/
+results/ascend-ais/param_calib/**/*.memc
+results/ascend-ais/param_calib/**/python.variables
+results/ascend-ais/param_calib/**/python.trace_event
+results/ascend-ais/param_calib/**/.pull.tar
+results/ascend-ais/param_calib/**/*.tar
+results/ascend-ais/param_calib/**/*.tar.gz
+results/ascend-ais/param_calib/**/_work/
+results/ascend-ais/param_calib/**/by_pod/
+results/ascend-ais/param_calib/**/full_fidelity/

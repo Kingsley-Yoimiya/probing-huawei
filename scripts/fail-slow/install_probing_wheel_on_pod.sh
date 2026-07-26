@@ -3,6 +3,9 @@
 # 源码：/data/yinjinrun.p-huawei/probing-huawei/src
 # 产物：wheels/ + probe-bundle/pydeps + llm_test site-packages
 #
+# 铁律（docs/fail-slow/agents/BUILD_WHEEL.md）：
+#   禁止在 pod 内从公网 rustup/curl 装工具链；缺 rustc → 本机 Clash 摆渡后再跑。
+#
 #   source scripts/fail-slow/env.sh
 #   bash scripts/fail-slow/install_probing_wheel_on_pod.sh
 set -euo pipefail
@@ -49,17 +52,14 @@ mkdir -p web/dist
 export CARGO_HOME RUSTUP_HOME
 export PATH="$CARGO_HOME/bin:${PYBIN}:$PATH"
 
-if ! command -v rustc >/dev/null 2>&1; then
-  echo "[build] installing rustup (aarch64)…"
-  if [ ! -x /tmp/rustup-init ]; then
-    curl -fsSL https://static.rust-lang.org/rustup/dist/aarch64-unknown-linux-gnu/rustup-init -o /tmp/rustup-init
-    chmod +x /tmp/rustup-init
-  fi
-  /tmp/rustup-init -y --default-toolchain stable --no-modify-path
-fi
 # shellcheck disable=SC1091
 [ -f "$CARGO_HOME/env" ] && source "$CARGO_HOME/env"
 export PATH="$CARGO_HOME/bin:$PATH"
+if ! command -v rustc >/dev/null 2>&1 || ! rustc --version >/dev/null 2>&1; then
+  echo "FATAL: pod 内 rustc 不可用。禁止在此 curl/rustup 重装（集群 egress 极慢）。" >&2
+  echo "见 docs/fail-slow/agents/BUILD_WHEEL.md：Mac Clash 摆渡 toolchain 或 linux_aarch64.whl 后再编。" >&2
+  exit 91
+fi
 rustc --version
 cargo --version
 

@@ -1,0 +1,118 @@
+{
+  "param": "torch_trace_upgrade_rate",
+  "exp_id": "3A_upgrade_rate",
+  "swept_range": [
+    "0",
+    "0.001",
+    "0.05",
+    "0.5",
+    "1.0"
+  ],
+  "chosen_value": "0.001",
+  "choose_rule": "min rate with enough_d4 (RSS∧SET∧TT>0); rate=0 hung from E4",
+  "case": "P3-SW-A",
+  "controls": {
+    "resident_rate": 0,
+    "set_at_step": 100,
+    "set_key": "probing.torch.profiling=",
+    "set_scope": "victim",
+    "victim_local_rank": 7,
+    "inject_window": [
+      100,
+      300
+    ],
+    "forbid": [
+      "training step_ms",
+      "cold-only as volume",
+      "multi independent vars"
+    ]
+  },
+  "ground_truth_source": {
+    "inject_onset_victim": "inline_8a / ledger",
+    "rate0_anchor": "pillar_c_v2/20260726_182630-pillar-c-e4-p3-sw-a-loud",
+    "e3_ref": "pillar_c_v2/20260726_181423-pillar-c-e3-p3-sw-a-loud"
+  },
+  "curve": [
+    {
+      "rate": "0",
+      "d_level": 2,
+      "enough_d4": false,
+      "rss_ok": true,
+      "set_ok": false,
+      "tt_rows_all": 0,
+      "tt_dense_ranks": 0,
+      "total_dump_bytes": 1611753536,
+      "cold_bytes": 9509952,
+      "hung": true,
+      "evidence": "E4_182630 rss=Y;set=N;tt=0;d=2",
+      "note": "E4 hung rate≈0 endpoint (forbid SET)"
+    },
+    {
+      "rate": "0.001",
+      "d_level": 4,
+      "enough_d4": true,
+      "rss_ok": true,
+      "set_ok": true,
+      "tt_rows": 81552,
+      "tt_dense_ranks": 16,
+      "rss_note": "rise_kb=224012:max_kb=2444412:n=200",
+      "set_n_ok_workers": 1,
+      "hung": false,
+      "evidence": "rss=Y;set=Y;tt_rows=81552;d=4"
+    },
+    {
+      "rate": "0.05",
+      "d_level": 4,
+      "enough_d4": true,
+      "rss_ok": true,
+      "set_ok": true,
+      "tt_rows": 81552,
+      "tt_dense_ranks": 16,
+      "rss_note": "rise_kb=230980:max_kb=2443044:n=200",
+      "set_n_ok_workers": 1,
+      "hung": false,
+      "evidence": "rss=Y;set=Y;tt_rows=81552;d=4"
+    },
+    {
+      "rate": "0.5",
+      "d_level": 4,
+      "enough_d4": true,
+      "rss_ok": true,
+      "set_ok": true,
+      "tt_rows": 81552,
+      "tt_dense_ranks": 16,
+      "rss_note": "rise_kb=234844:max_kb=2464028:n=200",
+      "set_n_ok_workers": 1,
+      "hung": false,
+      "evidence": "rss=Y;set=Y;tt_rows=81552;d=4"
+    },
+    {
+      "rate": "1.0",
+      "d_level": 4,
+      "enough_d4": true,
+      "rss_ok": true,
+      "set_ok": true,
+      "tt_rows": 81552,
+      "tt_dense_ranks": 16,
+      "rss_note": "rise_kb=220512:max_kb=2458492:n=200",
+      "set_n_ok_workers": 1,
+      "hung": false,
+      "evidence": "rss=Y;set=Y;tt_rows=81552;d=4"
+    }
+  ],
+  "supports_design": "对 P3-SW-A loud：常驻 rate=0 → 触发后 SET `probing.torch.profiling=on,rate=R`（scope=victim，SET@L≥100）。rate≈0 挂 E4 `182630`（禁 SET，TT=0，RSS 仍 Y）作必要性端点。扫 R∈{0.001,0.05,0.5,1.0} 均 RSS∧SET∧TT>0 → D4；够归因 D4 的最小 rate* = **0.001**。诚实：本轮各升详率下 python.torch_trace MEMT 环均满填（每 rank 5097 行 / 总 81552），行数尺无法区分 rate 梯度；曲线主跃迁在 0→0.001（有无 SET↑）。多 rank 全升曾死锁，正式扫改 victim-only。",
+  "parent_run": "20260727_014151-3a-p3-sw-a-loud",
+  "notes": {
+    "tt_ring_saturates": "all upgrade rates → 16×5097=81552 TT rows; not a rate gradient",
+    "invalid_path": "20260727_012805 multi-rank SET deadlock at L=138",
+    "pull_rc": "full tar pull often rc=1 (truncated trace_event); scored from AFS + selective cat",
+    "w_star_design": 100
+  },
+  "evidence_paths": {
+    "parent_local": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/param_calib/3A_upgrade_rate/20260727_014151-3a-p3-sw-a-loud",
+    "parent_afs": "/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/param_calib/3A_upgrade_rate/20260727_014151-3a-p3-sw-a-loud",
+    "e4_hung_json": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/param_calib/3A_upgrade_rate/_e4_hung/E4_ABLATION.json",
+    "afs_score": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/param_calib/3A_upgrade_rate/20260727_014151-3a-p3-sw-a-loud/AFS_SCORE.json"
+  },
+  "scored_at": "2026-07-27T02:27:56"
+}

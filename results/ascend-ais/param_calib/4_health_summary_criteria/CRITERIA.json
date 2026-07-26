@@ -1,0 +1,1090 @@
+{
+  "exp_id": "4_health_summary_criteria",
+  "status": "LOCKED",
+  "locked_at": "2026-07-27",
+  "param": "health_summary_filter_principle",
+  "reused_calibrations": {
+    "1A_dose_threshold": {
+      "theta_star": {
+        "loud": 1.16,
+        "quiet": 1.12,
+        "masked": 1.04
+      },
+      "fpr_budgets": {
+        "loud": 0.01,
+        "quiet": 0.05,
+        "masked": 0.12
+      }
+    },
+    "1B_localize_threshold": {
+      "cross_rank_theta": 1.2,
+      "worst_fraction": 0.4
+    },
+    "2A_trace_window": {
+      "W_star": 100
+    },
+    "3A_upgrade_rate": {
+      "rate_star": 0.001
+    },
+    "2B_ring_capacity": {
+      "bytes_per_tt_step": 25190.4
+    }
+  },
+  "what_is_healthy": {
+    "description": "两层：① 本地摘要层——rank 自比 step_ms 窗中位/稳态基线 < θ*_dose 则自称 healthy；② 协调明细层——仅当 dose 门控过线后，用 ①-B 跨 rank max/min≥θ* 或 worst_fraction≥φ* 标出的 suspect 才拉明细。健康机=非 suspect。",
+    "fields": [
+      "step_ms",
+      "phase compute_ms|data_ms (by case family)"
+    ],
+    "window": {
+      "detect": [
+        100,
+        300
+      ],
+      "steady_baseline": [
+        50,
+        99
+      ]
+    },
+    "thresholds": {
+      "dose_theta_star": {
+        "loud": 1.16,
+        "quiet": 1.12,
+        "masked": 1.04
+      },
+      "default_dose_for_4A": "loud",
+      "default_theta": 1.16,
+      "cross_rank_theta": 1.2,
+      "worst_fraction_phi": 0.4
+    },
+    "executable_predicate": {
+      "local_summary_healthy": "median(step_ms[W])/median(step_ms[steady]) < θ*_dose",
+      "coordinator_suspect": "dose_gate(C1/C0 step rank0 ≥ θ*_dose) ∧ (cross_rank_phase_maxmin ≥ 1.2 ∨ worst_fraction ≥ 0.4) → pred ranks",
+      "federated_filter": "return DETAIL iff rank ∈ suspects else SUMMARY"
+    }
+  },
+  "healthy_return": {
+    "schema": {
+      "rank": "int",
+      "status": "\"healthy\"",
+      "step_ms_med": "float",
+      "baseline_med": "float",
+      "step_ratio": "float",
+      "phase_metric": "str  # compute_ms|data_ms|…",
+      "phase_med": "float",
+      "window": "[lo,hi]",
+      "dose_theta": "float  # θ* used",
+      "ts": "int|float"
+    },
+    "bytes_expected": 180,
+    "bytes_note": "紧凑 JSON「我正常」摘要，无 torch_trace / 无逐步序列"
+  },
+  "unhealthy_return": {
+    "scope": {
+      "always": [
+        "step_ms series for window [trigger-W*+1, trigger] (W*=100)",
+        "phase: compute_ms/comm_ms/wait_ms/data_ms same window"
+      ],
+      "if_upgraded": [
+        "python.torch_trace rows in W* at rate*=0.001"
+      ],
+      "not_returned_by_healthy": [
+        "torch_trace / span detail",
+        "full step series beyond summary scalars"
+      ]
+    },
+    "bytes_expected_phase_only": 14000,
+    "bytes_expected_with_tt_Wstar": 2533040,
+    "note": "只回与异常相关的窗明细 +（若已升详）W* torch_trace；非全表 dump"
+  },
+  "fpr_budget": {
+    "definition": "健康作业(C0)上，本地摘要层将 rank 误判为不健康的比例；协调侧误标 suspect 另计",
+    "budget_default_loud": 0.01,
+    "budget_by_dose": {
+      "loud": 0.01,
+      "quiet": 0.05,
+      "masked": 0.12
+    },
+    "measured_c0_local_fpr_mean_loud": 0.0,
+    "measured_c0_local_fpr_all": 0.0,
+    "measured_c0_cross_fire_rate": 0.2,
+    "gpu_stratum_c0_local_fpr": 0.0,
+    "host_stratum_c0_local_fpr": 0.0,
+    "source": "C0 16-rank 本地自比；阈值复用 ①-A θ*；预算对齐 ①-A B_dose",
+    "within_budget": true
+  },
+  "validation": {
+    "n_runs": 5,
+    "n_inject_arms": 10,
+    "victim_in_suspects_recall": 1.0,
+    "mean_n_suspects": 1,
+    "mean_non_victim_local_healthy_rate_under_inject": 0.0,
+    "note_non_victim": "注入下非 victim 的 step_ms 常一起升高→纯本地 step 会把多数 rank 标不健康；故明细门必须走协调侧 ①-B suspect 集，本地 step 只填摘要。",
+    "volume_estimate_rep": {
+      "summary_bytes_per_rank": 180,
+      "detail_phase_bytes_per_rank": 14000,
+      "detail_tt_bytes_per_rank": 2519040,
+      "detail_bytes_per_rank": 2533040,
+      "naive_total_bytes": 40528640,
+      "federated_total_bytes": 2535920,
+      "volume_ratio_federated_over_naive": 0.06257106085967849,
+      "expected_saving_factor": 15.981829079781697
+    },
+    "trials": [
+      {
+        "case": "P3-SW-A",
+        "dose": "loud",
+        "run_id": "20260725_012957-yjr-as-c-p3-sw-a-loud",
+        "role": "primary",
+        "phase_metric": "data_ms",
+        "polarity": "max",
+        "theta_dose": 1.16,
+        "c0_local_fpr": 0.0,
+        "c0_n_unhealthy": 0,
+        "c0_cross_ratio": 5.767521367521368,
+        "c0_cross_fire": true,
+        "c0_cross_pred": 6,
+        "c0_worst_fraction": 0.26865671641791045,
+        "c0_wf_fire": false,
+        "c0_wf_pred": 10,
+        "c0_rank_ratios": [
+          {
+            "rank": 0,
+            "step_ratio": 0.9458778358447733,
+            "healthy": true
+          },
+          {
+            "rank": 1,
+            "step_ratio": 0.9766284974852287,
+            "healthy": true
+          },
+          {
+            "rank": 2,
+            "step_ratio": 0.9779430365279407,
+            "healthy": true
+          },
+          {
+            "rank": 3,
+            "step_ratio": 0.969552708254599,
+            "healthy": true
+          },
+          {
+            "rank": 4,
+            "step_ratio": 0.9765519675957627,
+            "healthy": true
+          },
+          {
+            "rank": 5,
+            "step_ratio": 0.9732275777913363,
+            "healthy": true
+          },
+          {
+            "rank": 6,
+            "step_ratio": 0.9817443103711624,
+            "healthy": true
+          },
+          {
+            "rank": 7,
+            "step_ratio": 0.9838379824226214,
+            "healthy": true
+          },
+          {
+            "rank": 8,
+            "step_ratio": 0.9788546201708483,
+            "healthy": true
+          },
+          {
+            "rank": 9,
+            "step_ratio": 0.9713054202229631,
+            "healthy": true
+          },
+          {
+            "rank": 10,
+            "step_ratio": 0.9805736783244912,
+            "healthy": true
+          },
+          {
+            "rank": 11,
+            "step_ratio": 0.977247020588352,
+            "healthy": true
+          },
+          {
+            "rank": 12,
+            "step_ratio": 0.9783967660742889,
+            "healthy": true
+          },
+          {
+            "rank": 13,
+            "step_ratio": 0.9770409873533445,
+            "healthy": true
+          },
+          {
+            "rank": 14,
+            "step_ratio": 0.9723963636809756,
+            "healthy": true
+          },
+          {
+            "rank": 15,
+            "step_ratio": 0.9810708127984865,
+            "healthy": true
+          }
+        ],
+        "C1_dose_gate": true,
+        "C1_victim_local_unhealthy": true,
+        "C1_victim_local_ratio": 3.6807050077674477,
+        "C1_cross_ratio": 332.40688437775816,
+        "C1_cross_pred": 7,
+        "C1_cross_hit": true,
+        "C1_wf": 0.9950248756218906,
+        "C1_wf_pred": 7,
+        "C1_wf_hit": true,
+        "C1_suspects": [
+          7
+        ],
+        "C1_n_suspects": 1,
+        "C1_victim_in_suspects": true,
+        "C1_non_victim_local_healthy_rate": 0.0,
+        "C1_bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        },
+        "C2_dose_gate": true,
+        "C2_victim_local_unhealthy": true,
+        "C2_victim_local_ratio": 2.881349120568973,
+        "C2_cross_ratio": 341.1810344827586,
+        "C2_cross_pred": 7,
+        "C2_cross_hit": true,
+        "C2_wf": 0.9950248756218906,
+        "C2_wf_pred": 7,
+        "C2_wf_hit": true,
+        "C2_suspects": [
+          7
+        ],
+        "C2_n_suspects": 1,
+        "C2_victim_in_suspects": true,
+        "C2_non_victim_local_healthy_rate": 0.0,
+        "C2_bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        }
+      },
+      {
+        "case": "P1-EXT-A",
+        "dose": "loud",
+        "run_id": "20260725_011129-yjr-as-c-p1-ext-a-loud",
+        "role": "primary",
+        "phase_metric": "compute_ms",
+        "polarity": "min",
+        "theta_dose": 1.16,
+        "c0_local_fpr": 0.0,
+        "c0_n_unhealthy": 0,
+        "c0_cross_ratio": 1.0162031903727027,
+        "c0_cross_fire": false,
+        "c0_cross_pred": 5,
+        "c0_worst_fraction": 0.1890547263681592,
+        "c0_wf_fire": false,
+        "c0_wf_pred": 7,
+        "c0_rank_ratios": [
+          {
+            "rank": 0,
+            "step_ratio": 0.9954360793993625,
+            "healthy": true
+          },
+          {
+            "rank": 1,
+            "step_ratio": 0.992228078950406,
+            "healthy": true
+          },
+          {
+            "rank": 2,
+            "step_ratio": 0.991889575417994,
+            "healthy": true
+          },
+          {
+            "rank": 3,
+            "step_ratio": 0.9945875230863946,
+            "healthy": true
+          },
+          {
+            "rank": 4,
+            "step_ratio": 0.9927877840690733,
+            "healthy": true
+          },
+          {
+            "rank": 5,
+            "step_ratio": 0.9877280222940927,
+            "healthy": true
+          },
+          {
+            "rank": 6,
+            "step_ratio": 0.9946267966849198,
+            "healthy": true
+          },
+          {
+            "rank": 7,
+            "step_ratio": 0.9897331908986815,
+            "healthy": true
+          },
+          {
+            "rank": 8,
+            "step_ratio": 0.9922501455897506,
+            "healthy": true
+          },
+          {
+            "rank": 9,
+            "step_ratio": 0.9914929000895485,
+            "healthy": true
+          },
+          {
+            "rank": 10,
+            "step_ratio": 0.9906444176229796,
+            "healthy": true
+          },
+          {
+            "rank": 11,
+            "step_ratio": 0.9909395287021417,
+            "healthy": true
+          },
+          {
+            "rank": 12,
+            "step_ratio": 0.9922232738993629,
+            "healthy": true
+          },
+          {
+            "rank": 13,
+            "step_ratio": 0.9903128372467257,
+            "healthy": true
+          },
+          {
+            "rank": 14,
+            "step_ratio": 0.9927803852171013,
+            "healthy": true
+          },
+          {
+            "rank": 15,
+            "step_ratio": 0.9919739280465205,
+            "healthy": true
+          }
+        ],
+        "C1_dose_gate": true,
+        "C1_victim_local_unhealthy": true,
+        "C1_victim_local_ratio": 3.8332460231265575,
+        "C1_cross_ratio": 4.3736880093831765,
+        "C1_cross_pred": 7,
+        "C1_cross_hit": true,
+        "C1_wf": 0.9850746268656716,
+        "C1_wf_pred": 7,
+        "C1_wf_hit": true,
+        "C1_suspects": [
+          7
+        ],
+        "C1_n_suspects": 1,
+        "C1_victim_in_suspects": true,
+        "C1_non_victim_local_healthy_rate": 0.0,
+        "C1_bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        },
+        "C2_dose_gate": true,
+        "C2_victim_local_unhealthy": true,
+        "C2_victim_local_ratio": 3.8434720100637976,
+        "C2_cross_ratio": 4.35937170884362,
+        "C2_cross_pred": 7,
+        "C2_cross_hit": true,
+        "C2_wf": 0.9850746268656716,
+        "C2_wf_pred": 7,
+        "C2_wf_hit": true,
+        "C2_suspects": [
+          7
+        ],
+        "C2_n_suspects": 1,
+        "C2_victim_in_suspects": true,
+        "C2_non_victim_local_healthy_rate": 0.0,
+        "C2_bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        }
+      },
+      {
+        "case": "P1-EXT-B",
+        "dose": "loud",
+        "run_id": "20260725_014350-yjr-as-c-p1-ext-b-loud",
+        "role": "expand",
+        "phase_metric": "compute_ms",
+        "polarity": "min",
+        "theta_dose": 1.16,
+        "c0_local_fpr": 0.0,
+        "c0_n_unhealthy": 0,
+        "c0_cross_ratio": 1.0177920179544346,
+        "c0_cross_fire": false,
+        "c0_cross_pred": 9,
+        "c0_worst_fraction": 0.22885572139303484,
+        "c0_wf_fire": false,
+        "c0_wf_pred": 9,
+        "c0_rank_ratios": [
+          {
+            "rank": 0,
+            "step_ratio": 0.9933590058438176,
+            "healthy": true
+          },
+          {
+            "rank": 1,
+            "step_ratio": 0.9982103081102657,
+            "healthy": true
+          },
+          {
+            "rank": 2,
+            "step_ratio": 0.9974642484779056,
+            "healthy": true
+          },
+          {
+            "rank": 3,
+            "step_ratio": 0.9993880797943948,
+            "healthy": true
+          },
+          {
+            "rank": 4,
+            "step_ratio": 0.9984726921217978,
+            "healthy": true
+          },
+          {
+            "rank": 5,
+            "step_ratio": 0.9980698594676943,
+            "healthy": true
+          },
+          {
+            "rank": 6,
+            "step_ratio": 0.9976092742117373,
+            "healthy": true
+          },
+          {
+            "rank": 7,
+            "step_ratio": 0.9989182924473633,
+            "healthy": true
+          },
+          {
+            "rank": 8,
+            "step_ratio": 0.9992144843927062,
+            "healthy": true
+          },
+          {
+            "rank": 9,
+            "step_ratio": 0.9966384173514335,
+            "healthy": true
+          },
+          {
+            "rank": 10,
+            "step_ratio": 0.9983849900590025,
+            "healthy": true
+          },
+          {
+            "rank": 11,
+            "step_ratio": 0.997024287725026,
+            "healthy": true
+          },
+          {
+            "rank": 12,
+            "step_ratio": 0.9976574466168123,
+            "healthy": true
+          },
+          {
+            "rank": 13,
+            "step_ratio": 0.9968765263888533,
+            "healthy": true
+          },
+          {
+            "rank": 14,
+            "step_ratio": 0.9969481441503955,
+            "healthy": true
+          },
+          {
+            "rank": 15,
+            "step_ratio": 0.9996187768552321,
+            "healthy": true
+          }
+        ],
+        "C1_dose_gate": true,
+        "C1_victim_local_unhealthy": true,
+        "C1_victim_local_ratio": 2.015919153900193,
+        "C1_cross_ratio": 2.223109731285699,
+        "C1_cross_pred": 7,
+        "C1_cross_hit": true,
+        "C1_wf": 0.9850746268656716,
+        "C1_wf_pred": 7,
+        "C1_wf_hit": true,
+        "C1_suspects": [
+          7
+        ],
+        "C1_n_suspects": 1,
+        "C1_victim_in_suspects": true,
+        "C1_non_victim_local_healthy_rate": 0.0,
+        "C1_bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        },
+        "C2_dose_gate": true,
+        "C2_victim_local_unhealthy": true,
+        "C2_victim_local_ratio": 2.0223065454289504,
+        "C2_cross_ratio": 2.2326623600473634,
+        "C2_cross_pred": 7,
+        "C2_cross_hit": true,
+        "C2_wf": 0.9850746268656716,
+        "C2_wf_pred": 7,
+        "C2_wf_hit": true,
+        "C2_suspects": [
+          7
+        ],
+        "C2_n_suspects": 1,
+        "C2_victim_in_suspects": true,
+        "C2_non_victim_local_healthy_rate": 0.0,
+        "C2_bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        }
+      },
+      {
+        "case": "P1-SW-A",
+        "dose": "loud",
+        "run_id": "20260725_114556-yjr-as-c-p1-sw-a-loud",
+        "role": "expand",
+        "phase_metric": "compute_ms",
+        "polarity": "min",
+        "theta_dose": 1.16,
+        "c0_local_fpr": 0.0,
+        "c0_n_unhealthy": 0,
+        "c0_cross_ratio": 1.0206997429153983,
+        "c0_cross_fire": false,
+        "c0_cross_pred": 14,
+        "c0_worst_fraction": 0.18407960199004975,
+        "c0_wf_fire": false,
+        "c0_wf_pred": 1,
+        "c0_rank_ratios": [
+          {
+            "rank": 0,
+            "step_ratio": 0.9912676596560761,
+            "healthy": true
+          },
+          {
+            "rank": 1,
+            "step_ratio": 0.9925743684369013,
+            "healthy": true
+          },
+          {
+            "rank": 2,
+            "step_ratio": 0.9943321392016377,
+            "healthy": true
+          },
+          {
+            "rank": 3,
+            "step_ratio": 0.992837599096887,
+            "healthy": true
+          },
+          {
+            "rank": 4,
+            "step_ratio": 0.9951621481343835,
+            "healthy": true
+          },
+          {
+            "rank": 5,
+            "step_ratio": 0.9978290749804102,
+            "healthy": true
+          },
+          {
+            "rank": 6,
+            "step_ratio": 0.9904360325826544,
+            "healthy": true
+          },
+          {
+            "rank": 7,
+            "step_ratio": 0.9936318790441412,
+            "healthy": true
+          },
+          {
+            "rank": 8,
+            "step_ratio": 0.9937434094903338,
+            "healthy": true
+          },
+          {
+            "rank": 9,
+            "step_ratio": 0.9927960896714095,
+            "healthy": true
+          },
+          {
+            "rank": 10,
+            "step_ratio": 0.9930725658297611,
+            "healthy": true
+          },
+          {
+            "rank": 11,
+            "step_ratio": 0.9940684837920842,
+            "healthy": true
+          },
+          {
+            "rank": 12,
+            "step_ratio": 0.9935652240658059,
+            "healthy": true
+          },
+          {
+            "rank": 13,
+            "step_ratio": 0.9922843054597481,
+            "healthy": true
+          },
+          {
+            "rank": 14,
+            "step_ratio": 0.99294416211124,
+            "healthy": true
+          },
+          {
+            "rank": 15,
+            "step_ratio": 0.9945992186103522,
+            "healthy": true
+          }
+        ],
+        "C1_dose_gate": true,
+        "C1_victim_local_unhealthy": true,
+        "C1_victim_local_ratio": 4.215213478198935,
+        "C1_cross_ratio": 4.765709210248999,
+        "C1_cross_pred": 7,
+        "C1_cross_hit": true,
+        "C1_wf": 0.6616915422885572,
+        "C1_wf_pred": 7,
+        "C1_wf_hit": true,
+        "C1_suspects": [
+          7
+        ],
+        "C1_n_suspects": 1,
+        "C1_victim_in_suspects": true,
+        "C1_non_victim_local_healthy_rate": 0.0,
+        "C1_bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        },
+        "C2_dose_gate": true,
+        "C2_victim_local_unhealthy": true,
+        "C2_victim_local_ratio": 4.1309063329541145,
+        "C2_cross_ratio": 4.755660787340218,
+        "C2_cross_pred": 7,
+        "C2_cross_hit": true,
+        "C2_wf": 0.6616915422885572,
+        "C2_wf_pred": 7,
+        "C2_wf_hit": true,
+        "C2_suspects": [
+          7
+        ],
+        "C2_n_suspects": 1,
+        "C2_victim_in_suspects": true,
+        "C2_non_victim_local_healthy_rate": 0.0,
+        "C2_bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        }
+      },
+      {
+        "case": "P1-HW-B",
+        "dose": "loud",
+        "run_id": "20260725_142359-yjr-as-c-p1-hw-b-loud",
+        "role": "expand",
+        "phase_metric": "compute_ms",
+        "polarity": "min",
+        "theta_dose": 1.16,
+        "c0_local_fpr": 0.0,
+        "c0_n_unhealthy": 0,
+        "c0_cross_ratio": 1.0200921441924138,
+        "c0_cross_fire": false,
+        "c0_cross_pred": 0,
+        "c0_worst_fraction": 0.16417910447761194,
+        "c0_wf_fire": false,
+        "c0_wf_pred": 0,
+        "c0_rank_ratios": [
+          {
+            "rank": 0,
+            "step_ratio": 0.9946721547960222,
+            "healthy": true
+          },
+          {
+            "rank": 1,
+            "step_ratio": 0.9978619170834749,
+            "healthy": true
+          },
+          {
+            "rank": 2,
+            "step_ratio": 0.9972707003920964,
+            "healthy": true
+          },
+          {
+            "rank": 3,
+            "step_ratio": 0.9992233483314825,
+            "healthy": true
+          },
+          {
+            "rank": 4,
+            "step_ratio": 0.9975329581373835,
+            "healthy": true
+          },
+          {
+            "rank": 5,
+            "step_ratio": 0.9946045009483774,
+            "healthy": true
+          },
+          {
+            "rank": 6,
+            "step_ratio": 0.9966089115245822,
+            "healthy": true
+          },
+          {
+            "rank": 7,
+            "step_ratio": 0.9997490589711416,
+            "healthy": true
+          },
+          {
+            "rank": 8,
+            "step_ratio": 0.9971685938633608,
+            "healthy": true
+          },
+          {
+            "rank": 9,
+            "step_ratio": 1.0007674003185676,
+            "healthy": true
+          },
+          {
+            "rank": 10,
+            "step_ratio": 0.9967891498953265,
+            "healthy": true
+          },
+          {
+            "rank": 11,
+            "step_ratio": 1.0001474652014182,
+            "healthy": true
+          },
+          {
+            "rank": 12,
+            "step_ratio": 0.9988892099264823,
+            "healthy": true
+          },
+          {
+            "rank": 13,
+            "step_ratio": 1.0001415847191473,
+            "healthy": true
+          },
+          {
+            "rank": 14,
+            "step_ratio": 0.9981223846355952,
+            "healthy": true
+          },
+          {
+            "rank": 15,
+            "step_ratio": 0.9971387421987518,
+            "healthy": true
+          }
+        ],
+        "C1_dose_gate": true,
+        "C1_victim_local_unhealthy": true,
+        "C1_victim_local_ratio": 1.5769309541486394,
+        "C1_cross_ratio": 1.7134639933919051,
+        "C1_cross_pred": 7,
+        "C1_cross_hit": true,
+        "C1_wf": 0.9850746268656716,
+        "C1_wf_pred": 7,
+        "C1_wf_hit": true,
+        "C1_suspects": [
+          7
+        ],
+        "C1_n_suspects": 1,
+        "C1_victim_in_suspects": true,
+        "C1_non_victim_local_healthy_rate": 0.0,
+        "C1_bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        },
+        "C2_dose_gate": true,
+        "C2_victim_local_unhealthy": true,
+        "C2_victim_local_ratio": 1.5666656023500112,
+        "C2_cross_ratio": 1.7119252011045742,
+        "C2_cross_pred": 7,
+        "C2_cross_hit": true,
+        "C2_wf": 0.9800995024875622,
+        "C2_wf_pred": 7,
+        "C2_wf_hit": true,
+        "C2_suspects": [
+          7
+        ],
+        "C2_n_suspects": 1,
+        "C2_victim_in_suspects": true,
+        "C2_non_victim_local_healthy_rate": 0.0,
+        "C2_bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        }
+      }
+    ],
+    "inject_arms": [
+      {
+        "case": "P3-SW-A",
+        "dose": "loud",
+        "arm": "C1",
+        "victim_in_suspects": true,
+        "n_suspects": 1,
+        "cross_hit": true,
+        "wf_hit": true,
+        "non_victim_local_healthy_rate": 0.0,
+        "bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        }
+      },
+      {
+        "case": "P3-SW-A",
+        "dose": "loud",
+        "arm": "C2",
+        "victim_in_suspects": true,
+        "n_suspects": 1,
+        "cross_hit": true,
+        "wf_hit": true,
+        "non_victim_local_healthy_rate": 0.0,
+        "bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        }
+      },
+      {
+        "case": "P1-EXT-A",
+        "dose": "loud",
+        "arm": "C1",
+        "victim_in_suspects": true,
+        "n_suspects": 1,
+        "cross_hit": true,
+        "wf_hit": true,
+        "non_victim_local_healthy_rate": 0.0,
+        "bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        }
+      },
+      {
+        "case": "P1-EXT-A",
+        "dose": "loud",
+        "arm": "C2",
+        "victim_in_suspects": true,
+        "n_suspects": 1,
+        "cross_hit": true,
+        "wf_hit": true,
+        "non_victim_local_healthy_rate": 0.0,
+        "bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        }
+      },
+      {
+        "case": "P1-EXT-B",
+        "dose": "loud",
+        "arm": "C1",
+        "victim_in_suspects": true,
+        "n_suspects": 1,
+        "cross_hit": true,
+        "wf_hit": true,
+        "non_victim_local_healthy_rate": 0.0,
+        "bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        }
+      },
+      {
+        "case": "P1-EXT-B",
+        "dose": "loud",
+        "arm": "C2",
+        "victim_in_suspects": true,
+        "n_suspects": 1,
+        "cross_hit": true,
+        "wf_hit": true,
+        "non_victim_local_healthy_rate": 0.0,
+        "bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        }
+      },
+      {
+        "case": "P1-SW-A",
+        "dose": "loud",
+        "arm": "C1",
+        "victim_in_suspects": true,
+        "n_suspects": 1,
+        "cross_hit": true,
+        "wf_hit": true,
+        "non_victim_local_healthy_rate": 0.0,
+        "bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        }
+      },
+      {
+        "case": "P1-SW-A",
+        "dose": "loud",
+        "arm": "C2",
+        "victim_in_suspects": true,
+        "n_suspects": 1,
+        "cross_hit": true,
+        "wf_hit": true,
+        "non_victim_local_healthy_rate": 0.0,
+        "bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        }
+      },
+      {
+        "case": "P1-HW-B",
+        "dose": "loud",
+        "arm": "C1",
+        "victim_in_suspects": true,
+        "n_suspects": 1,
+        "cross_hit": true,
+        "wf_hit": true,
+        "non_victim_local_healthy_rate": 0.0,
+        "bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        }
+      },
+      {
+        "case": "P1-HW-B",
+        "dose": "loud",
+        "arm": "C2",
+        "victim_in_suspects": true,
+        "n_suspects": 1,
+        "cross_hit": true,
+        "wf_hit": true,
+        "non_victim_local_healthy_rate": 0.0,
+        "bytes_est": {
+          "summary_bytes_per_rank": 180,
+          "detail_phase_bytes_per_rank": 14000,
+          "detail_tt_bytes_per_rank": 2519040,
+          "detail_bytes_per_rank": 2533040,
+          "naive_total_bytes": 40528640,
+          "federated_total_bytes": 2535920,
+          "volume_ratio_federated_over_naive": 0.06257106085967849,
+          "expected_saving_factor": 15.981829079781697
+        }
+      }
+    ]
+  },
+  "supports_design": "C0 本地 FPR(loud)=0.000% vs 预算 1%；注入臂 victim∈suspects 召回=1.0; 单 victim 时 n_suspect≈1 → 联邦量比≈0.06257106085967849",
+  "locked": true,
+  "missing_runs": [
+    "20260726_014611-yjr-as-c-p1-ext-a-masked",
+    "20260725_215903-yjr-as-c-p3-sw-a-quiet",
+    "20260725_224156-yjr-as-c-p3-sw-a-masked"
+  ]
+}

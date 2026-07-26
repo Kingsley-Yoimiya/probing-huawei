@@ -1,0 +1,63 @@
+{
+  "param": "torch_trace_upgrade_latency_steps",
+  "exp_id": "3B_upgrade_latency",
+  "swept_range": null,
+  "chosen_value": {
+    "set_to_live_steps_upper": 12,
+    "set_to_enough_tt_steps_upper": 12,
+    "live_to_enough_w_steps": null,
+    "total_response_steps_upper": 12,
+    "mech_set_to_live_steps": 1,
+    "enough_rule": "online first TT n>0 / TT_rows>=800 after SET; W* span discarded (gmin=0 artifact)"
+  },
+  "choose_rule": "online probe after SET (SET_SCOPE=victim, rate=1.0 clear signal); report upper bound including probe jsync lag",
+  "case": "P3-SW-A",
+  "controls": {
+    "resident_rate": 0,
+    "set_rate": "1.0",
+    "set_at_step": 100,
+    "set_key": "probing.torch.profiling=",
+    "inject_window": [100, 300],
+    "victim_local_rank": 7,
+    "set_scope": "victim",
+    "w_star": 100,
+    "tt_floor": 800,
+    "forbid": [
+      "training step_ms",
+      "cold-only as volume",
+      "multi independent vars",
+      "offline MEMT for first-step"
+    ]
+  },
+  "ground_truth_source": {
+    "set_upgrade_log": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/param_calib/3B_upgrade_latency/20260727_023223-3b-p3-sw-a-loud/upgrade_rate_1.0/P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/set_upgrade.log",
+    "set_latency_probe_log": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/param_calib/3B_upgrade_latency/20260727_023223-3b-p3-sw-a-loud/upgrade_rate_1.0/P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/set_latency_probe.log",
+    "s1_opponent_restart": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/S1_MID_ATTACH.md",
+    "mech": "optimizer_step_post_hook polls probing.torch.profiling each step → ~1-step sync"
+  },
+  "measurements": {
+    "set_ok": true,
+    "set_l": 130,
+    "set_attach_latency_ms": 1145,
+    "first_probe_L": 142,
+    "set_to_live_steps_observed": 12,
+    "set_to_live_ms": 5859,
+    "first_probe_tt_n": 1821,
+    "tt_floor_met_at_first_tick": true,
+    "w_star_span_valid": false,
+    "w_star_discard_reason": "first-tick gmin=0 (ring/sentinel) → span=183 is not post-SET unique-step count",
+    "probe_jsync_lag_note": "PROBE_BEGIN ~4s after SET_END (jsync set_latency_probe.py); 12-step figure is upper bound",
+    "train_end": "node_0.fail exit=137 at jsonl≈250 (after probe DONE); latency evidence already recorded"
+  },
+  "vs_opponent": {
+    "opponent_restart_steps": 150,
+    "probing_total_steps_upper": 12,
+    "speedup_x_lower": 12.5,
+    "delta_steps_lower": 138,
+    "verdict": "SET→够 TT_floor 上界≤12 步 << 对手重启≈150"
+  },
+  "supports_design": "对 P3-SW-A loud：常驻 rate=0 → SET `probing.torch.profiling=on,rate=1.0`（SET_SCOPE=victim；在线 probe）。SET_OK@L=130；首轮 probe@L=142 已见 TT n=1821≥800 → SET→live/够TT 上界≤12 步（含探针 jsync 滞后；机制下界≈1 步）。W* 跨度本轮不可用（gmin=0）。总响应上界≤12 步 vs 对手重启≈150（≥12.5×）。证明热 SET 升详无需重启。",
+  "parent_run": "20260727_023223-3b-p3-sw-a-loud",
+  "scored_at": "2026-07-27T03:05:30",
+  "note": "hold rc=1 (137 after probe); latency PARAM from set_latency_probe.log; not cold/step_ms"
+}

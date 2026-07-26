@@ -16,7 +16,10 @@
 | [`PILLAR_C_RUNNER.md`](PILLAR_C_RUNNER.md) | E1–E4 正式采集 |
 | [`PILLAR_C_PILOT.md`](PILLAR_C_PILOT.md) | 门禁（已绿；G3≠live） |
 | [`../PILLAR_C_QUEUE.md`](../PILLAR_C_QUEUE.md) | C0/E1–E4 队列 |
+| [`LOOP_PARAM_CALIB.md`](LOOP_PARAM_CALIB.md) / [`PARAM_CALIB_RUNNER.md`](PARAM_CALIB_RUNNER.md) | **参数标定** loop + 任务卡（v2 往下钻一层） |
+| [`../PARAM_CALIB_QUEUE.md`](../PARAM_CALIB_QUEUE.md) | 参数标定队列（批次1 离线先跑） |
 | [`RESOURCE.md`](RESOURCE.md) | 机器池 |
+| [`BUILD_WHEEL.md`](BUILD_WHEEL.md) | **编/装 probing wheel 铁律**（禁 pod rustup；本机 Clash 摆渡） |
 | 其余 Dose/Loud 卡 | 归档或顺手 |
 
 ## Loop 一句话

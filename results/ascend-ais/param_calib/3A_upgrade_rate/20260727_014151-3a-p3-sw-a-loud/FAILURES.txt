@@ -1,0 +1,4 @@
+[3a] FAIL rate=0.001 rc=1
+[3a] FAIL rate=0.05 rc=1
+[3a] NOTE: killed stuck full-tar pull of rate=0.5 at 02:09:35; AFS has node_0.done; will selective-pull + run rate=1.0
+[3a] killed full-tar pull; AFS node_0.done+SET_OK; selective pull next

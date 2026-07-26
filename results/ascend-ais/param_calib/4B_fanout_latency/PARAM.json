@@ -1,0 +1,570 @@
+{
+  "param": "fanout_scope_switch_points",
+  "exp_id": "4B_fanout_latency",
+  "status": "DONE",
+  "mode": "simulated_network+local_http_calib",
+  "harness": "scripts/fail-slow/param_calib/4b_fanout_latency.py",
+  "criteria": "param_calib/4_health_summary_criteria/{CRITERIA.json,CRITERIA.md}",
+  "upstream": "param_calib/4A_federated_denoise/",
+  "swept_range": {
+    "n_ranks": [
+      8,
+      16,
+      32,
+      64
+    ],
+    "fanout_scope": [
+      "Local",
+      "Flat",
+      "Node",
+      "Coordinator"
+    ]
+  },
+  "chosen_value": {
+    "fanout_scope_policy": {
+      "N_eq_1": "Local",
+      "N_le_16_single_node": "Node",
+      "N_gt_16_multi_node": "Coordinator",
+      "flat_allowed_when": "N≤16 或显式 --flat / HIERARCHICAL=0；跨机不推荐",
+      "switch_flat_to_coordinator_at_n": 17,
+      "latency_cross_flat_to_coordinator_at_n": 8,
+      "gpus_per_node_assumed": 16
+    },
+    "federation_defaults_confirmed": {
+      "PROBING_FANOUT_CONCURRENCY": 128,
+      "PROBING_REMOTE_QUERY_TIMEOUT_SECS": 30,
+      "PROBING_CLUSTER_FANOUT_HIERARCHICAL": 1
+    }
+  },
+  "choose_rule": "设计默认：N=1→Local；单机 N≤16→Node；跨机 N≥17→Coordinator。延迟交叉（coord_ms<flat_ms 的最小 N）仅作对照；N≤64 且并发=128 时 Flat 常仍单波、墙钟可略优，但连接数 O(N) vs Coordinator O(nodes)，跨机/万卡必须 Coordinator。",
+  "controls": {
+    "dose": "loud",
+    "dose_theta": 1.16,
+    "cross_rank_theta": 1.2,
+    "worst_fraction_phi": 0.4,
+    "W_star": 100,
+    "victim": 7,
+    "inject_window": [
+      100,
+      300
+    ],
+    "aggregation": "federated_SUMMARY_then_suspect_DETAIL",
+    "n_suspects": 1,
+    "fanout_concurrency": 128,
+    "remote_timeout_s": 30.0,
+    "gpus_per_node": 16,
+    "summary_bytes_per_rank": 208.2,
+    "detail_bytes_per_suspect": 2529140.0,
+    "forbid": [
+      "fabricate live 64-rank cluster query",
+      "open batch4 2C/3C",
+      "touch yysong-master / a3 / song AFS"
+    ]
+  },
+  "network_params": {
+    "rtt_intra_ms": 4.0880994400000015,
+    "rtt_inter_ms": 7.358578992000003,
+    "bw_intra_gbps": 25.0,
+    "bw_inter_gbps": 10.0,
+    "proc_ms": 0.15,
+    "merge_us_per_peer": 8.0,
+    "straggler_sigma": 0.25,
+    "calibrated_from_local_http_microbench": true
+  },
+  "ground_truth_source": {
+    "criteria_locked": true,
+    "volume_ratio_4A": 0.0626,
+    "primary_case": "P3-SW-A",
+    "primary_run": "20260725_012957-yjr-as-c-p3-sw-a-loud",
+    "federation_code": [
+      "probing/core/src/core/federation/fanout_scope.rs",
+      "probing/core/src/core/federation/cluster_executor.rs",
+      "probing/server/src/server/cluster_fanout.rs"
+    ]
+  },
+  "measurements": {
+    "curve": [
+      {
+        "n_ranks": 8,
+        "scope": "Local",
+        "n_nodes": 1,
+        "complete": false,
+        "hops": "local_only",
+        "remote_peers_phase1": 0,
+        "total_ms_median": 0.65,
+        "total_ms_p25": 0.65,
+        "total_ms_p75": 0.65,
+        "total_ms_mean": 0.65,
+        "phase1_ms_example": 0.15,
+        "phase2_ms_example": 0.0,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      },
+      {
+        "n_ranks": 8,
+        "scope": "Flat",
+        "n_nodes": 1,
+        "complete": true,
+        "hops": "coord→all_peers",
+        "remote_peers_phase1": 7,
+        "total_ms_median": 15.884255451342815,
+        "total_ms_p25": 15.12997837663995,
+        "total_ms_p75": 17.532178226038226,
+        "total_ms_mean": 16.2590368303214,
+        "phase1_ms_example": 10.059660388428469,
+        "phase2_ms_example": 4.936454094910117,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      },
+      {
+        "n_ranks": 8,
+        "scope": "Node",
+        "n_nodes": 1,
+        "complete": true,
+        "hops": "local0→on_node_leaves",
+        "remote_peers_phase1": 7,
+        "total_ms_median": 11.186183150392619,
+        "total_ms_p25": 10.39101179452114,
+        "total_ms_p75": 12.21948752576671,
+        "total_ms_mean": 11.30210493622746,
+        "phase1_ms_example": 6.809182530201112,
+        "phase2_ms_example": 4.705092724617901,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      },
+      {
+        "n_ranks": 8,
+        "scope": "Coordinator",
+        "n_nodes": 1,
+        "complete": true,
+        "hops": "coord→node_aggs→leaves",
+        "remote_peers_phase1": 0,
+        "total_ms_median": 11.08750957395316,
+        "total_ms_p25": 10.353203100435845,
+        "total_ms_p75": 12.635150212951881,
+        "total_ms_mean": 11.497506408282938,
+        "phase1_ms_example": 5.364287990102448,
+        "phase2_ms_example": 5.605283638888666,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      },
+      {
+        "n_ranks": 16,
+        "scope": "Local",
+        "n_nodes": 1,
+        "complete": false,
+        "hops": "local_only",
+        "remote_peers_phase1": 0,
+        "total_ms_median": 0.65,
+        "total_ms_p25": 0.65,
+        "total_ms_p75": 0.65,
+        "total_ms_mean": 0.65,
+        "phase1_ms_example": 0.15,
+        "phase2_ms_example": 0.0,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      },
+      {
+        "n_ranks": 16,
+        "scope": "Flat",
+        "n_nodes": 1,
+        "complete": true,
+        "hops": "coord→all_peers",
+        "remote_peers_phase1": 15,
+        "total_ms_median": 16.866649441718952,
+        "total_ms_p25": 15.853790192553298,
+        "total_ms_p75": 17.9116334499542,
+        "total_ms_mean": 17.171765606796633,
+        "phase1_ms_example": 9.815269723328244,
+        "phase2_ms_example": 9.380737413466637,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      },
+      {
+        "n_ranks": 16,
+        "scope": "Node",
+        "n_nodes": 1,
+        "complete": true,
+        "hops": "local0→on_node_leaves",
+        "remote_peers_phase1": 15,
+        "total_ms_median": 12.108194586728086,
+        "total_ms_p25": 11.187985336887053,
+        "total_ms_p75": 12.596829598283268,
+        "total_ms_mean": 12.034437298456787,
+        "phase1_ms_example": 6.753750415820537,
+        "phase2_ms_example": 4.662814998197911,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      },
+      {
+        "n_ranks": 16,
+        "scope": "Coordinator",
+        "n_nodes": 1,
+        "complete": true,
+        "hops": "coord→node_aggs→leaves",
+        "remote_peers_phase1": 0,
+        "total_ms_median": 12.155520439001858,
+        "total_ms_p25": 11.284096735082212,
+        "total_ms_p75": 12.79952454048591,
+        "total_ms_mean": 12.165780802510094,
+        "phase1_ms_example": 7.568513423606466,
+        "phase2_ms_example": 9.180405161059012,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      },
+      {
+        "n_ranks": 32,
+        "scope": "Local",
+        "n_nodes": 2,
+        "complete": false,
+        "hops": "local_only",
+        "remote_peers_phase1": 0,
+        "total_ms_median": 0.65,
+        "total_ms_p25": 0.65,
+        "total_ms_p75": 0.65,
+        "total_ms_mean": 0.65,
+        "phase1_ms_example": 0.15,
+        "phase2_ms_example": 0.0,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      },
+      {
+        "n_ranks": 32,
+        "scope": "Flat",
+        "n_nodes": 2,
+        "complete": true,
+        "hops": "coord→all_peers",
+        "remote_peers_phase1": 31,
+        "total_ms_median": 18.489895074024695,
+        "total_ms_p25": 17.68264313281535,
+        "total_ms_p75": 20.281322371726613,
+        "total_ms_mean": 18.800118271774444,
+        "phase1_ms_example": 14.05776390623116,
+        "phase2_ms_example": 5.723558465495453,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      },
+      {
+        "n_ranks": 32,
+        "scope": "Node",
+        "n_nodes": 2,
+        "complete": false,
+        "hops": "local0→on_node_leaves",
+        "remote_peers_phase1": 15,
+        "total_ms_median": 7.132423655523824,
+        "total_ms_p25": 6.557661460090516,
+        "total_ms_p75": 7.922649611233512,
+        "total_ms_mean": 7.266505124548922,
+        "phase1_ms_example": 5.455280899269269,
+        "phase2_ms_example": 0.0,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      },
+      {
+        "n_ranks": 32,
+        "scope": "Coordinator",
+        "n_nodes": 2,
+        "complete": true,
+        "hops": "coord→node_aggs→leaves",
+        "remote_peers_phase1": 1,
+        "total_ms_median": 19.41080608859874,
+        "total_ms_p25": 18.00754454540201,
+        "total_ms_p75": 21.253967228992455,
+        "total_ms_mean": 19.356010423762218,
+        "phase1_ms_example": 12.411482367404824,
+        "phase2_ms_example": 5.642143466740161,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      },
+      {
+        "n_ranks": 64,
+        "scope": "Local",
+        "n_nodes": 4,
+        "complete": false,
+        "hops": "local_only",
+        "remote_peers_phase1": 0,
+        "total_ms_median": 0.65,
+        "total_ms_p25": 0.65,
+        "total_ms_p75": 0.65,
+        "total_ms_mean": 0.65,
+        "phase1_ms_example": 0.15,
+        "phase2_ms_example": 0.0,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      },
+      {
+        "n_ranks": 64,
+        "scope": "Flat",
+        "n_nodes": 4,
+        "complete": true,
+        "hops": "coord→all_peers",
+        "remote_peers_phase1": 63,
+        "total_ms_median": 19.568743358260154,
+        "total_ms_p25": 18.60821157062361,
+        "total_ms_p75": 21.280068609921972,
+        "total_ms_mean": 19.879110191527808,
+        "phase1_ms_example": 14.579299126509055,
+        "phase2_ms_example": 6.781448034995831,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      },
+      {
+        "n_ranks": 64,
+        "scope": "Node",
+        "n_nodes": 4,
+        "complete": false,
+        "hops": "local0→on_node_leaves",
+        "remote_peers_phase1": 15,
+        "total_ms_median": 6.660000948358769,
+        "total_ms_p25": 6.450908704042734,
+        "total_ms_p75": 7.877538673104466,
+        "total_ms_mean": 7.101629026339332,
+        "phase1_ms_example": 6.01111969982878,
+        "phase2_ms_example": 0.0,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      },
+      {
+        "n_ranks": 64,
+        "scope": "Coordinator",
+        "n_nodes": 4,
+        "complete": true,
+        "hops": "coord→node_aggs→leaves",
+        "remote_peers_phase1": 3,
+        "total_ms_median": 21.497218092604353,
+        "total_ms_p25": 19.546343761579244,
+        "total_ms_p75": 24.041016765998783,
+        "total_ms_mean": 21.96604162135252,
+        "phase1_ms_example": 16.147955537985805,
+        "phase2_ms_example": 4.699480236322462,
+        "coord_ms": 0.5,
+        "n_trials": 21
+      }
+    ],
+    "highlights": [
+      {
+        "n_ranks": 8,
+        "best_scope": "Node",
+        "best_ms": 11.186183150392619,
+        "flat_ms": 15.884255451342815,
+        "coord_ms": 11.08750957395316,
+        "flat_peers": 7,
+        "coord_peers": 0
+      },
+      {
+        "n_ranks": 16,
+        "best_scope": "Node",
+        "best_ms": 12.108194586728086,
+        "flat_ms": 16.866649441718952,
+        "coord_ms": 12.155520439001858,
+        "flat_peers": 15,
+        "coord_peers": 0
+      },
+      {
+        "n_ranks": 32,
+        "best_scope": "Coordinator",
+        "best_ms": 19.41080608859874,
+        "flat_ms": 18.489895074024695,
+        "coord_ms": 19.41080608859874,
+        "flat_peers": 31,
+        "coord_peers": 1
+      },
+      {
+        "n_ranks": 64,
+        "best_scope": "Coordinator",
+        "best_ms": 21.497218092604353,
+        "flat_ms": 19.568743358260154,
+        "coord_ms": 21.497218092604353,
+        "flat_peers": 63,
+        "coord_peers": 3
+      }
+    ],
+    "switch_points": {
+      "per_n": {
+        "8": {
+          "recommended_scope": "Node",
+          "recommended_ms_median": 11.186183150392619,
+          "recommended_remote_peers": 7,
+          "latency_optimal_scope": "Coordinator",
+          "latency_optimal_ms_median": 11.08750957395316,
+          "alternatives": [
+            {
+              "scope": "Coordinator",
+              "total_ms_median": 11.08750957395316,
+              "remote_peers_phase1": 0
+            },
+            {
+              "scope": "Node",
+              "total_ms_median": 11.186183150392619,
+              "remote_peers_phase1": 7
+            },
+            {
+              "scope": "Flat",
+              "total_ms_median": 15.884255451342815,
+              "remote_peers_phase1": 7
+            }
+          ]
+        },
+        "16": {
+          "recommended_scope": "Node",
+          "recommended_ms_median": 12.108194586728086,
+          "recommended_remote_peers": 15,
+          "latency_optimal_scope": "Node",
+          "latency_optimal_ms_median": 12.108194586728086,
+          "alternatives": [
+            {
+              "scope": "Node",
+              "total_ms_median": 12.108194586728086,
+              "remote_peers_phase1": 15
+            },
+            {
+              "scope": "Coordinator",
+              "total_ms_median": 12.155520439001858,
+              "remote_peers_phase1": 0
+            },
+            {
+              "scope": "Flat",
+              "total_ms_median": 16.866649441718952,
+              "remote_peers_phase1": 15
+            }
+          ]
+        },
+        "32": {
+          "recommended_scope": "Coordinator",
+          "recommended_ms_median": 19.41080608859874,
+          "recommended_remote_peers": 1,
+          "latency_optimal_scope": "Flat",
+          "latency_optimal_ms_median": 18.489895074024695,
+          "alternatives": [
+            {
+              "scope": "Flat",
+              "total_ms_median": 18.489895074024695,
+              "remote_peers_phase1": 31
+            },
+            {
+              "scope": "Coordinator",
+              "total_ms_median": 19.41080608859874,
+              "remote_peers_phase1": 1
+            }
+          ]
+        },
+        "64": {
+          "recommended_scope": "Coordinator",
+          "recommended_ms_median": 21.497218092604353,
+          "recommended_remote_peers": 3,
+          "latency_optimal_scope": "Flat",
+          "latency_optimal_ms_median": 19.568743358260154,
+          "alternatives": [
+            {
+              "scope": "Flat",
+              "total_ms_median": 19.568743358260154,
+              "remote_peers_phase1": 63
+            },
+            {
+              "scope": "Coordinator",
+              "total_ms_median": 21.497218092604353,
+              "remote_peers_phase1": 3
+            }
+          ]
+        }
+      },
+      "switch_flat_to_coordinator_at_n": 17,
+      "latency_cross_flat_to_coordinator_at_n": 8,
+      "node_scope_max_n": 16,
+      "local_scope_max_n": 1,
+      "rule": "设计默认：N=1→Local；单机 N≤16→Node；跨机 N≥17→Coordinator。延迟交叉（coord_ms<flat_ms 的最小 N）仅作对照；N≤64 且并发=128 时 Flat 常仍单波、墙钟可略优，但连接数 O(N) vs Coordinator O(nodes)，跨机/万卡必须 Coordinator。",
+      "flat_vs_coordinator": [
+        {
+          "n_ranks": 8,
+          "flat_ms": 15.884255451342815,
+          "coord_ms": 11.08750957395316,
+          "coord_wins_latency": true,
+          "coord_peer_saving": 7,
+          "flat_peers": 7,
+          "coord_peers": 0
+        },
+        {
+          "n_ranks": 16,
+          "flat_ms": 16.866649441718952,
+          "coord_ms": 12.155520439001858,
+          "coord_wins_latency": true,
+          "coord_peer_saving": 15,
+          "flat_peers": 15,
+          "coord_peers": 0
+        },
+        {
+          "n_ranks": 32,
+          "flat_ms": 18.489895074024695,
+          "coord_ms": 19.41080608859874,
+          "coord_wins_latency": false,
+          "coord_peer_saving": 30,
+          "flat_peers": 31,
+          "coord_peers": 1
+        },
+        {
+          "n_ranks": 64,
+          "flat_ms": 19.568743358260154,
+          "coord_ms": 21.497218092604353,
+          "coord_wins_latency": false,
+          "coord_peer_saving": 60,
+          "flat_peers": 63,
+          "coord_peers": 3
+        }
+      ]
+    },
+    "local_http_microbench": {
+      "n_peers": 15,
+      "concurrency": 128,
+      "payload_bytes": 208,
+      "trials": 11,
+      "latency_ms": {
+        "median": 4.238166000000001,
+        "p25": 4.14175,
+        "p75": 4.529167000000001,
+        "mean": 4.624572090909092,
+        "min": 4.064458000000007,
+        "max": 6.527333999999996
+      },
+      "samples_ms": [
+        6.401667,
+        6.527333999999996,
+        4.529167000000001,
+        4.2605,
+        4.2017089999999975,
+        4.272625000000002,
+        4.068042000000008,
+        4.14175,
+        4.064458000000007,
+        4.1648749999999986,
+        4.238166000000001
+      ],
+      "flat_localhost_curve": [
+        {
+          "n_peers": 7,
+          "latency_ms_median": 2.0757499999994877
+        },
+        {
+          "n_peers": 15,
+          "latency_ms_median": 7.685000000000386
+        },
+        {
+          "n_peers": 31,
+          "latency_ms_median": 9.551166999999694
+        },
+        {
+          "n_peers": 63,
+          "latency_ms_median": 16.212540999998026
+        }
+      ]
+    },
+    "figure": "results/ascend-ais/param_calib/4B_fanout_latency/fig_latency_vs_n.svg"
+  },
+  "supports_design": "延迟-基数曲线：N=8 design=Node@11.19ms (flat=15.88, coord=11.09, peers 7→0)；N=16 design=Node@12.11ms (flat=16.87, coord=12.16, peers 15→0)；N=32 design=Coordinator@19.41ms (flat=18.49, coord=19.41, peers 31→1)；N=64 design=Coordinator@21.50ms (flat=19.57, coord=21.50, peers 63→3)。设计切换 Flat/跨机→Coordinator @ N≥17；延迟交叉 coord<flat @ N=8；跨机以连接数 O(nodes) 为准选 Coordinator，勿因 N≤64 毫秒差退回 Flat。",
+  "gaps": [
+    "未跑 live 多机 probing-injected cluster query（grj 仅 2×16 空闲壳，无现成 64 卡注入作业；禁碰 yysong-master）",
+    "N=32/64 延迟为 simulated_network（跳数+并发波+straggler），非伪造的 64 卡实测 jsonl",
+    "本机 HTTP 微基准只校准 loopback 栈/并发，不替代跨 pod RTT"
+  ],
+  "scored_at": "2026-07-27T06:43:01",
+  "blocked": false
+}

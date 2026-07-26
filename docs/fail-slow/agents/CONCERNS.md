@@ -4,6 +4,14 @@
 
 ---
 
+## 0. 编 Probing wheel 别在集群下工具链
+
+**会反复踩**：pod 内 `rustup toolchain install` / `curl static.rust-lang.org` 极慢或半残（`Missing manifest`）。  
+**正确**：本机 Clash → 文件摆渡（whl 或完整 toolchain）；禁止删 `RUSTUP_HOME` 再装。  
+细则：[**`BUILD_WHEEL.md`**](BUILD_WHEEL.md)。`install_probing_wheel_on_pod.sh` 缺 rustc → 直接 FAIL，不得静默公网安装。（2026-07-26 P-FIX 又踩一次。）
+
+---
+
 ## 1. 运行资源与冲突
 
 ### 同时大概多少卡、几个 Agent？

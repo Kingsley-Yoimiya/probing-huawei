@@ -1,0 +1,16 @@
+WARN: probing-test scripts/fail-slow not found; export FS_SHARED_SCRIPTS=/path/to/probing-test/scripts/fail-slow
+[fs-ascend] FS_HUAWEI_ROOT=/Users/yinjinrun/Codespace/myportal/project/probing-huawei
+[fs-ascend] FS_SHARED_SCRIPTS=<unset>
+[fs-ascend] LOCAL_RESULT_ROOT_BASE=/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais
+[fs-ascend] POD_RESULTS=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais  AFS_HOME=/afs-a3-weight-share/yinjinrun.p-huawei
+[fs-ascend] KUBECONFIG=/Users/yinjinrun/.kube/config-vc-a3-241ceshi-songyiyang.yaml
+[fs-ascend] JUMP=ais-cf3e61a5 KUBECTL=/root/.cache/volcano/kubectl/kubectl
+[fs-ascend] FS_RUN_MODE=hold-exec HOLD=yysong PREFIX=yjr-as
+[fs-ascend] note: myportal NOT required; override LOCAL_RESULT_ROOT_BASE / FS_SHARED_SCRIPTS as needed
+[3a] PARENT=20260727_014151-3a-p3-sw-a-loud rates=[1.0] resident=0 SET_AT=100
+[3a] out=/Users/yinjinrun/Codespace/myportal/results/ascend-ais/param_calib/3A_upgrade_rate/20260727_014151-3a-p3-sw-a-loud
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 90
+OWNER_BUSY
+2874876 tar -cf - P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/set_upgrade.log P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/node_0.done P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/node_0.log P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/injection.log P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/volume_at_upgrade.txt P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/probing P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/ranks probing_data/2822045/cold/82d49c-000001.memc probing_data/2822045/python.torch_trace probing_data/2822038/cold/064df5-000001.memc probing_data/2822038/python.torch_trace probing_data/2822040/cold/186fb7-000001.memc probing_data/2822040/python.torch_trace probing_data/2822034/cold/fcd4fd-000001.memc probing_data/2822034/python.torch_trace probing_data/2822037/cold/b16d35-000001.memc probing_data/2822037/python.torch_trace probing_data/2822048/cold/06eb61-000001.memc probing_data/2822048/python.torch_trace probing_data/2822041/cold/2c9330-000001.memc probing_data/2822041/python.torch_trace probing_data/2822036/cold/2b22ae-000001.memc probing_data/2822036/python.torch_trace probing_data/2822035/cold/b01bb8-000001.memc probing_data/2822035/python.torch_trace probing_data/2822039/cold/bb115e-000001.memc probing_data/2822039/python.torch_trace probing_data/2822043/cold/85830b-000001.memc probing_data/2822043/python.torch_trace probing_data/2822046/cold/cb6443-000001.memc probing_data/2822046/python.torch_trace probing_data/2822042/cold/3935c2-000001.memc probing_data/2822042/python.torch_trace probing_data/2822047/cold/64f793-000001.memc probing_data/2822047/python.torch_trace probing_data/2822044/cold/cfd304-000001.memc probing_data/2822044/python.torch_trace probing_data/2822049/cold/23eed2-000001.memc probing_data/2822049/python.torch_trace
+[3a] YIELD — owner training present before rate=1.0

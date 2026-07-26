@@ -1,0 +1,288 @@
+{
+  "param": "trace_window_W_star",
+  "exp_id": "2A_trace_window",
+  "swept_range": [
+    10,
+    25,
+    50,
+    100,
+    200,
+    "full"
+  ],
+  "chosen_value": "100",
+  "choose_rule": "max(W*_case) over OK cases (conservative cover)",
+  "per_case": {
+    "P1-HW-B": {
+      "W_star": "100",
+      "status": "OK",
+      "parent_run": "20260726_001353-pillar-c-p1-hw-b-loud",
+      "primary": "torch_trace.duration_spike(hbm_pressure)",
+      "anchor_step": 300,
+      "torch_trace_path": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/_prep/param_calib_2a/offline_mirror/20260726_001353-pillar-c-p1-hw-b-loud/full_fidelity/probing_data/596522/python.torch_trace",
+      "rss_aligned": null
+    },
+    "P1-SW-C": {
+      "W_star": "100",
+      "status": "OK",
+      "parent_run": "20260726_012627-pillar-c-p1-sw-c-loud",
+      "primary": "torch_trace.duration_spike",
+      "anchor_step": 300,
+      "torch_trace_path": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/_prep/param_calib_2a/offline_mirror/20260726_012627-pillar-c-p1-sw-c-loud/full_fidelity/probing_data/1174526/python.torch_trace",
+      "rss_aligned": null
+    }
+  },
+  "ground_truth_source": {
+    "inject_window": [
+      100,
+      300
+    ],
+    "victim_local_rank": 7,
+    "onset_victim_layer": "from inject recipe / ledger",
+    "C0": "same-case health baseline (FPR context; not used for W* truncate)",
+    "C1_C2": "recall/D-level context; W* uses collect-side evidence only"
+  },
+  "controls": {
+    "anchor": "inject_stop=300",
+    "independent_var": "W only",
+    "forbid": [
+      "training step_ms same-D",
+      "cold MiB as attribution",
+      "v2 W* as default"
+    ]
+  },
+  "supports_design": "对已 OK 的 case，W* 分别为 P1-HW-B=100, P1-SW-C=100。设计默认取 **max(W*)=100**：保证最苛刻 case 仍够归因；更短窗会在至少一个 case 上丢掉尖刺/RSS 抬升证据。",
+  "windows_detail": [
+    {
+      "case": "P1-HW-B",
+      "status": "OK",
+      "parent_run": "20260726_001353-pillar-c-p1-hw-b-loud",
+      "victim_pid": "596522",
+      "torch_trace_path": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/_prep/param_calib_2a/offline_mirror/20260726_001353-pillar-c-p1-hw-b-loud/full_fidelity/probing_data/596522/python.torch_trace",
+      "memt_meta": {
+        "path": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/_prep/param_calib_2a/offline_mirror/20260726_001353-pillar-c-p1-hw-b-loud/full_fidelity/probing_data/596522/python.torch_trace",
+        "ver": 3,
+        "ncols": 19,
+        "nchunks": 8,
+        "chunk_size": 2500000,
+        "write_chunk": 5,
+        "creator_pid": 596522,
+        "chunks_recycled": 0,
+        "rows_overwritten": 0,
+        "ts_col": 1,
+        "n_rows": 79353,
+        "col_names": [
+          "timestamp",
+          "micro_step",
+          "local_step",
+          "global_step",
+          "micro_batches",
+          "seq",
+          "module",
+          "stage",
+          "allocated",
+          "max_allocated",
+          "cached",
+          "max_cached",
+          "time_offset",
+          "duration",
+          "allocated_delta",
+          "max_allocated_delta",
+          "rank",
+          "world_size",
+          "role"
+        ]
+      },
+      "step_min": 0,
+      "step_max": 545,
+      "anchor_step": 300,
+      "inject_onset": 100,
+      "inject_stop": 300,
+      "n_unique_steps": 546,
+      "n_rows": 79353,
+      "ring_rows_overwritten": 0,
+      "ring_chunks_recycled": 0,
+      "rss_samples": 0,
+      "rss_aligned": null,
+      "rss_align_note": null,
+      "c2_rss_rise_kb": null,
+      "W_star": "100",
+      "windows": [
+        {
+          "W": "10",
+          "enough": false,
+          "evidence": "alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=291..300;no_spike:top_step=291:dur_s=0.2206:med=0.2004:n_steps=10",
+          "primary": "torch_trace.max_allocated_ramp|duration_spike",
+          "n_tt_rows": 1456,
+          "n_tt_steps": 10,
+          "anchor_step": 300
+        },
+        {
+          "W": "25",
+          "enough": false,
+          "evidence": "alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=276..300;no_spike:top_step=291:dur_s=0.2206:med=0.2006:n_steps=25",
+          "primary": "torch_trace.max_allocated_ramp|duration_spike",
+          "n_tt_rows": 3640,
+          "n_tt_steps": 25,
+          "anchor_step": 300
+        },
+        {
+          "W": "50",
+          "enough": false,
+          "evidence": "alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=251..300;no_spike:top_step=291:dur_s=0.2206:med=0.1992:n_steps=50",
+          "primary": "torch_trace.max_allocated_ramp|duration_spike",
+          "n_tt_rows": 7280,
+          "n_tt_steps": 50,
+          "anchor_step": 300
+        },
+        {
+          "W": "100",
+          "enough": true,
+          "evidence": "alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=201..300;fallback=torch_trace.duration_spike:step=201:dur_s=0.8641:med=0.1984:module=DistributedDataParallel",
+          "primary": "torch_trace.duration_spike(hbm_pressure)",
+          "n_tt_rows": 14560,
+          "n_tt_steps": 100,
+          "anchor_step": 300
+        },
+        {
+          "W": "200",
+          "enough": true,
+          "evidence": "alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=101..300;fallback=torch_trace.duration_spike:step=201:dur_s=0.8641:med=0.1989:module=DistributedDataParallel",
+          "primary": "torch_trace.duration_spike(hbm_pressure)",
+          "n_tt_rows": 29120,
+          "n_tt_steps": 200,
+          "anchor_step": 300
+        },
+        {
+          "W": "full",
+          "enough": true,
+          "evidence": "alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=100..300;fallback=torch_trace.duration_spike:step=201:dur_s=0.8641:med=0.1989:module=DistributedDataParallel",
+          "primary": "torch_trace.duration_spike(hbm_pressure)",
+          "n_tt_rows": 43681,
+          "n_tt_steps": 201,
+          "anchor_step": 300
+        }
+      ],
+      "method": {
+        "table": "python.torch_trace (MEMT ring) + case primary evidence",
+        "truncate": "anchor=inject_stop(300); keep local_step in (anchor-W, anchor]; full = all steps <= anchor; P1-HW-B only scores steps>=inject_onset",
+        "forbid": "training step_ms / score_dlevel_offline buried metrics"
+      }
+    },
+    {
+      "case": "P1-SW-C",
+      "status": "OK",
+      "parent_run": "20260726_012627-pillar-c-p1-sw-c-loud",
+      "victim_pid": "1174526",
+      "torch_trace_path": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/_prep/param_calib_2a/offline_mirror/20260726_012627-pillar-c-p1-sw-c-loud/full_fidelity/probing_data/1174526/python.torch_trace",
+      "memt_meta": {
+        "path": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/_prep/param_calib_2a/offline_mirror/20260726_012627-pillar-c-p1-sw-c-loud/full_fidelity/probing_data/1174526/python.torch_trace",
+        "ver": 3,
+        "ncols": 19,
+        "nchunks": 8,
+        "chunk_size": 2500000,
+        "write_chunk": 5,
+        "creator_pid": 1174526,
+        "chunks_recycled": 0,
+        "rows_overwritten": 0,
+        "ts_col": 1,
+        "n_rows": 79353,
+        "col_names": [
+          "timestamp",
+          "micro_step",
+          "local_step",
+          "global_step",
+          "micro_batches",
+          "seq",
+          "module",
+          "stage",
+          "allocated",
+          "max_allocated",
+          "cached",
+          "max_cached",
+          "time_offset",
+          "duration",
+          "allocated_delta",
+          "max_allocated_delta",
+          "rank",
+          "world_size",
+          "role"
+        ]
+      },
+      "step_min": 0,
+      "step_max": 545,
+      "anchor_step": 300,
+      "inject_onset": 100,
+      "inject_stop": 300,
+      "n_unique_steps": 546,
+      "n_rows": 79353,
+      "ring_rows_overwritten": 0,
+      "ring_chunks_recycled": 0,
+      "rss_samples": 0,
+      "rss_aligned": null,
+      "rss_align_note": null,
+      "c2_rss_rise_kb": null,
+      "W_star": "100",
+      "windows": [
+        {
+          "W": "10",
+          "enough": false,
+          "evidence": "no_spike:top_step=296:dur_s=0.2056:med=0.1993:n_steps=10",
+          "primary": "torch_trace.duration_spike",
+          "n_tt_rows": 1456,
+          "n_tt_steps": 10,
+          "anchor_step": 300
+        },
+        {
+          "W": "25",
+          "enough": false,
+          "evidence": "no_spike:top_step=286:dur_s=0.2093:med=0.1991:n_steps=25",
+          "primary": "torch_trace.duration_spike",
+          "n_tt_rows": 3640,
+          "n_tt_steps": 25,
+          "anchor_step": 300
+        },
+        {
+          "W": "50",
+          "enough": false,
+          "evidence": "no_spike:top_step=286:dur_s=0.2093:med=0.1994:n_steps=50",
+          "primary": "torch_trace.duration_spike",
+          "n_tt_rows": 7280,
+          "n_tt_steps": 50,
+          "anchor_step": 300
+        },
+        {
+          "W": "100",
+          "enough": true,
+          "evidence": "torch_trace.duration_spike:step=238:dur_s=0.7115:med=0.1994:module=AdamW",
+          "primary": "torch_trace.duration_spike",
+          "n_tt_rows": 14560,
+          "n_tt_steps": 100,
+          "anchor_step": 300
+        },
+        {
+          "W": "200",
+          "enough": true,
+          "evidence": "torch_trace.duration_spike:step=238:dur_s=0.7115:med=0.2017:module=AdamW",
+          "primary": "torch_trace.duration_spike",
+          "n_tt_rows": 29120,
+          "n_tt_steps": 200,
+          "anchor_step": 300
+        },
+        {
+          "W": "full",
+          "enough": true,
+          "evidence": "torch_trace.duration_spike:step=238:dur_s=0.7115:med=0.2004:module=AdamW",
+          "primary": "torch_trace.duration_spike",
+          "n_tt_rows": 43681,
+          "n_tt_steps": 300,
+          "anchor_step": 300
+        }
+      ],
+      "method": {
+        "table": "python.torch_trace (MEMT ring) + case primary evidence",
+        "truncate": "anchor=inject_stop(300); keep local_step in (anchor-W, anchor]; full = all steps <= anchor; P1-HW-B only scores steps>=inject_onset",
+        "forbid": "training step_ms / score_dlevel_offline buried metrics"
+      }
+    }
+  ]
+}

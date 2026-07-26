@@ -1,0 +1,163 @@
+{
+  "param": "trace_window_W_star",
+  "exp_id": "2A_trace_window",
+  "swept_range": [
+    10,
+    25,
+    50,
+    100,
+    200,
+    "full"
+  ],
+  "chosen_value": "10",
+  "choose_rule": "max(W*_case) over OK cases (conservative cover)",
+  "per_case": {
+    "P3-SW-A": {
+      "W_star": "10",
+      "status": "OK",
+      "parent_run": "20260727_004715-2a-p3-sw-a-loud",
+      "primary": "cpu.utilization_rss",
+      "anchor_step": 247,
+      "torch_trace_path": "/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/param_calib/2A_trace_window/20260727_004715-2a-p3-sw-a-loud/full_fidelity/probing_data/2057356/python.torch_trace",
+      "rss_aligned": true
+    }
+  },
+  "ground_truth_source": {
+    "inject_window": [
+      100,
+      300
+    ],
+    "victim_local_rank": 7,
+    "onset_victim_layer": "from inject recipe / ledger",
+    "C0": "same-case health baseline (FPR context; not used for W* truncate)",
+    "C1_C2": "recall/D-level context; W* uses collect-side evidence only"
+  },
+  "controls": {
+    "anchor": "inject_stop=300",
+    "independent_var": "W only",
+    "forbid": [
+      "training step_ms same-D",
+      "cold MiB as attribution",
+      "v2 W* as default"
+    ]
+  },
+  "supports_design": "对已 OK 的 case，W* 分别为 P3-SW-A=10。设计默认取 **max(W*)=10**：保证最苛刻 case 仍够归因；更短窗会在至少一个 case 上丢掉尖刺/RSS 抬升证据。",
+  "windows_detail": [
+    {
+      "case": "P3-SW-A",
+      "status": "OK",
+      "parent_run": "20260727_004715-2a-p3-sw-a-loud",
+      "victim_pid": "2057356",
+      "torch_trace_path": "/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/param_calib/2A_trace_window/20260727_004715-2a-p3-sw-a-loud/full_fidelity/probing_data/2057356/python.torch_trace",
+      "memt_meta": {
+        "path": "/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/param_calib/2A_trace_window/20260727_004715-2a-p3-sw-a-loud/full_fidelity/probing_data/2057356/python.torch_trace",
+        "ver": 3,
+        "ncols": 19,
+        "nchunks": 8,
+        "chunk_size": 2500000,
+        "write_chunk": 2,
+        "creator_pid": 2057356,
+        "chunks_recycled": 0,
+        "rows_overwritten": 0,
+        "ts_col": 1,
+        "n_rows": 35900,
+        "col_names": [
+          "timestamp",
+          "micro_step",
+          "local_step",
+          "global_step",
+          "micro_batches",
+          "seq",
+          "module",
+          "stage",
+          "allocated",
+          "max_allocated",
+          "cached",
+          "max_cached",
+          "time_offset",
+          "duration",
+          "allocated_delta",
+          "max_allocated_delta",
+          "rank",
+          "world_size",
+          "role"
+        ]
+      },
+      "step_min": 0,
+      "step_max": 247,
+      "anchor_step": 247,
+      "inject_onset": 100,
+      "inject_stop": 300,
+      "n_unique_steps": 248,
+      "n_rows": 35900,
+      "ring_rows_overwritten": 0,
+      "ring_chunks_recycled": 0,
+      "rss_samples": 2401,
+      "rss_aligned": true,
+      "rss_align_note": "aligned_n=1638",
+      "c2_rss_rise_kb": null,
+      "W_star": "10",
+      "windows": [
+        {
+          "W": "10",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=240592:max_kb=2499616:n=123;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 1320,
+          "n_tt_steps": 10,
+          "anchor_step": 247
+        },
+        {
+          "W": "25",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=241360:max_kb=2499616:n=321;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 3504,
+          "n_tt_steps": 25,
+          "anchor_step": 247
+        },
+        {
+          "W": "50",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=241748:max_kb=2499656:n=645;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 7144,
+          "n_tt_steps": 50,
+          "anchor_step": 247
+        },
+        {
+          "W": "100",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=245644:max_kb=2499656:n=1304;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 14424,
+          "n_tt_steps": 100,
+          "anchor_step": 247
+        },
+        {
+          "W": "200",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=252832:max_kb=2499656:n=1638;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 28984,
+          "n_tt_steps": 200,
+          "anchor_step": 247
+        },
+        {
+          "W": "full",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=252832:max_kb=2499656:n=1638;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 35900,
+          "n_tt_steps": 248,
+          "anchor_step": 247
+        }
+      ],
+      "method": {
+        "table": "python.torch_trace (MEMT ring) + case primary evidence",
+        "truncate": "anchor=inject_stop(300); keep local_step in (anchor-W, anchor]; full = all steps <= anchor; P1-HW-B only scores steps>=inject_onset",
+        "forbid": "training step_ms / score_dlevel_offline buried metrics"
+      }
+    }
+  ]
+}

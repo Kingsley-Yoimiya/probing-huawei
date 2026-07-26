@@ -1,0 +1,190 @@
+{
+  "param": "resident_preagg_policy",
+  "exp_id": "2C_local_vs_preagg",
+  "status": "DONE",
+  "mode": "offline_harness_reuse_4A4B",
+  "harness": "scripts/fail-slow/param_calib/2c_local_vs_preagg.py",
+  "upstream": [
+    "param_calib/4A_federated_denoise/",
+    "param_calib/4B_fanout_latency/",
+    "param_calib/2B_ring_capacity/",
+    "param_calib/2A_trace_window/"
+  ],
+  "swept_range": {
+    "resident_preagg": [
+      "off",
+      "on"
+    ],
+    "preagg_interval_steps_sensitivity": [
+      1,
+      10,
+      50,
+      100
+    ]
+  },
+  "chosen_value": {
+    "resident_preagg": "off",
+    "policy": "local_retain_trigger_then_aggregate",
+    "benefit_near_zero": true,
+    "cost_positive": true,
+    "preagg_cost_bytes": 1665600.0,
+    "preagg_cost_wall_s": 3.3768752079102686,
+    "preagg_overhead_vs_train": 0.04116069913501159,
+    "local_cost_bytes": 0,
+    "local_cost_wall_s": 0.0,
+    "benefit_latency_saved_ms": 0.0,
+    "optimistic_phase1_save_frac_ms": 0.5577834389301434
+  },
+  "choose_rule": "单自变量 on/off；主对照 interval=1 每步 SUMMARY fan-out。若常驻收益≈0 且预聚开销>0 → 选 local_retain_trigger_then_aggregate。",
+  "controls": {
+    "n_ranks": 16,
+    "victim": 7,
+    "inject_window": [
+      100,
+      300
+    ],
+    "dose": "loud",
+    "dose_theta": 1.16,
+    "cross_rank_theta": 1.2,
+    "worst_fraction_phi": 0.4,
+    "W_star": 100,
+    "fanout_scope": "Node",
+    "summary_bytes_per_rank": 208.2,
+    "phase1_ms_per_round": 6.753750415820537,
+    "aggregation_at_trigger": "federated_SUMMARY_then_suspect_DETAIL",
+    "forbid": [
+      "multi-IV mix",
+      "training step_ms as volume proxy",
+      "claim preagg replaces trigger DETAIL/upgrade",
+      "open 3C unless free",
+      "touch yysong-master / a3 / song AFS"
+    ]
+  },
+  "ground_truth_source": {
+    "primary_case": "P3-SW-A",
+    "primary_run": "20260725_012957-yjr-as-c-p3-sw-a-loud",
+    "primary_arm": "C0",
+    "resident_query_model": "skills_on_trigger_only",
+    "reused": {
+      "summary_bytes_per_rank": 208.2,
+      "phase1_ms_4B_node_n16": 6.753750415820537,
+      "trigger_ms_4B_node_n16": 12.108194586728086,
+      "trigger_bytes_4A": 2532459,
+      "volume_ratio_4A": 0.0626
+    }
+  },
+  "measurements": {
+    "horizon": {
+      "step_lo": 0,
+      "step_hi": 499,
+      "n_steps": 500,
+      "step_ms_median_steady": 164.08249999999998,
+      "train_wall_s": 82.04124999999999,
+      "n_resident_diagnostic_queries": 0,
+      "n_trigger_queries": 1,
+      "inject_window": [
+        100,
+        300
+      ]
+    },
+    "arms": [
+      {
+        "arm": "local_retain (preagg=off)",
+        "resident_preagg": "off",
+        "resident_bytes": 0,
+        "resident_wall_s": 0.0,
+        "trigger_bytes": 2532459,
+        "trigger_ms": 12.108194586728086,
+        "benefit_latency_saved_ms": 0.0
+      },
+      {
+        "arm": "resident_preagg (on, interval=1)",
+        "resident_preagg": "on",
+        "resident_bytes": 1665600.0,
+        "resident_wall_s": 3.3768752079102686,
+        "trigger_bytes": 2532459,
+        "trigger_ms": 12.108194586728086,
+        "benefit_latency_saved_ms": 0.0
+      }
+    ],
+    "cost_vs_interval": [
+      {
+        "interval_steps": 1,
+        "n_rounds": 500,
+        "bytes_total": 1665600.0,
+        "bytes_mib": 1.58843994140625,
+        "wall_ms": 3376.8752079102687,
+        "wall_s": 3.3768752079102686,
+        "overhead_vs_train_wall": 0.04116069913501159,
+        "bytes_per_step_amortized": 3331.2
+      },
+      {
+        "interval_steps": 10,
+        "n_rounds": 50,
+        "bytes_total": 166560.0,
+        "bytes_mib": 0.158843994140625,
+        "wall_ms": 337.6875207910269,
+        "wall_s": 0.3376875207910269,
+        "overhead_vs_train_wall": 0.004116069913501158,
+        "bytes_per_step_amortized": 333.12
+      },
+      {
+        "interval_steps": 50,
+        "n_rounds": 10,
+        "bytes_total": 33312.0,
+        "bytes_mib": 0.031768798828125,
+        "wall_ms": 67.53750415820537,
+        "wall_s": 0.06753750415820536,
+        "overhead_vs_train_wall": 0.0008232139827002316,
+        "bytes_per_step_amortized": 66.624
+      },
+      {
+        "interval_steps": 100,
+        "n_rounds": 5,
+        "bytes_total": 16656.0,
+        "bytes_mib": 0.0158843994140625,
+        "wall_ms": 33.76875207910268,
+        "wall_s": 0.03376875207910268,
+        "overhead_vs_train_wall": 0.0004116069913501158,
+        "bytes_per_step_amortized": 33.312
+      }
+    ],
+    "benefit": {
+      "resident_queries_answered_by_cache": 0,
+      "latency_saved_ms_resident": 0.0,
+      "attribution_benefit_d_level": 0.0,
+      "note": "常驻期无诊断查询；触发后 W* DETAIL+升详必须现拉，陈旧预聚不能替代",
+      "optimistic_trigger_phase1_save_ms": 6.753750415820537,
+      "optimistic_trigger_phase1_save_bytes": 3331.2,
+      "optimistic_phase1_save_fraction_of_trigger_ms": 0.5577834389301434,
+      "optimistic_phase1_save_fraction_of_trigger_bytes": 0.001315401354967642
+    },
+    "long_job": [
+      {
+        "hours": 1.0,
+        "n_steps": 21940,
+        "interval_steps": 1,
+        "preagg_bytes_mib": 69.70074462890625,
+        "preagg_wall_s": 148.1772841231026,
+        "overhead_vs_train_wall": 0.04116069913501158,
+        "local_retain_resident_bytes": 0,
+        "local_retain_resident_wall_s": 0.0
+      },
+      {
+        "hours": 8.0,
+        "n_steps": 175521,
+        "interval_steps": 1,
+        "preagg_bytes_mib": 557.6091339111327,
+        "preagg_wall_s": 1185.4250267352365,
+        "overhead_vs_train_wall": 0.04116069913501159,
+        "local_retain_resident_bytes": 0,
+        "local_retain_resident_wall_s": 0.0
+      }
+    ],
+    "note": "offline：常驻开销=现有 run 步数×④-A/④-B SUMMARY fan-out 锚点；非 live 常驻对照作业。收益按设计（触发才查）计 0。"
+  },
+  "supports_design": "常驻期预聚(每步 SUMMARY×16)开销 1626.6 KiB / 3.377s（相对训墙钟 4.12%），收益≈0（常驻诊断查询=0；触发后仍付④-A 现拉，Phase-1 乐观可省仅占触发延迟≈55.8%）。证明「留本地、触发才聚」省掉常驻聚合成本；聚合推迟到模块④。",
+  "scored_at": "2026-07-27T06:49:46",
+  "blocked": false,
+  "missing_runs": []
+}

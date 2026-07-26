@@ -1,0 +1,6 @@
+[sel] rate=0.5 start 2026-07-27T02:18:09+08:00
+[sel] rate=0.5 tar_bytes= 323772416
+[sel] rate=0.5 DONE n_tt=16 has_set=Y 2026-07-27T02:21:35+08:00
+[sel] rate=1.0 start 2026-07-27T02:21:35+08:00
+[sel] rate=1.0 tar_bytes= 325928960
+[sel] rate=1.0 DONE n_tt=16 has_set=Y 2026-07-27T02:24:49+08:00

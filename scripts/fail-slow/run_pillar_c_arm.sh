@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck disable=SC1091
 source "${ROOT}/scripts/fail-slow/env.sh"
 
-ARM="${ARM:?need ARM=full_fidelity|probing_collapse|naive_downsample|e2_rate|e4_naive|s1_mid_attach}"
+ARM="${ARM:?need ARM=full_fidelity|probing_collapse|naive_downsample|e2_rate|e3a_upgrade|e4_naive|s1_mid_attach}"
 CASE_ID="${CASE_ID:-P3-SW-A}"
 DOSE="${DOSE:-loud}"
 POD="${POD:-${FS_HOLD_PODS_C:-grj-megatron-32card-0716-worker-0}}"
@@ -16,10 +16,14 @@ NNODES="${NNODES:-1}"
 PARENT_RUN_ID="${PARENT_RUN_ID:?need PARENT_RUN_ID}"
 OUT_FAMILY="${OUT_FAMILY:-pillar_c}"
 CASE_SLUG=$(echo "$CASE_ID" | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9-')
-# e2_rate 臂目录名含 rate；e4_naive 固定 naive_cut；s1 固定 mid_attach
+# e2_rate 臂目录名含常驻 rate；e3a_upgrade 含升到的 SET rate；e4_naive 固定 naive_cut；s1 固定 mid_attach
 if [[ "$ARM" == "e2_rate" ]]; then
   RESIDENT_RATE="${RESIDENT_RATE:?need RESIDENT_RATE for ARM=e2_rate}"
   ARM_DIR="rate_${RESIDENT_RATE}"
+elif [[ "$ARM" == "e3a_upgrade" ]]; then
+  RESIDENT_RATE="${RESIDENT_RATE:-0}"
+  PILLAR_C_SET_RATE="${PILLAR_C_SET_RATE:?need PILLAR_C_SET_RATE for ARM=e3a_upgrade}"
+  ARM_DIR="upgrade_rate_${PILLAR_C_SET_RATE}"
 elif [[ "$ARM" == "e4_naive" ]]; then
   RESIDENT_RATE="${RESIDENT_RATE:-0}"
   ARM_DIR="naive_cut"
@@ -110,13 +114,21 @@ case "$ARM" in
     export PILLAR_C_SET_UPGRADE=1
     export PILLAR_C_SET_AT_STEP="${PILLAR_C_SET_AT_STEP:-250}"
     ;;
-  e2_rate)
-    # E2：常驻 rate 扫；周期小表保持 500ms；注入 onset 附近 SET↑ rate=1.0
+  e2_rate|e3a_upgrade)
+    # E2：常驻 rate 扫；③-A：常驻稀 + SET↑ 到 PILLAR_C_SET_RATE（自变量）
+    # 周期小表保持 500ms；注入 onset 附近 SET probing.torch.profiling=on,rate=<SET_RATE>
     export PROBING_GPU_SAMPLE_MS="${PROBING_GPU_SAMPLE_MS:-500}"
     export PROBING_CPU_SAMPLE_MS="${PROBING_CPU_SAMPLE_MS:-500}"
     export PROBING_TORCH_PROFILING="on,rate=${RESIDENT_RATE}"
     export PILLAR_C_SET_UPGRADE=1
     export PILLAR_C_SET_AT_STEP="${PILLAR_C_SET_AT_STEP:-100}"
+    export PILLAR_C_SET_RATE="${PILLAR_C_SET_RATE:-1.0}"
+    # ③-A 默认只升 victim，避免多 rank attach 串行卡死训
+    if [[ "$ARM" == "e3a_upgrade" ]]; then
+      export PILLAR_C_SET_SCOPE="${PILLAR_C_SET_SCOPE:-victim}"
+    else
+      export PILLAR_C_SET_SCOPE="${PILLAR_C_SET_SCOPE:-all}"
+    fi
     ;;
   e4_naive)
     # E4：=E3 动态臂去掉触发升详（禁 mid SET）；常驻 rate 默认 0
@@ -197,11 +209,11 @@ case "$CASE_ID" in
     INJECT_NOTE="inline_cube size=${CUBE_SIZE} mm=${CUBE_MM}"
     ;;
   P1-SW-C)
-    # recipes/ledger Loud：inline 2c n=1024 every=1 fallback_s=0.25
+    # recipes/ledger Loud：inline 2c n=1024 every=1；fallback 默认 0.6（torch_trace duration≥0.4s）
     INJECT_KIND="${INJECT_KIND:-2c}"
     export INLINE_2C_N="${INLINE_2C_N:-1024}"
     export INLINE_2C_EVERY="${INLINE_2C_EVERY:-1}"
-    export INLINE_2C_FALLBACK_S="${INLINE_2C_FALLBACK_S:-0.25}"
+    export INLINE_2C_FALLBACK_S="${INLINE_2C_FALLBACK_S:-0.6}"
     MODE="${MODE:-gpu_bound}"
     export MODE_OVERRIDE="${MODE}"
     COVER_TARGET="${COVER_TARGET:-D3_reuse_B_loud_20260725_121105}"
@@ -232,6 +244,7 @@ probing_torch_profiling: "${PROBING_TORCH_PROFILING}"
 probing_cold_max_total_mb: "${PROBING_COLD_MAX_TOTAL_MB:-}"
 pillar_c_set_upgrade: ${PILLAR_C_SET_UPGRADE:-0}
 pillar_c_set_at_step: ${PILLAR_C_SET_AT_STEP:-}
+pillar_c_set_rate: "${PILLAR_C_SET_RATE:-1.0}"
 probing_attach_at_step: ${PROBING_ATTACH_AT_STEP:-}
 probing_data_dir: ${PROBING_DATA_DIR}
 inject_kind: ${INJECT_KIND}
@@ -270,6 +283,12 @@ env_args=(
   "PROBING_DATA_DIR=${PROBING_DATA_DIR}"
   "PILLAR_C_SET_UPGRADE=${PILLAR_C_SET_UPGRADE:-0}"
   "PILLAR_C_SET_AT_STEP=${PILLAR_C_SET_AT_STEP:-}"
+  "PILLAR_C_SET_RATE=${PILLAR_C_SET_RATE:-1.0}"
+  "PILLAR_C_SET_SCOPE=${PILLAR_C_SET_SCOPE:-all}"
+  "PILLAR_C_LATENCY_PROBE=${PILLAR_C_LATENCY_PROBE:-0}"
+  "PILLAR_C_W_STAR=${PILLAR_C_W_STAR:-100}"
+  "PILLAR_C_TT_FLOOR=${PILLAR_C_TT_FLOOR:-800}"
+  "PILLAR_C_LATENCY_PROBE_MAX_S=${PILLAR_C_LATENCY_PROBE_MAX_S:-600}"
   "PROBING_ATTACH_AT_STEP=${PROBING_ATTACH_AT_STEP:-}"
   "PROBING_DEFERRED_VALUE=${PROBING_DEFERRED_VALUE:-}"
   "ACCEPT_SCRIPT=${ACCEPT_SCRIPT}"
@@ -308,12 +327,15 @@ if [[ "$INJECT_KIND" == "2c" || "$INJECT_KIND" == "inline_2c" || "$INJECT_KIND" 
   env_args+=(
     "INLINE_2C_N=${INLINE_2C_N:-1024}"
     "INLINE_2C_EVERY=${INLINE_2C_EVERY:-1}"
-    "INLINE_2C_FALLBACK_S=${INLINE_2C_FALLBACK_S:-0.25}"
+    "INLINE_2C_FALLBACK_S=${INLINE_2C_FALLBACK_S:-0.6}"
     "MODE_OVERRIDE=${MODE_OVERRIDE:-${MODE:-gpu_bound}}"
   )
 fi
 if [[ -n "${PROBING_COLD_MAX_TOTAL_MB:-}" ]]; then
   env_args+=("PROBING_COLD_MAX_TOTAL_MB=${PROBING_COLD_MAX_TOTAL_MB}")
+fi
+if [[ -n "${PROBING_CPU_RING_MB:-}" ]]; then
+  env_args+=("PROBING_CPU_RING_MB=${PROBING_CPU_RING_MB}")
 fi
 
 env "${env_args[@]}" bash "${ROOT}/scripts/fail-slow/hold_exec_run_case.sh"

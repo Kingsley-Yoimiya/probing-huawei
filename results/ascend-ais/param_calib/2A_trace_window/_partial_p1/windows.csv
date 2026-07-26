@@ -1,0 +1,13 @@
+case,W,enough,n_tt_steps,evidence,W_star,status
+P1-HW-B,10,0,10,alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=291..300;no_spike:top_step=291:dur_s=0.2206:med=0.2004:n_steps=10,100,OK
+P1-HW-B,25,0,25,alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=276..300;no_spike:top_step=291:dur_s=0.2206:med=0.2006:n_steps=25,100,OK
+P1-HW-B,50,0,50,alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=251..300;no_spike:top_step=291:dur_s=0.2206:med=0.1992:n_steps=50,100,OK
+P1-HW-B,100,1,100,alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=201..300;fallback=torch_trace.duration_spike:step=201:dur_s=0.8641:med=0.1984:module=DistributedDataParallel,100,OK
+P1-HW-B,200,1,200,alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=101..300;fallback=torch_trace.duration_spike:step=201:dur_s=0.8641:med=0.1989:module=DistributedDataParallel,100,OK
+P1-HW-B,full,1,201,alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=100..300;fallback=torch_trace.duration_spike:step=201:dur_s=0.8641:med=0.1989:module=DistributedDataParallel,100,OK
+P1-SW-C,10,0,10,no_spike:top_step=296:dur_s=0.2056:med=0.1993:n_steps=10,100,OK
+P1-SW-C,25,0,25,no_spike:top_step=286:dur_s=0.2093:med=0.1991:n_steps=25,100,OK
+P1-SW-C,50,0,50,no_spike:top_step=286:dur_s=0.2093:med=0.1994:n_steps=50,100,OK
+P1-SW-C,100,1,100,torch_trace.duration_spike:step=238:dur_s=0.7115:med=0.1994:module=AdamW,100,OK
+P1-SW-C,200,1,200,torch_trace.duration_spike:step=238:dur_s=0.7115:med=0.2017:module=AdamW,100,OK
+P1-SW-C,full,1,300,torch_trace.duration_spike:step=238:dur_s=0.7115:med=0.2004:module=AdamW,100,OK

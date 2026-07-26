@@ -1,0 +1,561 @@
+{
+  "param": "trace_window_W_star",
+  "exp_id": "2A_trace_window",
+  "swept_range": [
+    10,
+    25,
+    50,
+    100,
+    200,
+    "full"
+  ],
+  "chosen_value": "100",
+  "choose_rule": "max(W*_case) over OK cases (conservative cover)",
+  "per_case": {
+    "P1-HW-B": {
+      "W_star": "100",
+      "status": "OK",
+      "parent_run": "20260726_001353-pillar-c-p1-hw-b-loud",
+      "primary": "torch_trace.duration_spike(hbm_pressure)",
+      "anchor_step": 300,
+      "torch_trace_path": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/_prep/param_calib_2a/offline_mirror/20260726_001353-pillar-c-p1-hw-b-loud/full_fidelity/probing_data/596522/python.torch_trace",
+      "rss_aligned": null
+    },
+    "P1-SW-C": {
+      "W_star": "100",
+      "status": "OK",
+      "parent_run": "20260726_012627-pillar-c-p1-sw-c-loud",
+      "primary": "torch_trace.duration_spike",
+      "anchor_step": 300,
+      "torch_trace_path": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/_prep/param_calib_2a/offline_mirror/20260726_012627-pillar-c-p1-sw-c-loud/full_fidelity/probing_data/1174526/python.torch_trace",
+      "rss_aligned": null
+    },
+    "P3-SW-A": {
+      "W_star": "10",
+      "status": "OK",
+      "parent_run": "20260727_004715-2a-p3-sw-a-loud",
+      "primary": "cpu.utilization_rss",
+      "anchor_step": 247,
+      "torch_trace_path": "/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/param_calib/2A_trace_window/20260727_004715-2a-p3-sw-a-loud/full_fidelity/probing_data/2057356/python.torch_trace",
+      "rss_aligned": true
+    },
+    "P3-SW-B": {
+      "W_star": "10",
+      "status": "OK",
+      "parent_run": "20260727_010224-2a-p3-sw-b-loud",
+      "primary": "cpu.utilization_rss",
+      "anchor_step": 272,
+      "torch_trace_path": "/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/param_calib/2A_trace_window/20260727_010224-2a-p3-sw-b-loud/full_fidelity/probing_data/2119261/python.torch_trace",
+      "rss_aligned": true
+    }
+  },
+  "ground_truth_source": {
+    "inject_window": [
+      100,
+      300
+    ],
+    "victim_local_rank": 7,
+    "onset_victim_layer": "from inject recipe / ledger",
+    "C0": "same-case health baseline (FPR context; not used for W* truncate)",
+    "C1_C2": "recall/D-level context; W* uses collect-side evidence only"
+  },
+  "controls": {
+    "anchor": "inject_stop=300 (or max step<=300 if run partial)",
+    "independent_var": "W only",
+    "forbid": [
+      "training step_ms same-D",
+      "cold MiB as attribution",
+      "v2 W* as default"
+    ]
+  },
+  "evidence_runs": {
+    "P1-HW-B": {
+      "parent": "20260726_001353-pillar-c-p1-hw-b-loud",
+      "source": "offline full_fidelity pillar_c (duration_spike fallback)",
+      "note": "alloc flat in inject; W* via torch_trace duration spike"
+    },
+    "P1-SW-C": {
+      "parent": "20260726_012627-pillar-c-p1-sw-c-loud",
+      "source": "offline full_fidelity pillar_c",
+      "note": "self-scored curve; not copying v2 default"
+    },
+    "P3-SW-A": {
+      "parent": "20260727_004715-2a-p3-sw-a-loud",
+      "source": "param_calib full_fidelity RING_MB=64",
+      "note": "PARTIAL no node_0.done; tt step_max~248; RSS aligned → W*=10"
+    },
+    "P3-SW-B": {
+      "parent": "20260727_010224-2a-p3-sw-b-loud",
+      "source": "param_calib full_fidelity RING_MB=64",
+      "note": "scored while torchrun hung after dump; tt step_max=272 jsonl=225; RSS aligned → W*=10; DID NOT kill train"
+    }
+  },
+  "supports_design": "对 4 case，W* 分别为 P1-HW-B=100, P1-SW-C=100, P3-SW-A=10, P3-SW-B=10。设计默认取 **max(W*)=100**：覆盖最苛刻的 tip/尖刺 case（P1）；P3 RSS 抬升在大环下 W*=10 即够，但若只用 10 会丢掉 P1 注入窗内的 duration 尖刺帧。",
+  "windows_detail": [
+    {
+      "case": "P1-HW-B",
+      "status": "OK",
+      "parent_run": "20260726_001353-pillar-c-p1-hw-b-loud",
+      "victim_pid": "596522",
+      "torch_trace_path": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/_prep/param_calib_2a/offline_mirror/20260726_001353-pillar-c-p1-hw-b-loud/full_fidelity/probing_data/596522/python.torch_trace",
+      "memt_meta": {
+        "path": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/_prep/param_calib_2a/offline_mirror/20260726_001353-pillar-c-p1-hw-b-loud/full_fidelity/probing_data/596522/python.torch_trace",
+        "ver": 3,
+        "ncols": 19,
+        "nchunks": 8,
+        "chunk_size": 2500000,
+        "write_chunk": 5,
+        "creator_pid": 596522,
+        "chunks_recycled": 0,
+        "rows_overwritten": 0,
+        "ts_col": 1,
+        "n_rows": 79353,
+        "col_names": [
+          "timestamp",
+          "micro_step",
+          "local_step",
+          "global_step",
+          "micro_batches",
+          "seq",
+          "module",
+          "stage",
+          "allocated",
+          "max_allocated",
+          "cached",
+          "max_cached",
+          "time_offset",
+          "duration",
+          "allocated_delta",
+          "max_allocated_delta",
+          "rank",
+          "world_size",
+          "role"
+        ]
+      },
+      "step_min": 0,
+      "step_max": 545,
+      "anchor_step": 300,
+      "inject_onset": 100,
+      "inject_stop": 300,
+      "n_unique_steps": 546,
+      "n_rows": 79353,
+      "ring_rows_overwritten": 0,
+      "ring_chunks_recycled": 0,
+      "rss_samples": 0,
+      "rss_aligned": null,
+      "rss_align_note": null,
+      "c2_rss_rise_kb": null,
+      "W_star": "100",
+      "windows": [
+        {
+          "W": "10",
+          "enough": false,
+          "evidence": "alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=291..300;no_spike:top_step=291:dur_s=0.2206:med=0.2004:n_steps=10",
+          "primary": "torch_trace.max_allocated_ramp|duration_spike",
+          "n_tt_rows": 1456,
+          "n_tt_steps": 10,
+          "anchor_step": 300
+        },
+        {
+          "W": "25",
+          "enough": false,
+          "evidence": "alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=276..300;no_spike:top_step=291:dur_s=0.2206:med=0.2006:n_steps=25",
+          "primary": "torch_trace.max_allocated_ramp|duration_spike",
+          "n_tt_rows": 3640,
+          "n_tt_steps": 25,
+          "anchor_step": 300
+        },
+        {
+          "W": "50",
+          "enough": false,
+          "evidence": "alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=251..300;no_spike:top_step=291:dur_s=0.2206:med=0.1992:n_steps=50",
+          "primary": "torch_trace.max_allocated_ramp|duration_spike",
+          "n_tt_rows": 7280,
+          "n_tt_steps": 50,
+          "anchor_step": 300
+        },
+        {
+          "W": "100",
+          "enough": true,
+          "evidence": "alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=201..300;fallback=torch_trace.duration_spike:step=201:dur_s=0.8641:med=0.1984:module=DistributedDataParallel",
+          "primary": "torch_trace.duration_spike(hbm_pressure)",
+          "n_tt_rows": 14560,
+          "n_tt_steps": 100,
+          "anchor_step": 300
+        },
+        {
+          "W": "200",
+          "enough": true,
+          "evidence": "alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=101..300;fallback=torch_trace.duration_spike:step=201:dur_s=0.8641:med=0.1989:module=DistributedDataParallel",
+          "primary": "torch_trace.duration_spike(hbm_pressure)",
+          "n_tt_rows": 29120,
+          "n_tt_steps": 200,
+          "anchor_step": 300
+        },
+        {
+          "W": "full",
+          "enough": true,
+          "evidence": "alloc_flat_in_inject:rise_mb=0.0:slope_mb=0.0:steps=100..300;fallback=torch_trace.duration_spike:step=201:dur_s=0.8641:med=0.1989:module=DistributedDataParallel",
+          "primary": "torch_trace.duration_spike(hbm_pressure)",
+          "n_tt_rows": 43681,
+          "n_tt_steps": 201,
+          "anchor_step": 300
+        }
+      ],
+      "method": {
+        "table": "python.torch_trace (MEMT ring) + case primary evidence",
+        "truncate": "anchor=inject_stop(300); keep local_step in (anchor-W, anchor]; full = all steps <= anchor; P1-HW-B only scores steps>=inject_onset",
+        "forbid": "training step_ms / score_dlevel_offline buried metrics"
+      }
+    },
+    {
+      "case": "P1-SW-C",
+      "status": "OK",
+      "parent_run": "20260726_012627-pillar-c-p1-sw-c-loud",
+      "victim_pid": "1174526",
+      "torch_trace_path": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/_prep/param_calib_2a/offline_mirror/20260726_012627-pillar-c-p1-sw-c-loud/full_fidelity/probing_data/1174526/python.torch_trace",
+      "memt_meta": {
+        "path": "/Users/yinjinrun/Codespace/myportal/results/ascend-ais/_prep/param_calib_2a/offline_mirror/20260726_012627-pillar-c-p1-sw-c-loud/full_fidelity/probing_data/1174526/python.torch_trace",
+        "ver": 3,
+        "ncols": 19,
+        "nchunks": 8,
+        "chunk_size": 2500000,
+        "write_chunk": 5,
+        "creator_pid": 1174526,
+        "chunks_recycled": 0,
+        "rows_overwritten": 0,
+        "ts_col": 1,
+        "n_rows": 79353,
+        "col_names": [
+          "timestamp",
+          "micro_step",
+          "local_step",
+          "global_step",
+          "micro_batches",
+          "seq",
+          "module",
+          "stage",
+          "allocated",
+          "max_allocated",
+          "cached",
+          "max_cached",
+          "time_offset",
+          "duration",
+          "allocated_delta",
+          "max_allocated_delta",
+          "rank",
+          "world_size",
+          "role"
+        ]
+      },
+      "step_min": 0,
+      "step_max": 545,
+      "anchor_step": 300,
+      "inject_onset": 100,
+      "inject_stop": 300,
+      "n_unique_steps": 546,
+      "n_rows": 79353,
+      "ring_rows_overwritten": 0,
+      "ring_chunks_recycled": 0,
+      "rss_samples": 0,
+      "rss_aligned": null,
+      "rss_align_note": null,
+      "c2_rss_rise_kb": null,
+      "W_star": "100",
+      "windows": [
+        {
+          "W": "10",
+          "enough": false,
+          "evidence": "no_spike:top_step=296:dur_s=0.2056:med=0.1993:n_steps=10",
+          "primary": "torch_trace.duration_spike",
+          "n_tt_rows": 1456,
+          "n_tt_steps": 10,
+          "anchor_step": 300
+        },
+        {
+          "W": "25",
+          "enough": false,
+          "evidence": "no_spike:top_step=286:dur_s=0.2093:med=0.1991:n_steps=25",
+          "primary": "torch_trace.duration_spike",
+          "n_tt_rows": 3640,
+          "n_tt_steps": 25,
+          "anchor_step": 300
+        },
+        {
+          "W": "50",
+          "enough": false,
+          "evidence": "no_spike:top_step=286:dur_s=0.2093:med=0.1994:n_steps=50",
+          "primary": "torch_trace.duration_spike",
+          "n_tt_rows": 7280,
+          "n_tt_steps": 50,
+          "anchor_step": 300
+        },
+        {
+          "W": "100",
+          "enough": true,
+          "evidence": "torch_trace.duration_spike:step=238:dur_s=0.7115:med=0.1994:module=AdamW",
+          "primary": "torch_trace.duration_spike",
+          "n_tt_rows": 14560,
+          "n_tt_steps": 100,
+          "anchor_step": 300
+        },
+        {
+          "W": "200",
+          "enough": true,
+          "evidence": "torch_trace.duration_spike:step=238:dur_s=0.7115:med=0.2017:module=AdamW",
+          "primary": "torch_trace.duration_spike",
+          "n_tt_rows": 29120,
+          "n_tt_steps": 200,
+          "anchor_step": 300
+        },
+        {
+          "W": "full",
+          "enough": true,
+          "evidence": "torch_trace.duration_spike:step=238:dur_s=0.7115:med=0.2004:module=AdamW",
+          "primary": "torch_trace.duration_spike",
+          "n_tt_rows": 43681,
+          "n_tt_steps": 300,
+          "anchor_step": 300
+        }
+      ],
+      "method": {
+        "table": "python.torch_trace (MEMT ring) + case primary evidence",
+        "truncate": "anchor=inject_stop(300); keep local_step in (anchor-W, anchor]; full = all steps <= anchor; P1-HW-B only scores steps>=inject_onset",
+        "forbid": "training step_ms / score_dlevel_offline buried metrics"
+      }
+    },
+    {
+      "case": "P3-SW-A",
+      "status": "OK",
+      "parent_run": "20260727_004715-2a-p3-sw-a-loud",
+      "victim_pid": "2057356",
+      "torch_trace_path": "/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/param_calib/2A_trace_window/20260727_004715-2a-p3-sw-a-loud/full_fidelity/probing_data/2057356/python.torch_trace",
+      "memt_meta": {
+        "path": "/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/param_calib/2A_trace_window/20260727_004715-2a-p3-sw-a-loud/full_fidelity/probing_data/2057356/python.torch_trace",
+        "ver": 3,
+        "ncols": 19,
+        "nchunks": 8,
+        "chunk_size": 2500000,
+        "write_chunk": 2,
+        "creator_pid": 2057356,
+        "chunks_recycled": 0,
+        "rows_overwritten": 0,
+        "ts_col": 1,
+        "n_rows": 35900,
+        "col_names": [
+          "timestamp",
+          "micro_step",
+          "local_step",
+          "global_step",
+          "micro_batches",
+          "seq",
+          "module",
+          "stage",
+          "allocated",
+          "max_allocated",
+          "cached",
+          "max_cached",
+          "time_offset",
+          "duration",
+          "allocated_delta",
+          "max_allocated_delta",
+          "rank",
+          "world_size",
+          "role"
+        ]
+      },
+      "step_min": 0,
+      "step_max": 247,
+      "anchor_step": 247,
+      "inject_onset": 100,
+      "inject_stop": 300,
+      "n_unique_steps": 248,
+      "n_rows": 35900,
+      "ring_rows_overwritten": 0,
+      "ring_chunks_recycled": 0,
+      "rss_samples": 2401,
+      "rss_aligned": true,
+      "rss_align_note": "aligned_n=1638",
+      "c2_rss_rise_kb": null,
+      "W_star": "10",
+      "windows": [
+        {
+          "W": "10",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=240592:max_kb=2499616:n=123;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 1320,
+          "n_tt_steps": 10,
+          "anchor_step": 247
+        },
+        {
+          "W": "25",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=241360:max_kb=2499616:n=321;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 3504,
+          "n_tt_steps": 25,
+          "anchor_step": 247
+        },
+        {
+          "W": "50",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=241748:max_kb=2499656:n=645;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 7144,
+          "n_tt_steps": 50,
+          "anchor_step": 247
+        },
+        {
+          "W": "100",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=245644:max_kb=2499656:n=1304;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 14424,
+          "n_tt_steps": 100,
+          "anchor_step": 247
+        },
+        {
+          "W": "200",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=252832:max_kb=2499656:n=1638;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 28984,
+          "n_tt_steps": 200,
+          "anchor_step": 247
+        },
+        {
+          "W": "full",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=252832:max_kb=2499656:n=1638;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 35900,
+          "n_tt_steps": 248,
+          "anchor_step": 247
+        }
+      ],
+      "method": {
+        "table": "python.torch_trace (MEMT ring) + case primary evidence",
+        "truncate": "anchor=inject_stop(300); keep local_step in (anchor-W, anchor]; full = all steps <= anchor; P1-HW-B only scores steps>=inject_onset",
+        "forbid": "training step_ms / score_dlevel_offline buried metrics"
+      }
+    },
+    {
+      "case": "P3-SW-B",
+      "status": "OK",
+      "parent_run": "20260727_010224-2a-p3-sw-b-loud",
+      "victim_pid": "2119261",
+      "torch_trace_path": "/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/param_calib/2A_trace_window/20260727_010224-2a-p3-sw-b-loud/full_fidelity/probing_data/2119261/python.torch_trace",
+      "memt_meta": {
+        "path": "/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/param_calib/2A_trace_window/20260727_010224-2a-p3-sw-b-loud/full_fidelity/probing_data/2119261/python.torch_trace",
+        "ver": 3,
+        "ncols": 19,
+        "nchunks": 8,
+        "chunk_size": 2500000,
+        "write_chunk": 2,
+        "creator_pid": 2119261,
+        "chunks_recycled": 0,
+        "rows_overwritten": 0,
+        "ts_col": 1,
+        "n_rows": 39495,
+        "col_names": [
+          "timestamp",
+          "micro_step",
+          "local_step",
+          "global_step",
+          "micro_batches",
+          "seq",
+          "module",
+          "stage",
+          "allocated",
+          "max_allocated",
+          "cached",
+          "max_cached",
+          "time_offset",
+          "duration",
+          "allocated_delta",
+          "max_allocated_delta",
+          "rank",
+          "world_size",
+          "role"
+        ]
+      },
+      "step_min": 0,
+      "step_max": 272,
+      "anchor_step": 272,
+      "inject_onset": 100,
+      "inject_stop": 300,
+      "n_unique_steps": 273,
+      "n_rows": 39495,
+      "ring_rows_overwritten": 0,
+      "ring_chunks_recycled": 0,
+      "rss_samples": 22431,
+      "rss_aligned": true,
+      "rss_align_note": "aligned_n=1709",
+      "c2_rss_rise_kb": null,
+      "W_star": "10",
+      "windows": [
+        {
+          "W": "10",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=164080:max_kb=4335088:n=118;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 1275,
+          "n_tt_steps": 10,
+          "anchor_step": 272
+        },
+        {
+          "W": "25",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=426432:max_kb=4335088:n=280;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 3459,
+          "n_tt_steps": 25,
+          "anchor_step": 272
+        },
+        {
+          "W": "50",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=854092:max_kb=4335212:n=534;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 7099,
+          "n_tt_steps": 50,
+          "anchor_step": 272
+        },
+        {
+          "W": "100",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=1726636:max_kb=4338036:n=1027;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 14379,
+          "n_tt_steps": 100,
+          "anchor_step": 272
+        },
+        {
+          "W": "200",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=2097788:max_kb=4338036:n=1643;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 28939,
+          "n_tt_steps": 200,
+          "anchor_step": 272
+        },
+        {
+          "W": "full",
+          "enough": true,
+          "evidence": "cpu.utilization_rss:rise_kb=2097788:max_kb=4338036:n=1663;torch_alloc_flat:step_rise_mb=-2268.3",
+          "primary": "cpu.utilization_rss",
+          "n_tt_rows": 39495,
+          "n_tt_steps": 273,
+          "anchor_step": 272
+        }
+      ],
+      "method": {
+        "table": "python.torch_trace (MEMT ring) + case primary evidence",
+        "truncate": "anchor=inject_stop(300); keep local_step in (anchor-W, anchor]; full = all steps <= anchor; P1-HW-B only scores steps>=inject_onset",
+        "forbid": "training step_ms / score_dlevel_offline buried metrics"
+      }
+    }
+  ],
+  "scored_at": "2026-07-27T01:22:52"
+}

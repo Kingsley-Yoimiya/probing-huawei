@@ -59,6 +59,11 @@ export KUBECONFIG=/tmp/config-vc-a3-241ceshi-songyiyang.yaml
 
 标签 `yjr-as-c-*` / `yjr-as-b-*` 只用于 **run_id / 结果目录**，不是新建 vcjob 名。
 
+## Probing wheel / Rust（铁律 · 2026-07-26）
+
+**不要在 hold pod 里 rustup / 删 toolchain 重装 / 裸拉 crates.io**——集群 egress 极慢（P-FIX 已踩坑）。  
+真相源：[**`BUILD_WHEEL.md`**](BUILD_WHEEL.md)（复用 → Mac 摆渡 → 可选反代）。
+
 ## 检查清单
 
 - [ ] SYY kube + `JUMP_KUBECTL`  
@@ -67,6 +72,13 @@ export KUBECONFIG=/tmp/config-vc-a3-241ceshi-songyiyang.yaml
 - [ ] 结果写 `ascend-ais` / `yinjinrun.p-huawei`  
 - [ ] 不改坏沐曦 dose / 共享脚本默认  
 - [ ] **仍不碰 a3-megatron-***  
+- [ ] 编/装 probing：**先读** [`BUILD_WHEEL.md`](BUILD_WHEEL.md)；禁 pod 内 rustup 重装  
+
+- [ ] **编/装 Probing wheel**：读 [`BUILD_WHEEL.md`](BUILD_WHEEL.md)——禁止 pod 内 rustup 重装/公网下工具链；本机 Clash 摆渡  
+
+## 编 wheel（摘要）
+
+详见 [`BUILD_WHEEL.md`](BUILD_WHEEL.md)。集群 egress 下大文件极慢；**本机 `:7897` → scp → 跳板 → kubectl cp**。已有 `wheels/*.whl` 优先只重装；**禁止** `rm -rf` toolchain 再 `rustup install`。
 
 ## 登记模板
 

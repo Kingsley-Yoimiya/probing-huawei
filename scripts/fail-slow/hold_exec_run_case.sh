@@ -59,7 +59,7 @@ RARE_SHAPE_SEQ="${RARE_SHAPE_SEQ:-1536}"
 RARE_SHAPE_EVERY="${RARE_SHAPE_EVERY:-1}"
 INLINE_2C_N="${INLINE_2C_N:-1024}"
 INLINE_2C_EVERY="${INLINE_2C_EVERY:-1}"
-INLINE_2C_FALLBACK_S="${INLINE_2C_FALLBACK_S:-0.25}"
+INLINE_2C_FALLBACK_S="${INLINE_2C_FALLBACK_S:-0.6}"
 CKPT_EVERY="${CKPT_EVERY:-100}"
 FLUSH_EVERY="${FLUSH_EVERY:-5}"
 IO_PAYLOAD="${IO_PAYLOAD:-}"
@@ -187,7 +187,7 @@ case "$CASE_ID" in
     ACCEPT_MIN_RATIO="${ACCEPT_MIN_RATIO:-1.3}"
     INLINE_2C_N="${INLINE_2C_N:-1024}"
     INLINE_2C_EVERY="${INLINE_2C_EVERY:-1}"
-    INLINE_2C_FALLBACK_S="${INLINE_2C_FALLBACK_S:-0.25}"
+    INLINE_2C_FALLBACK_S="${INLINE_2C_FALLBACK_S:-0.6}"
     INJECT_ARGS="${INJECT_ARGS:-n=${INLINE_2C_N},every=${INLINE_2C_EVERY},fallback_s=${INLINE_2C_FALLBACK_S}}"
     # median 常盲；默认改用 tip spike accept（可用 ACCEPT_SCRIPT 覆盖）
     ACCEPT_SCRIPT="${ACCEPT_SCRIPT:-${FS_SHARED_SCRIPTS}/agent_overlays/p1c-20260724/accept_p1swc_spike.py}"
@@ -385,6 +385,10 @@ fire_config() {
     else
       denv="${denv} unset PROBING_COLD 2>/dev/null || true;"
     fi
+    # Param-Calib / P-FIX：cpu.utilization 环容量（MiB）；未设则用 wheel 默认
+    if [[ -n "${PROBING_CPU_RING_MB:-}" ]]; then
+      denv="${denv} export PROBING_CPU_RING_MB=${PROBING_CPU_RING_MB};"
+    fi
     # Pillar-C S1：晚 attach（训练步内 site_hook；非 ptrace — Ascend 无 libprobing.so）
     if [[ -n "${PROBING_ATTACH_AT_STEP:-}" ]]; then
       denv="${denv} export PROBING_ATTACH_AT_STEP=${PROBING_ATTACH_AT_STEP};"
@@ -422,7 +426,7 @@ fire_config() {
   fi
   # C1/C2：inline 2c 首次编译尖刺（同进程 compile/fallback）
   if [[ "$cfg" == C1_* || "$cfg" == C2_* ]] && [[ "$INJECT_KIND" == 2c || "$INJECT_KIND" == inline_2c || "$INJECT_KIND" == compile_spike ]]; then
-    denv="${denv} export INLINE_INJECT=2c; export INLINE_VICTIM_LOCAL_RANK=${SIDECAR_LOCAL_RANK}; export INLINE_INJECT_START=${INJECT_START}; export INLINE_INJECT_STOP=${INJECT_STOP}; export INLINE_2C_N=${INLINE_2C_N:-1024}; export INLINE_2C_EVERY=${INLINE_2C_EVERY:-1}; export INLINE_2C_FALLBACK_S=${INLINE_2C_FALLBACK_S:-0.25};"
+    denv="${denv} export INLINE_INJECT=2c; export INLINE_VICTIM_LOCAL_RANK=${SIDECAR_LOCAL_RANK}; export INLINE_INJECT_START=${INJECT_START}; export INLINE_INJECT_STOP=${INJECT_STOP}; export INLINE_2C_N=${INLINE_2C_N:-1024}; export INLINE_2C_EVERY=${INLINE_2C_EVERY:-1}; export INLINE_2C_FALLBACK_S=${INLINE_2C_FALLBACK_S:-0.6};"
   fi
   # P2-SW-B：C0/C1/C2 同开 HCCL_STRESS_MB；仅 C1/C2 钳 HCCL_ALGO（+可选 buffsize）
   if [[ "$INJECT_KIND" == hccl_algo || "$INJECT_KIND" == mccl_algo ]]; then
@@ -571,8 +575,8 @@ LAUNCH
       echo "  inline 2b rare_shape active (victim=${SIDECAR_LOCAL_RANK} rare_seq=${RARE_SHAPE_SEQ:-1536} every=${RARE_SHAPE_EVERY:-1})"
       jexec "grep -E \"INLINE_RARE_SHAPE|SIDECAR\" '${out}/node_0.log' | head -20 >'${out}/injection.log' || true; echo SIDECAR_START kind=inline_2b rare_seq=${RARE_SHAPE_SEQ:-1536} every=${RARE_SHAPE_EVERY:-1} victim=${SIDECAR_LOCAL_RANK} >>'${out}/injection.log'; exit 0" || true
     elif [[ "$INJECT_KIND" == 2c || "$INJECT_KIND" == inline_2c || "$INJECT_KIND" == compile_spike ]]; then
-      echo "  inline 2c compile tip active (victim=${SIDECAR_LOCAL_RANK} n=${INLINE_2C_N:-1024} every=${INLINE_2C_EVERY:-1} fallback_s=${INLINE_2C_FALLBACK_S:-0.25})"
-      jexec "grep -E \"INLINE_2C|SIDECAR\" '${out}/node_0.log' | head -40 >'${out}/injection.log' || true; echo SIDECAR_START kind=inline_2c n=${INLINE_2C_N:-1024} every=${INLINE_2C_EVERY:-1} fallback_s=${INLINE_2C_FALLBACK_S:-0.25} victim=${SIDECAR_LOCAL_RANK} >>'${out}/injection.log'; exit 0" || true
+      echo "  inline 2c compile tip active (victim=${SIDECAR_LOCAL_RANK} n=${INLINE_2C_N:-1024} every=${INLINE_2C_EVERY:-1} fallback_s=${INLINE_2C_FALLBACK_S:-0.6})"
+      jexec "grep -E \"INLINE_2C|SIDECAR\" '${out}/node_0.log' | head -40 >'${out}/injection.log' || true; echo SIDECAR_START kind=inline_2c n=${INLINE_2C_N:-1024} every=${INLINE_2C_EVERY:-1} fallback_s=${INLINE_2C_FALLBACK_S:-0.6} victim=${SIDECAR_LOCAL_RANK} >>'${out}/injection.log'; exit 0" || true
     elif [[ "$INJECT_KIND" == stress_cpu ]]; then
       if [[ -n "$CPU_N" ]]; then
         jexec "nohup stress-ng --cpu ${CPU_N} --cpu-load ${CPU_LOAD} --timeout 900s >'${out}/injection.log' 2>&1 & echo SC=\$!; echo SIDECAR_START stress_cpu cpu_n=${CPU_N} cpu_load=${CPU_LOAD} >>'${out}/injection.log'; exit 0"
@@ -657,34 +661,49 @@ LAUNCH
       else
         echo "  Pillar-C SET↑ at inject start…"
       fi
-      echo "  Pillar-C SET upgrade torch.profiling → on,rate=1.0 (SHOW TABLES→worker)…"
+      # ③-A 等：升到的 rate 可配（默认 1.0）；真相键仍 probing.torch.profiling=
+      # PILLAR_C_SET_SCOPE=victim → 只升 SIDECAR_LOCAL_RANK（避多 rank attach 死锁）
+      local set_rate="${PILLAR_C_SET_RATE:-1.0}"
+      local set_scope="${PILLAR_C_SET_SCOPE:-all}"
+      local set_victim="${SIDECAR_LOCAL_RANK:-7}"
+      echo "  Pillar-C SET upgrade torch.profiling → on,rate=${set_rate} scope=${set_scope} (SHOW TABLES→worker)…"
       # 必须带 /usr/bin:/bin：jexec 非 login 时 PATH 可能空，否则 date/ps/awk 全挂 → SET_FAIL_ALL
+      # timeout 包住 probing，避免单 pid 读回卡死整臂
       jexec "export PATH='/usr/bin:/bin:${POD_PYDEPS}/bin:${PYBIN}:\${PATH:-}' PYTHONPATH='${POD_PYDEPS}:\${PYTHONPATH:-}'
 : >'${out}/set_upgrade.log'
-TS0=\$(date -Iseconds); echo SET_BEGIN ts=\$TS0 trigger=L_ge_${set_at_l:-inject} >>'${out}/set_upgrade.log'
+TS0=\$(date -Iseconds); echo SET_BEGIN ts=\$TS0 trigger=L_ge_${set_at_l:-inject} set_rate=${set_rate} scope=${set_scope} victim=${set_victim} >>'${out}/set_upgrade.log'
 L=\$(wc -l <'${out}/ranks/rank_0000.jsonl' 2>/dev/null || echo 0); echo SET_L=\$L >>'${out}/set_upgrade.log'
+echo SET_TARGET=probing.torch.profiling=on,rate=${set_rate} >>'${out}/set_upgrade.log'
 T_MARK=\$(python3 -c 'import time;print(int(time.time()*1000))')
 echo SET_T0_MS=\$T_MARK >>'${out}/set_upgrade.log'
-cands=\$(ps -eo pid,args | awk '/\\/tmp\\/tbp_npu\\.py|train_bench_probe_npu/ && \$0 !~ /awk|bash|torchrun/ {print \$1}')
-echo CANDS=\$cands >>'${out}/set_upgrade.log'
+cands=
+if [[ '${set_scope}' == 'victim' ]]; then
+  for pid in \$(ps -eo pid,args | awk '/\\/tmp\\/tbp_npu\\.py|train_bench_probe_npu/ && \$0 !~ /awk|bash|torchrun/ {print \$1}'); do
+    lr=\$(tr '\\0' '\\n' < /proc/\$pid/environ 2>/dev/null | awk -F= '\$1==\"LOCAL_RANK\"{print \$2; exit}')
+    if [[ \"\$lr\" == '${set_victim}' ]]; then cands=\"\$cands \$pid\"; fi
+  done
+  echo CANDS_VICTIM=\$cands >>'${out}/set_upgrade.log'
+else
+  cands=\$(ps -eo pid,args | awk '/\\/tmp\\/tbp_npu\\.py|train_bench_probe_npu/ && \$0 !~ /awk|bash|torchrun/ {print \$1}')
+  echo CANDS=\$cands >>'${out}/set_upgrade.log'
+fi
 OK=
 for pid in \$cands; do
-  if probing -t \$pid query 'SHOW TABLES' >/tmp/probe_ping_\$pid.txt 2>&1; then
+  if timeout 20 probing -t \$pid query 'SHOW TABLES' >/tmp/probe_ping_\$pid.txt 2>&1; then
     echo ATTACH_OK pid=\$pid >>'${out}/set_upgrade.log'
     T_ATT=\$(python3 -c 'import time;print(int(time.time()*1000))')
     echo ATTACH_T_MS=\$T_ATT >>'${out}/set_upgrade.log'
     # C0 真相键：probing.torch.profiling（勿写 torch.profiling=；后者不触发 live sync）
-    if ! probing -t \$pid config 'probing.torch.profiling=on,rate=1.0' >>'${out}/set_upgrade.log' 2>&1; then
+    if ! timeout 20 probing -t \$pid config 'probing.torch.profiling=on,rate=${set_rate}' >>'${out}/set_upgrade.log' 2>&1; then
       echo SET_CMD_FAIL pid=\$pid >>'${out}/set_upgrade.log'
       continue
     fi
-    # 读回校验（GET）；失败则不算 OK
-    if ! probing -t \$pid query \"SELECT value FROM information_schema.df_settings WHERE name='probing.torch.profiling'\" >/tmp/probe_cfg_\$pid.txt 2>&1; then
-      probing -t \$pid eval \"import probing; print(getattr(probing,'get_config',lambda k:None)('probing.torch.profiling'))\" >/tmp/probe_cfg_\$pid.txt 2>&1 || true
+    # 读回校验（短超时）；失败仍记 SET_OK（config 已成功）
+    if ! timeout 8 probing -t \$pid query \"SELECT value FROM information_schema.df_settings WHERE name='probing.torch.profiling'\" >/tmp/probe_cfg_\$pid.txt 2>&1; then
+      timeout 8 probing -t \$pid eval \"import probing; print(getattr(probing,'get_config',lambda k:None)('probing.torch.profiling'))\" >/tmp/probe_cfg_\$pid.txt 2>&1 || true
     fi
     cat /tmp/probe_cfg_\$pid.txt >>'${out}/set_upgrade.log' 2>/dev/null || true
-    if ! grep -qE 'on,rate=1(\\.0)?|rate=1(\\.0)?' /tmp/probe_cfg_\$pid.txt 2>/dev/null; then
-      # 读回路径因环境而异；若 SET 命令已成功且无报错，仍记 SET_OK（与 C0 一致以密度为准）
+    if ! grep -qE \"on,rate=${set_rate}|rate=${set_rate}\" /tmp/probe_cfg_\$pid.txt 2>/dev/null; then
       echo SET_READBACK_UNVERIFIED pid=\$pid >>'${out}/set_upgrade.log'
     fi
     T_SET=\$(python3 -c 'import time;print(int(time.time()*1000))')
@@ -692,7 +711,7 @@ for pid in \$cands; do
     echo SET_OK_WORKER pid=\$pid >>'${out}/set_upgrade.log'
     python3 -c \"t0=int('\$T_MARK'); t1=int('\$T_SET'); print(f'SET_LATENCY_MS={t1-t0}')\" >>'${out}/set_upgrade.log' 2>/dev/null || echo SET_LATENCY_MS=? >>'${out}/set_upgrade.log'
     OK=\$pid
-    # 勿 break：多 rank 均需升详，否则仅 1/16 写 torch_trace（E3 教训）
+    # scope=all 时继续下一 rank；victim 通常只有 1 个
   else
     echo ATTACH_FAIL pid=\$pid >>'${out}/set_upgrade.log'
   fi
@@ -700,6 +719,27 @@ done
 if [[ -z \"\$OK\" ]]; then echo SET_FAIL_ALL >>'${out}/set_upgrade.log'; fi
 echo SET_END ts=\$(date -Iseconds) >>'${out}/set_upgrade.log'
 exit 0" || true
+      # ③-B：SET 后在线轮询 TT（环会覆写，必须在线记；勿离线 MEMT 猜首步）
+      if [[ "${PILLAR_C_LATENCY_PROBE:-0}" == "1" ]]; then
+        local w_star="${PILLAR_C_W_STAR:-100}"
+        local tt_floor="${PILLAR_C_TT_FLOOR:-800}"
+        local probe_max_s="${PILLAR_C_LATENCY_PROBE_MAX_S:-600}"
+        local probe_py="${ROOT}/scripts/fail-slow/param_calib/set_latency_probe.py"
+        echo "  Pillar-C latency probe (W*=${w_star} TT_floor=${tt_floor} max=${probe_max_s}s)…"
+        if [[ -f "$probe_py" ]]; then
+          jsync_file "$probe_py" "${out}/_latency_probe.py"
+          jexec "export OUT='${out}' PATH='/usr/bin:/bin:${POD_PYDEPS}/bin:${PYBIN}:\${PATH:-}' PYTHONPATH='${POD_PYDEPS}:\${PYTHONPATH:-}'
+SET_L=\$(awk -F= '/^SET_L=/{print \$2; exit}' '${out}/set_upgrade.log' 2>/dev/null || echo '')
+PID=\$(awk '/^SET_OK_WORKER pid=/{print \$2; exit}' '${out}/set_upgrade.log' 2>/dev/null | sed 's/pid=//')
+T0=\$(awk -F= '/^SET_T0_MS=/{print \$2; exit}' '${out}/set_upgrade.log' 2>/dev/null || echo 0)
+if [[ -z \"\$PID\" ]]; then echo PROBE_SKIP no_SET_OK_pid >'${out}/set_latency_probe.log'; exit 0; fi
+export SET_L PID T0_MS=\"\$T0\" W_STAR='${w_star}' TT_FLOOR='${tt_floor}' PROBE_MAX_S='${probe_max_s}'
+python3 '${out}/_latency_probe.py'; exit 0" || true
+        else
+          echo "  WARN: missing $probe_py — skip latency probe"
+          jexec "echo PROBE_SKIP missing_script >'${out}/set_latency_probe.log'; exit 0" || true
+        fi
+      fi
       if [[ -n "${PROBING_DATA_DIR:-}" ]]; then
         jexec "DATA='${PROBING_DATA_DIR}'; OUTF='${out}/volume_at_upgrade.txt'; python3 -c \"
 import os,struct

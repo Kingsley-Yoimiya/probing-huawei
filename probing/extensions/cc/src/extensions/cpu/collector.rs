@@ -15,9 +15,48 @@ use thiserror::Error;
 use super::sample::{ProcessSample, ThreadSample};
 use super::sampler::host_sampler;
 
-const CHUNK_SIZE: u32 = 4096;
-const NUM_CHUNKS: u32 = 8;
+/// Default hot-ring capacity for `cpu.utilization` / `cpu.tasks`.
+///
+/// Legacy was 8×4KiB=32KiB (~1s @ SAMPLE_MS=50) — too small to cover Pillar-C
+/// inject window [100,300] (~110s wall) + dump margin, causing E1-off
+/// `rss_ring_misaligned_to_inject_window`. 8×1MiB=8MiB holds ~270s @ 50ms
+/// (~30KiB/s) or ~45min @ 500ms.
+const DEFAULT_CHUNK_SIZE: u32 = 1024 * 1024;
+const DEFAULT_NUM_CHUNKS: u32 = 8;
+const MIN_CHUNK_SIZE: u32 = 4096;
+const MAX_CHUNK_SIZE: u32 = 16 * 1024 * 1024;
+const MIN_NUM_CHUNKS: u32 = 4;
+const MAX_NUM_CHUNKS: u32 = 64;
 const DEFAULT_SAMPLE_INTERVAL_MS: u64 = 1000;
+
+/// `(chunk_size_bytes, num_chunks)` for CPU mmap rings.
+///
+/// Env overrides (optional):
+/// - `PROBING_CPU_RING_MB` — total capacity in MiB (split across 8 chunks)
+/// - `PROBING_CPU_CHUNK_BYTES` / `PROBING_CPU_NUM_CHUNKS` — explicit layout
+fn cpu_mmap_ring_config() -> (u32, u32) {
+    if let Some(mb) = std::env::var("PROBING_CPU_RING_MB")
+        .ok()
+        .and_then(|s| s.trim().parse::<u32>().ok())
+        .filter(|&v| v > 0)
+    {
+        let total = (mb as u64).saturating_mul(1024 * 1024);
+        let num = DEFAULT_NUM_CHUNKS;
+        let chunk = ((total / num as u64) as u32).clamp(MIN_CHUNK_SIZE, MAX_CHUNK_SIZE);
+        return (chunk, num);
+    }
+    let chunk = std::env::var("PROBING_CPU_CHUNK_BYTES")
+        .ok()
+        .and_then(|s| s.trim().parse::<u32>().ok())
+        .map(|v| v.clamp(MIN_CHUNK_SIZE, MAX_CHUNK_SIZE))
+        .unwrap_or(DEFAULT_CHUNK_SIZE);
+    let num = std::env::var("PROBING_CPU_NUM_CHUNKS")
+        .ok()
+        .and_then(|s| s.trim().parse::<u32>().ok())
+        .map(|v| v.clamp(MIN_NUM_CHUNKS, MAX_NUM_CHUNKS))
+        .unwrap_or(DEFAULT_NUM_CHUNKS);
+    (chunk, num)
+}
 
 /// Autostart interval from env, or `None` when CPU sampling is disabled.
 ///
@@ -268,18 +307,23 @@ struct CollectorTables {
 
 impl CollectorTables {
     fn open() -> probing_memtable::MemtableResult<Self> {
+        let (chunk_size, num_chunks) = cpu_mmap_ring_config();
+        log::info!(
+            "cpu memtable ring: chunk_size={chunk_size} num_chunks={num_chunks} capacity_bytes={}",
+            chunk_size as u64 * num_chunks as u64
+        );
         Ok(Self {
             utilization: Mutex::new(ExposedTable::create(
                 "cpu.utilization",
                 &utilization_schema(),
-                CHUNK_SIZE,
-                NUM_CHUNKS,
+                chunk_size,
+                num_chunks,
             )?),
             tasks: Mutex::new(ExposedTable::create(
                 "cpu.tasks",
                 &tasks_schema(),
-                CHUNK_SIZE,
-                NUM_CHUNKS,
+                chunk_size,
+                num_chunks,
             )?),
         })
     }
@@ -461,6 +505,29 @@ mod tests {
     use std::sync::Mutex;
 
     static ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+    #[test]
+    fn ring_defaults_cover_inject_window() {
+        let _guard = ENV_TEST_LOCK.lock().unwrap();
+        std::env::remove_var("PROBING_CPU_RING_MB");
+        std::env::remove_var("PROBING_CPU_CHUNK_BYTES");
+        std::env::remove_var("PROBING_CPU_NUM_CHUNKS");
+        let (chunk, num) = cpu_mmap_ring_config();
+        assert_eq!(chunk, DEFAULT_CHUNK_SIZE);
+        assert_eq!(num, DEFAULT_NUM_CHUNKS);
+        // ≥4MiB: covers inject wall+margin @ SAMPLE_MS=50 (~30KiB/s → ≥130s)
+        assert!(chunk as u64 * num as u64 >= 4 * 1024 * 1024);
+    }
+
+    #[test]
+    fn ring_mb_env_overrides_capacity() {
+        let _guard = ENV_TEST_LOCK.lock().unwrap();
+        std::env::set_var("PROBING_CPU_RING_MB", "4");
+        let (chunk, num) = cpu_mmap_ring_config();
+        assert_eq!(num, DEFAULT_NUM_CHUNKS);
+        assert_eq!(chunk as u64 * num as u64, 4 * 1024 * 1024);
+        std::env::remove_var("PROBING_CPU_RING_MB");
+    }
 
     #[test]
     fn autostart_defaults_to_one_second() {

@@ -1,0 +1,16 @@
+experiment: 3B_upgrade_latency
+case_id: P3-SW-A
+dose: loud
+parent_run_id: 20260727_023008-3b-p3-sw-a-loud
+pod: grj-megatron-32card-0716-worker-0
+resident_rate: 0
+set_rate: 1.0
+set_at_step: 100
+set_key: probing.torch.profiling=
+set_scope: victim
+latency_probe: 1
+w_star: 100
+tt_floor: 800
+opponent_restart_steps: 150
+s1_ref: /Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/S1_MID_ATTACH.md
+note: "自变量=无（测 SET→live / live→够归因 step）；清晰信号 rate=1.0；禁止 step_ms / 只报 cold"

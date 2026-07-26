@@ -1,0 +1,7 @@
+case,W,enough,n_tt_steps,evidence,W_star,status
+P3-SW-A,10,1,10,cpu.utilization_rss:rise_kb=240592:max_kb=2499616:n=123;torch_alloc_flat:step_rise_mb=-2268.3,10,OK
+P3-SW-A,25,1,25,cpu.utilization_rss:rise_kb=241360:max_kb=2499616:n=321;torch_alloc_flat:step_rise_mb=-2268.3,10,OK
+P3-SW-A,50,1,50,cpu.utilization_rss:rise_kb=241748:max_kb=2499656:n=645;torch_alloc_flat:step_rise_mb=-2268.3,10,OK
+P3-SW-A,100,1,100,cpu.utilization_rss:rise_kb=245644:max_kb=2499656:n=1304;torch_alloc_flat:step_rise_mb=-2268.3,10,OK
+P3-SW-A,200,1,200,cpu.utilization_rss:rise_kb=252832:max_kb=2499656:n=1638;torch_alloc_flat:step_rise_mb=-2268.3,10,OK
+P3-SW-A,full,1,248,cpu.utilization_rss:rise_kb=252832:max_kb=2499656:n=1638;torch_alloc_flat:step_rise_mb=-2268.3,10,OK

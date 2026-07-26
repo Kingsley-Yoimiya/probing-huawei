@@ -1,0 +1,524 @@
+{
+  "param": "federated_vs_naive_aggregation",
+  "exp_id": "4A_federated_denoise",
+  "status": "DONE",
+  "mode": "offline_harness",
+  "harness": "scripts/fail-slow/param_calib/4a_federated_denoise.py",
+  "criteria": "param_calib/4_health_summary_criteria/{CRITERIA.json,CRITERIA.md}",
+  "swept_range": {
+    "aggregation": [
+      "naive_all_rank_DETAIL",
+      "federated_SUMMARY_then_suspect_DETAIL"
+    ]
+  },
+  "chosen_value": {
+    "aggregation": "federated_SUMMARY_then_suspect_DETAIL",
+    "volume_ratio_federated_over_naive": 0.06258047563158917,
+    "saving_factor": 15.979424731237154,
+    "localize_culprit_ms": 2.842832999999989,
+    "summary_bytes_per_rank_measured_mean": 208.1875
+  },
+  "choose_rule": "两阶段：Phase-1 全 rank SUMMARY → dose门控+①-B suspects → Phase-2 仅 suspects DETAIL；对照=全 rank DETAIL；量比=fed/naive；定位墙钟=联邦路径 perf_counter 中位",
+  "controls": {
+    "n_ranks": 16,
+    "victim": 7,
+    "inject_window": [
+      100,
+      300
+    ],
+    "dose": "loud",
+    "dose_theta": 1.16,
+    "cross_rank_theta": 1.2,
+    "worst_fraction_phi": 0.4,
+    "W_star": 100,
+    "include_tt_in_detail": true,
+    "bytes_per_tt_step": 25190.4,
+    "set_key": "probing.torch.profiling=",
+    "set_scope": "victim",
+    "forbid": [
+      "local step alone as DETAIL gate",
+      "training step_ms as volume",
+      "cold-only",
+      "open 4B before 4A green"
+    ]
+  },
+  "ground_truth_source": {
+    "victim": 7,
+    "criteria_locked": true,
+    "reused": [
+      "1A_dose_threshold",
+      "1B_localize_threshold",
+      "2A_trace_window",
+      "2B_ring_capacity"
+    ],
+    "runs": [
+      "20260725_012957-yjr-as-c-p3-sw-a-loud",
+      "20260725_011129-yjr-as-c-p1-ext-a-loud",
+      "20260725_014350-yjr-as-c-p1-ext-b-loud",
+      "20260725_114556-yjr-as-c-p1-sw-a-loud",
+      "20260725_142359-yjr-as-c-p1-hw-b-loud"
+    ]
+  },
+  "measurements": {
+    "n_inject_arms": 10,
+    "victim_in_suspects_recall": 1.0,
+    "federated_localize_hit_rate": 1.0,
+    "mean_n_suspects": 1,
+    "volume_ratio_median": 0.06258047563158917,
+    "volume_ratio_mean": 0.06258083380745184,
+    "volume_ratio_min": 0.06257956586673558,
+    "volume_ratio_max": 0.06258369082399998,
+    "localize_culprit_ms_median": 2.842832999999989,
+    "localize_culprit_ms_mean": 2.904091800000001,
+    "naive_localize_ms_median": 2.345250500000007,
+    "summary_bytes_per_rank_mean": 208.1875,
+    "note_timing": "offline harness 墙钟=本机序列化+协调+定位 CPU 时间（中位×7）；非集群 FanoutScope 网络 RTT；live 网络墙钟留给 ④-B",
+    "note_tt_bytes": "DETAIL TT 字节按 ②-B 估计 W*×25190.4 B/step；phase 序列字节为 json 实测"
+  },
+  "arms": [
+    {
+      "case": "P3-SW-A",
+      "dose": "loud",
+      "arm": "C1",
+      "run_id": "20260725_012957-yjr-as-c-p3-sw-a-loud",
+      "role": "primary",
+      "phase_metric": "data_ms",
+      "dose_gate": true,
+      "suspects": [
+        7
+      ],
+      "n_suspects": 1,
+      "victim_in_suspects": true,
+      "cross_ratio": 332.40688437775816,
+      "cross_pred": 7,
+      "wf": 0.9950248756218906,
+      "wf_pred": 7,
+      "federated_pred": 7,
+      "naive_pred": 7,
+      "federated_hit": true,
+      "naive_hit": true,
+      "bytes": {
+        "summary_bytes_measured_total": 3292,
+        "summary_bytes_per_rank_mean": 205.75,
+        "detail_phase_bytes_per_suspect_mean": 10127.0,
+        "detail_tt_bytes_per_rank": 2519040,
+        "federated_phase1_bytes": 3292,
+        "federated_phase2_bytes": 2529167,
+        "federated_total_bytes": 2532459,
+        "naive_phase_bytes": 160519,
+        "naive_tt_bytes": 40304640,
+        "naive_total_bytes": 40465159,
+        "volume_ratio_federated_over_naive": 0.06258369082399998,
+        "saving_factor": 15.978603799706136
+      },
+      "timing_ms": {
+        "federated_phase1_ms": 1.987417000000005,
+        "federated_coord_ms": 0.502916000000006,
+        "federated_phase2_and_localize_ms": 0.1562089999999905,
+        "localize_culprit_ms": 2.646542000000002,
+        "naive_localize_ms": 2.2630839999999983,
+        "n_timing_trials": 7
+      }
+    },
+    {
+      "case": "P3-SW-A",
+      "dose": "loud",
+      "arm": "C2",
+      "run_id": "20260725_012957-yjr-as-c-p3-sw-a-loud",
+      "role": "primary",
+      "phase_metric": "data_ms",
+      "dose_gate": true,
+      "suspects": [
+        7
+      ],
+      "n_suspects": 1,
+      "victim_in_suspects": true,
+      "cross_ratio": 341.1810344827586,
+      "cross_pred": 7,
+      "wf": 0.9950248756218906,
+      "wf_pred": 7,
+      "federated_pred": 7,
+      "naive_pred": 7,
+      "federated_hit": true,
+      "naive_hit": true,
+      "bytes": {
+        "summary_bytes_measured_total": 3267,
+        "summary_bytes_per_rank_mean": 204.1875,
+        "detail_phase_bytes_per_suspect_mean": 10121.0,
+        "detail_tt_bytes_per_rank": 2519040,
+        "federated_phase1_bytes": 3267,
+        "federated_phase2_bytes": 2529161,
+        "federated_total_bytes": 2532428,
+        "naive_phase_bytes": 160515,
+        "naive_tt_bytes": 40304640,
+        "naive_total_bytes": 40465155,
+        "volume_ratio_federated_over_naive": 0.06258293091920691,
+        "saving_factor": 15.978797817746447
+      },
+      "timing_ms": {
+        "federated_phase1_ms": 1.9165000000000014,
+        "federated_coord_ms": 0.49108300000000327,
+        "federated_phase2_and_localize_ms": 0.14704199999998613,
+        "localize_culprit_ms": 2.554624999999991,
+        "naive_localize_ms": 2.2271249999999965,
+        "n_timing_trials": 7
+      }
+    },
+    {
+      "case": "P1-EXT-A",
+      "dose": "loud",
+      "arm": "C1",
+      "run_id": "20260725_011129-yjr-as-c-p1-ext-a-loud",
+      "role": "primary",
+      "phase_metric": "compute_ms",
+      "dose_gate": true,
+      "suspects": [
+        7
+      ],
+      "n_suspects": 1,
+      "victim_in_suspects": true,
+      "cross_ratio": 4.3736880093831765,
+      "cross_pred": 7,
+      "wf": 0.9850746268656716,
+      "wf_pred": 7,
+      "federated_pred": 7,
+      "naive_pred": 7,
+      "federated_hit": true,
+      "naive_hit": true,
+      "bytes": {
+        "summary_bytes_measured_total": 3352,
+        "summary_bytes_per_rank_mean": 209.5,
+        "detail_phase_bytes_per_suspect_mean": 9923.0,
+        "detail_tt_bytes_per_rank": 2519040,
+        "federated_phase1_bytes": 3352,
+        "federated_phase2_bytes": 2528963,
+        "federated_total_bytes": 2532315,
+        "naive_phase_bytes": 160288,
+        "naive_tt_bytes": 40304640,
+        "naive_total_bytes": 40464928,
+        "volume_ratio_federated_over_naive": 0.06258048945496703,
+        "saving_factor": 15.97942120154878
+      },
+      "timing_ms": {
+        "federated_phase1_ms": 2.0050839999999903,
+        "federated_coord_ms": 0.5108330000000161,
+        "federated_phase2_and_localize_ms": 0.1604999999999801,
+        "localize_culprit_ms": 2.6764169999999865,
+        "naive_localize_ms": 2.3205420000000085,
+        "n_timing_trials": 7
+      }
+    },
+    {
+      "case": "P1-EXT-A",
+      "dose": "loud",
+      "arm": "C2",
+      "run_id": "20260725_011129-yjr-as-c-p1-ext-a-loud",
+      "role": "primary",
+      "phase_metric": "compute_ms",
+      "dose_gate": true,
+      "suspects": [
+        7
+      ],
+      "n_suspects": 1,
+      "victim_in_suspects": true,
+      "cross_ratio": 4.35937170884362,
+      "cross_pred": 7,
+      "wf": 0.9850746268656716,
+      "wf_pred": 7,
+      "federated_pred": 7,
+      "naive_pred": 7,
+      "federated_hit": true,
+      "naive_hit": true,
+      "bytes": {
+        "summary_bytes_measured_total": 3356,
+        "summary_bytes_per_rank_mean": 209.75,
+        "detail_phase_bytes_per_suspect_mean": 9918.0,
+        "detail_tt_bytes_per_rank": 2519040,
+        "federated_phase1_bytes": 3356,
+        "federated_phase2_bytes": 2528958,
+        "federated_total_bytes": 2532314,
+        "naive_phase_bytes": 160252,
+        "naive_tt_bytes": 40304640,
+        "naive_total_bytes": 40464892,
+        "volume_ratio_federated_over_naive": 0.06258052041755109,
+        "saving_factor": 15.979413295507587
+      },
+      "timing_ms": {
+        "federated_phase1_ms": 2.1280000000000188,
+        "federated_coord_ms": 0.5257079999999581,
+        "federated_phase2_and_localize_ms": 0.15487499999999876,
+        "localize_culprit_ms": 2.8085829999999756,
+        "naive_localize_ms": 2.3160830000000243,
+        "n_timing_trials": 7
+      }
+    },
+    {
+      "case": "P1-EXT-B",
+      "dose": "loud",
+      "arm": "C1",
+      "run_id": "20260725_014350-yjr-as-c-p1-ext-b-loud",
+      "role": "expand",
+      "phase_metric": "compute_ms",
+      "dose_gate": true,
+      "suspects": [
+        7
+      ],
+      "n_suspects": 1,
+      "victim_in_suspects": true,
+      "cross_ratio": 2.223109731285699,
+      "cross_pred": 7,
+      "wf": 0.9850746268656716,
+      "wf_pred": 7,
+      "federated_pred": 7,
+      "naive_pred": 7,
+      "federated_hit": true,
+      "naive_hit": true,
+      "bytes": {
+        "summary_bytes_measured_total": 3363,
+        "summary_bytes_per_rank_mean": 210.1875,
+        "detail_phase_bytes_per_suspect_mean": 9922.0,
+        "detail_tt_bytes_per_rank": 2519040,
+        "federated_phase1_bytes": 3363,
+        "federated_phase2_bytes": 2528962,
+        "federated_total_bytes": 2532325,
+        "naive_phase_bytes": 160310,
+        "naive_tt_bytes": 40304640,
+        "naive_total_bytes": 40464950,
+        "volume_ratio_federated_over_naive": 0.06258070255863407,
+        "saving_factor": 15.97936678743842
+      },
+      "timing_ms": {
+        "federated_phase1_ms": 2.917708000000019,
+        "federated_coord_ms": 0.5882500000000124,
+        "federated_phase2_and_localize_ms": 0.16533400000001697,
+        "localize_culprit_ms": 3.671292000000048,
+        "naive_localize_ms": 2.483583999999983,
+        "n_timing_trials": 7
+      }
+    },
+    {
+      "case": "P1-EXT-B",
+      "dose": "loud",
+      "arm": "C2",
+      "run_id": "20260725_014350-yjr-as-c-p1-ext-b-loud",
+      "role": "expand",
+      "phase_metric": "compute_ms",
+      "dose_gate": true,
+      "suspects": [
+        7
+      ],
+      "n_suspects": 1,
+      "victim_in_suspects": true,
+      "cross_ratio": 2.2326623600473634,
+      "cross_pred": 7,
+      "wf": 0.9850746268656716,
+      "wf_pred": 7,
+      "federated_pred": 7,
+      "naive_pred": 7,
+      "federated_hit": true,
+      "naive_hit": true,
+      "bytes": {
+        "summary_bytes_measured_total": 3329,
+        "summary_bytes_per_rank_mean": 208.0625,
+        "detail_phase_bytes_per_suspect_mean": 9920.0,
+        "detail_tt_bytes_per_rank": 2519040,
+        "federated_phase1_bytes": 3329,
+        "federated_phase2_bytes": 2528960,
+        "federated_total_bytes": 2532289,
+        "naive_phase_bytes": 160278,
+        "naive_tt_bytes": 40304640,
+        "naive_total_bytes": 40464918,
+        "volume_ratio_federated_over_naive": 0.06257986238845215,
+        "saving_factor": 15.97958131950974
+      },
+      "timing_ms": {
+        "federated_phase1_ms": 2.158667000000003,
+        "federated_coord_ms": 0.5301249999999924,
+        "federated_phase2_and_localize_ms": 0.15566599999999875,
+        "localize_culprit_ms": 2.844457999999994,
+        "naive_localize_ms": 2.3764159999999923,
+        "n_timing_trials": 7
+      }
+    },
+    {
+      "case": "P1-SW-A",
+      "dose": "loud",
+      "arm": "C1",
+      "run_id": "20260725_114556-yjr-as-c-p1-sw-a-loud",
+      "role": "expand",
+      "phase_metric": "compute_ms",
+      "dose_gate": true,
+      "suspects": [
+        7
+      ],
+      "n_suspects": 1,
+      "victim_in_suspects": true,
+      "cross_ratio": 4.765709210248999,
+      "cross_pred": 7,
+      "wf": 0.6616915422885572,
+      "wf_pred": 7,
+      "federated_pred": 7,
+      "naive_pred": 7,
+      "federated_hit": true,
+      "naive_hit": true,
+      "bytes": {
+        "summary_bytes_measured_total": 3336,
+        "summary_bytes_per_rank_mean": 208.5,
+        "detail_phase_bytes_per_suspect_mean": 9924.0,
+        "detail_tt_bytes_per_rank": 2519040,
+        "federated_phase1_bytes": 3336,
+        "federated_phase2_bytes": 2528964,
+        "federated_total_bytes": 2532300,
+        "naive_phase_bytes": 160324,
+        "naive_tt_bytes": 40304640,
+        "naive_total_bytes": 40464964,
+        "volume_ratio_federated_over_naive": 0.0625800630886512,
+        "saving_factor": 15.979530071476523
+      },
+      "timing_ms": {
+        "federated_phase1_ms": 2.3535420000000418,
+        "federated_coord_ms": 0.6036669999999189,
+        "federated_phase2_and_localize_ms": 0.15225000000007594,
+        "localize_culprit_ms": 3.1094590000000366,
+        "naive_localize_ms": 2.4064160000000223,
+        "n_timing_trials": 7
+      }
+    },
+    {
+      "case": "P1-SW-A",
+      "dose": "loud",
+      "arm": "C2",
+      "run_id": "20260725_114556-yjr-as-c-p1-sw-a-loud",
+      "role": "expand",
+      "phase_metric": "compute_ms",
+      "dose_gate": true,
+      "suspects": [
+        7
+      ],
+      "n_suspects": 1,
+      "victim_in_suspects": true,
+      "cross_ratio": 4.755660787340218,
+      "cross_pred": 7,
+      "wf": 0.6616915422885572,
+      "wf_pred": 7,
+      "federated_pred": 7,
+      "naive_pred": 7,
+      "federated_hit": true,
+      "naive_hit": true,
+      "bytes": {
+        "summary_bytes_measured_total": 3329,
+        "summary_bytes_per_rank_mean": 208.0625,
+        "detail_phase_bytes_per_suspect_mean": 9907.0,
+        "detail_tt_bytes_per_rank": 2519040,
+        "federated_phase1_bytes": 3329,
+        "federated_phase2_bytes": 2528947,
+        "federated_total_bytes": 2532276,
+        "naive_phase_bytes": 160262,
+        "naive_tt_bytes": 40304640,
+        "naive_total_bytes": 40464902,
+        "volume_ratio_federated_over_naive": 0.06257956586673558,
+        "saving_factor": 15.979657035804944
+      },
+      "timing_ms": {
+        "federated_phase1_ms": 2.1898329999999744,
+        "federated_coord_ms": 0.6037090000000633,
+        "federated_phase2_and_localize_ms": 0.15337500000001114,
+        "localize_culprit_ms": 2.946917000000049,
+        "naive_localize_ms": 2.4086669999999755,
+        "n_timing_trials": 7
+      }
+    },
+    {
+      "case": "P1-HW-B",
+      "dose": "loud",
+      "arm": "C1",
+      "run_id": "20260725_142359-yjr-as-c-p1-hw-b-loud",
+      "role": "expand",
+      "phase_metric": "compute_ms",
+      "dose_gate": true,
+      "suspects": [
+        7
+      ],
+      "n_suspects": 1,
+      "victim_in_suspects": true,
+      "cross_ratio": 1.7134639933919051,
+      "cross_pred": 7,
+      "wf": 0.9850746268656716,
+      "wf_pred": 7,
+      "federated_pred": 7,
+      "naive_pred": 7,
+      "federated_hit": true,
+      "naive_hit": true,
+      "bytes": {
+        "summary_bytes_measured_total": 3332,
+        "summary_bytes_per_rank_mean": 208.25,
+        "detail_phase_bytes_per_suspect_mean": 9927.0,
+        "detail_tt_bytes_per_rank": 2519040,
+        "federated_phase1_bytes": 3332,
+        "federated_phase2_bytes": 2528967,
+        "federated_total_bytes": 2532299,
+        "naive_phase_bytes": 160316,
+        "naive_tt_bytes": 40304640,
+        "naive_total_bytes": 40464956,
+        "volume_ratio_federated_over_naive": 0.06258005074810906,
+        "saving_factor": 15.979533222577587
+      },
+      "timing_ms": {
+        "federated_phase1_ms": 2.1911249999999605,
+        "federated_coord_ms": 0.5922919999999943,
+        "federated_phase2_and_localize_ms": 0.15799999999999148,
+        "localize_culprit_ms": 2.941416999999946,
+        "naive_localize_ms": 2.365916999999995,
+        "n_timing_trials": 7
+      }
+    },
+    {
+      "case": "P1-HW-B",
+      "dose": "loud",
+      "arm": "C2",
+      "run_id": "20260725_142359-yjr-as-c-p1-hw-b-loud",
+      "role": "expand",
+      "phase_metric": "compute_ms",
+      "dose_gate": true,
+      "suspects": [
+        7
+      ],
+      "n_suspects": 1,
+      "victim_in_suspects": true,
+      "cross_ratio": 1.7119252011045742,
+      "cross_pred": 7,
+      "wf": 0.9800995024875622,
+      "wf_pred": 7,
+      "federated_pred": 7,
+      "naive_pred": 7,
+      "federated_hit": true,
+      "naive_hit": true,
+      "bytes": {
+        "summary_bytes_measured_total": 3354,
+        "summary_bytes_per_rank_mean": 209.625,
+        "detail_phase_bytes_per_suspect_mean": 9915.0,
+        "detail_tt_bytes_per_rank": 2519040,
+        "federated_phase1_bytes": 3354,
+        "federated_phase2_bytes": 2528955,
+        "federated_total_bytes": 2532309,
+        "naive_phase_bytes": 160210,
+        "naive_tt_bytes": 40304640,
+        "naive_total_bytes": 40464850,
+        "volume_ratio_federated_over_naive": 0.06258046180821132,
+        "saving_factor": 15.979428260927083
+      },
+      "timing_ms": {
+        "federated_phase1_ms": 2.098417000000019,
+        "federated_coord_ms": 0.5910829999999923,
+        "federated_phase2_and_localize_ms": 0.15170799999997264,
+        "localize_culprit_ms": 2.841207999999984,
+        "naive_localize_ms": 2.3245840000000184,
+        "n_timing_trials": 7
+      }
+    }
+  ],
+  "supports_design": "单 victim N=16：联邦量比中位≈0.0626（约 16.0× 节省）；victim∈suspects 召回=1.0；定位墙钟中位≈2.843 ms（离线 harness）。证明健康机只回 SUMMARY、明细门走协调 ①-B 可去噪一个量级。",
+  "scored_at": "2026-07-27T06:34:13",
+  "blocked": false,
+  "missing_runs": []
+}

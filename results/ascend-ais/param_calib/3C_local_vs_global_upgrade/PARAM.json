@@ -1,0 +1,163 @@
+{
+  "param": "upgrade_scope",
+  "exp_id": "3C_local_vs_global_upgrade",
+  "status": "DONE",
+  "mode": "offline_extrapolate_reuse_3A_local",
+  "harness": "scripts/fail-slow/param_calib/3c_local_vs_global_upgrade.py",
+  "upstream": [
+    "param_calib/3A_upgrade_rate/",
+    "param_calib/4_health_summary_criteria/",
+    "param_calib/4A_federated_denoise/",
+    "param_calib/2B_ring_capacity/",
+    "param_calib/2A_trace_window/"
+  ],
+  "swept_range": {
+    "set_scope": [
+      "victim",
+      "all"
+    ],
+    "module_scope_secondary": [
+      "suspect_frac",
+      "all"
+    ]
+  },
+  "chosen_value": {
+    "upgrade_scope": "local_suspect_only",
+    "set_scope_default": "victim",
+    "volume_ratio_local_over_global": 0.0625,
+    "saving_factor": 16.0,
+    "d_level_local": 4,
+    "d_level_global": 4,
+    "same_d_level": true,
+    "local_upgrade_tt_bytes": 2519040,
+    "global_upgrade_tt_bytes": 40304640,
+    "n_suspects": 1,
+    "n_ranks": 16,
+    "aligns_with_4A_volume_ratio": true
+  },
+  "choose_rule": "单自变量=升精度范围。局部 live D4 且量比≪1、全局无更高 D → 选 local_suspect_only；不 live 跑 SET_SCOPE=all（死锁）。",
+  "controls": {
+    "case": "P3-SW-A",
+    "dose": "loud",
+    "rate_star": 0.001,
+    "set_key": "probing.torch.profiling=",
+    "set_at_step": 100,
+    "victim_local_rank": 7,
+    "inject_window": [
+      100,
+      300
+    ],
+    "W_star": 100,
+    "bytes_per_tt_step": 25190.4,
+    "n_ranks": 16,
+    "n_suspects": 1,
+    "dose_theta": 1.16,
+    "cross_rank_theta": 1.2,
+    "worst_fraction_phi": 0.4,
+    "forbid": [
+      "training step_ms as volume",
+      "cold-only as volume",
+      "multi independent vars",
+      "live multi-rank SET_SCOPE=all",
+      "treat 3A MEMT full-ring dump as all-rank upgraded",
+      "touch yysong-master / a3 / song AFS"
+    ]
+  },
+  "ground_truth_source": {
+    "local_live": "param_calib/3A_upgrade_rate/20260727_014151-3a-p3-sw-a-loud",
+    "suspects": "param_calib/4_health_summary_criteria (suspects={7})",
+    "invalid_global_set": "param_calib/3A_upgrade_rate/20260727_012805-3a-p3-sw-a-loud",
+    "bytes_per_tt_step": "param_calib/2B_ring_capacity",
+    "dynolog_contrast": {
+      "literature": {
+        "lo_pct": 20,
+        "hi_pct": 44,
+        "source": "Argus / OUTLINE (full profiler resident)"
+      },
+      "muxi_measured": {
+        "p3_sw_a_pct": 53,
+        "band_pct": [
+          0.3,
+          73
+        ],
+        "source": "probing-test Dynolog+HTA loud contrasts (C6/C0 vs Loud)"
+      }
+    }
+  },
+  "measurements": {
+    "arms": [
+      {
+        "arm": "local_suspect_upgrade",
+        "set_scope": "victim",
+        "n_ranks_upgraded": 1,
+        "ranks": [
+          7
+        ],
+        "rate": 0.001,
+        "upgrade_tt_bytes": 2519040,
+        "upgrade_tt_mib": 2.40234375,
+        "d_level": 4,
+        "enough_d4": true,
+        "evidence": "3A_014151 live SET_SCOPE=victim rate*=0.001 → RSS∧SET∧TT>0 → D4",
+        "set_n_ok_workers": 1,
+        "mode": "live_reused"
+      },
+      {
+        "arm": "global_all_rank_upgrade",
+        "set_scope": "all",
+        "n_ranks_upgraded": 16,
+        "ranks": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "rate": 0.001,
+        "upgrade_tt_bytes": 40304640,
+        "upgrade_tt_mib": 38.4375,
+        "d_level": 4,
+        "enough_d4": true,
+        "evidence": "offline_extrapolate: global TT volume = N×local; D≥local by dominance (victim data ⊇); live SET_SCOPE=all INVALID 20260727_012805-3a-p3-sw-a-loud deadlock@L=138",
+        "set_n_ok_workers": null,
+        "mode": "offline_extrapolate_no_live"
+      }
+    ],
+    "volume_ratio_local_over_global": 0.0625,
+    "saving_factor": 16.0,
+    "module_arms": [
+      {
+        "arm": "local_suspect_module",
+        "module_scope": "suspect_frac",
+        "module_frac": 0.15,
+        "upgrade_tt_bytes": 377856,
+        "note": "设计层外推；本轮无 live module-filter SET"
+      },
+      {
+        "arm": "global_all_module",
+        "module_scope": "all",
+        "module_frac": 1.0,
+        "upgrade_tt_bytes": 2519040,
+        "note": "同 victim rank 下全模块升详"
+      }
+    ],
+    "module_volume_ratio_local_over_global": 0.15,
+    "note": "局部臂=③-A live；全局臂=按 n_ranks 外推升详 TT（W* content）；D 同级由支配论；Dynolog 作全局噪音对照引用。"
+  },
+  "supports_design": "对 P3-SW-A loud：触发后 SET `probing.torch.profiling=on,rate=0.001`，自变量=升精度范围。局部（suspect/victim=7，复用 ③-A `20260727_014151-3a-p3-sw-a-loud`）→ D4；全局（全 16 rank）外推升详 TT 量=40304640 B vs 局部 2519040 B → 量比 local/global=**0.0625**（≈16.0×），D-level **同级 D4**。证明只需对嫌疑维局部升即可同等归因，数据量小一个量级；全局升≈Dynolog 全量噪音对照（文献 +20–44%；沐曦真跑 P3-SW-A≈+53%）。避 live SET_SCOPE=all（INVALID `20260727_012805-3a-p3-sw-a-loud` 多 rank 死锁）。",
+  "scored_at": "2026-07-27T06:53:28",
+  "blocked": false,
+  "missing_runs": [],
+  "campaign_note": "批次4最后一格；完成后主队列可收官"
+}

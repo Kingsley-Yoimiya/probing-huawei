@@ -1,0 +1,1 @@
+LOG=/Users/yinjinrun/Codespace/myportal/results/ascend-ais/param_calib/3B_upgrade_latency/logs/run_3b_20260727_023223.log

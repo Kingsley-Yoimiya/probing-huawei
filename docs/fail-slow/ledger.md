@@ -267,6 +267,32 @@
 
 **旧 C 作废**：`pillar_c/*/VOLUME_RATIO.md`（cold 三臂比）、C-2 `COLD_MAX` 主线、C-3 mid_set 当终态 → **SUPERSEDED**（尺用错 + SET 未进 live tracer + 用训练 D 判臂）。见队列 §0。
 
+### 4.1b 参数标定（Param-Calib · Pillar-C v2 往下钻一层）
+
+| 轨 | 文档 | 状态落点 |
+|---|---|---|
+| Loop | [`agents/LOOP_PARAM_CALIB.md`](agents/LOOP_PARAM_CALIB.md) | `_prep/LOOP_LAST_PARAM_CALIB.md` |
+| 队列 | [`PARAM_CALIB_QUEUE.md`](PARAM_CALIB_QUEUE.md) + [`agents/PARAM_CALIB_RUNNER.md`](agents/PARAM_CALIB_RUNNER.md) | `param_calib/<exp_id>/`（PARAM.json+md） |
+| 方案真相源 | `project/reading-paper/writing/probing-paper/PILLAR-C-PARAM-CALIBRATION-PLAN.md` | 4 模块×每参数一实验；参数由数据定 |
+| 目标 | 把判据阈/追溯窗W\*/升精度rate/多机去噪的**参数从数据推出来** | 批次1(离线)先；批次2需P-fix；批次3需健康摘要判据 |
+
+> **批次1 纯离线**（读本机 C0/C1/C2 三线×三档），不占卡、最先跑；①-A 档阈 FPR–召回曲线最能证"参数由数据定"。**不抢 v2 的 grj-w0 活作业。**
+
+| exp | 状态 | θ\* / 参数 | 落点 |
+|---|---|---|---|
+| **①-A** `1A_dose_threshold` | ✅ DONE | loud/**1.16** quiet/**1.12** masked/**1.04**（FPR 预算 1%/5%/12%；C0 稳态自比；黄金 P3-EXT-A+P3-SW-C 召回=1） | `results/ascend-ais/param_calib/1A_dose_threshold/` |
+| **①-B** `1B_localize_threshold` | ✅ DONE | 跨 rank θ\*=**1.2** / worst_fraction φ\*=**0.4**（主池 P1 `compute_ms/min`+P3-SW-A `data_ms/max`；hit=0.889 mis=0；GPU 层 FPR=0；档阈固定 ①-A；旧 1.5/0.25） | `results/ascend-ais/param_calib/1B_localize_threshold/` |
+| **②-B** `2B_ring_capacity` | ✅ DONE | 环默认 **10 MB**（满环≈407 步≈4×E1-off W\*=100）；20MB 满环≈**814**（v2「546」=fill≈67% 观测跨度非饱和）；B/step≈24.6KiB（`python.torch_trace`） | `results/ascend-ais/param_calib/2B_ring_capacity/` |
+| **②-A** `2A_trace_window` | ✅ DONE | 设计默认 W\*=**100**=max(case)；P1-HW-B/P1-SW-C=**100**；P3-SW-A/B=**10** | `results/ascend-ais/param_calib/2A_trace_window/` |
+| **③-A** `3A_upgrade_rate` | ✅ DONE | rate\*=**0.001**（E4=D2 锚；≥0.001 均 D4；SET_SCOPE=victim） | `results/ascend-ais/param_calib/3A_upgrade_rate/` |
+| **③-B** `3B_upgrade_latency` | ✅ DONE | SET→够TT 上界≤**12** <<150（parent=`023223`） | `results/ascend-ais/param_calib/3B_upgrade_latency/` |
+| **判据** `4_health_summary_criteria` | ✅ **LOCKED** | 健康=非 ①-B suspect；摘要~180B；FPR(loud)=**0%**；量比预期≈**0.063** | `results/ascend-ais/param_calib/4_health_summary_criteria/` |
+| **④-A** `4A_federated_denoise` | ✅ DONE | volume_ratio≈**0.0626**（~16×）；localize≈**2.84 ms**（离线） | `param_calib/4A_federated_denoise/{PARAM.json,PARAM.md}` |
+| **④-B** `4B_fanout_latency` | ✅ DONE | 设计切换 **N≥17→Coordinator**（≤16 **Node**；延迟交叉@8）；N=64 coord≈**21.5 ms**、peers **63→3**；mode=仿真+本机HTTP校准 | `param_calib/4B_fanout_latency/{PARAM.json,PARAM.md}` |
+| **②-C** `2C_local_vs_preagg` | ✅ DONE | policy=**local_retain_trigger_then_aggregate**（preagg=off）；常驻预聚开销≈1.63MiB/3.38s、收益=0 | `param_calib/2C_local_vs_preagg/` |
+| **③-C** `3C_local_vs_global_upgrade` | ✅ DONE | scope=**local_suspect_only**；量比 local/global=**0.0625**（16×）；D4=D4 同级；复用 ③-A+离线外推 | `param_calib/3C_local_vs_global_upgrade/` |
+| **P-FIX** 环+尖刺 | ✅ DONE | cpu.util 环 **8MiB**；尖刺 top=**0.618s** n=26 | `_prep/pillar_c_gate/{P_FIX.md,artifacts/p_fix_20260727_003642/}` |
+
 Loud 归档 [`agents/LOOP_LOUD.md`](agents/LOOP_LOUD.md)。
 
 ## 4.2 Loud 战役落点（归档参考）
@@ -280,6 +306,16 @@ Loud 归档 [`agents/LOOP_LOUD.md`](agents/LOOP_LOUD.md)。
 
 | 日期 | 变更 |
 |---|---|
+| 2026-07-27 | **Param-Calib 主队列收官**：批次1–4 全 DONE；20m loop 停；`LOOP_LAST_PARAM_CALIB` status=CLOSED；产物根 `results/ascend-ais/param_calib/` |
+| 2026-07-27 | **Param-Calib ③-C DONE（批次4收官）**：`3c_local_vs_global_upgrade.py`；scope=**local_suspect_only**；量比 local/global=**0.0625**（16×）；D4=D4 同级；复用 ③-A `014151` victim 臂+离线外推（避 SET_SCOPE=all 死锁 `012805`）；Dynolog 对照文献+20–44%/沐曦 P3-SW-A≈+53%；`param_calib/3C_local_vs_global_upgrade/`；**主队列可收官** |
+| 2026-07-27 | **Param-Calib ④-B DONE**：`4b_fanout_latency.py`；N∈{8,16,32,64}×FanoutScope；设计切换 **N≥17→Coordinator**（≤16 Node；延迟交叉@8）；N=64 coord≈21.5ms / peers 63→3；mode=`simulated_network+local_http_calib`（无伪造 64 卡 live）；`param_calib/4B_fanout_latency/`；本 Runner 未开批次4 |
+| 2026-07-27 | **Param-Calib ④-A DONE**：`4a_federated_denoise.py`；volume_ratio≈**0.0626**（~16×）；localize≈**2.84 ms**；`param_calib/4A_federated_denoise/` |
+| 2026-07-26 | **铁律入库**：Ascend 编/装 probing wheel 禁止 pod 内 rustup/公网下工具链；本机 Clash 摆渡。见 `agents/BUILD_WHEEL.md`；`install_probing_wheel_on_pod.sh` 缺 rustc → exit 91 |
+| 2026-07-26 | **Param-Calib 批次1齐**：①-A θ*=1.16/1.12/1.04；①-B θ*=1.2/φ*=0.4；②-B 默认环 **10MB**≈407步（20MB满环≈814）；下一 P-FIX（环+尖刺）后才开批次2 |
+| 2026-07-26 | **Param-Calib ②-B DONE**：`2B_ring_capacity`；默认环 **10 MB**→满环≈**407** 步（≥4×E1-off W\*=100）；20MB 满环≈**814**（复核 v2「546」=67% fill 观测跨度）；表=`python.torch_trace` MEMT，B/row≈169、B/step≈24.6KiB；`param_calib/2B_ring_capacity/`；脚本 `2b_ring_capacity.py`；纯离线不占卡 |
+| 2026-07-26 | **Param-Calib ①-B DONE**：`1B_localize_threshold`；跨 rank θ\*=**1.2** / worst_fraction φ\*=**0.4**（主池 P1+P3-SW-A exact→r7；hit=0.889 mis=0；GPU FPR=0；φ 受 FPR≤30%；档阈固定 ①-A；host-wide P3-EXT/SW-C 另表；旧 1.5/0.25）；`param_calib/1B_localize_threshold/`；脚本 `1b_localize_threshold.py`；纯离线不占卡 |
+| 2026-07-26 | **Param-Calib ①-A DONE**：`1A_dose_threshold`；θ\*=loud **1.16** / quiet **1.12** / masked **1.04**（FPR 预算 1%/5%/12%；C0 稳态滑动窗自比；黄金 P3-EXT-A+P3-SW-C 三档召回=1；旧默认 1.3/1.15/1.05 邻近）；`param_calib/1A_dose_threshold/`；脚本 `scripts/fail-slow/param_calib/1a_dose_threshold.py`；纯离线不占卡 |
+| 2026-07-26 | **Param-Calib 开跑**：20m loop 武装；首轮派离线 ①-A `1A_dose_threshold`（θ≈1.02→1.5；黄金 P3-EXT-A + P3-SW-C，masked 正式格=`135016`）；产物 `param_calib/`；P3-SW-C stub `132433` 已从队列剔除；批次2 仍 BLOCKED（P-FIX 环+尖刺未绿） |
 | 2026-07-26 | **Pillar-C v2 备份**：ais `/root/backups/ascend-ais-pillar-c-v2-20260726`（11G / tar.gz 54M md5 `9b65f31d…`）；AFS 同路径；本仓瘦身入库 `results/ascend-ais/pillar_c_v2/`；见 `BACKUP.md` / `CAMPAIGN_SUMMARY.md` |
 | 2026-07-26 | **Pillar-C v2 主线收官**：C0→E1-off→E1→E2→E3→E4→S1 全 ✅；头条动态/全量=**72.6%**（`181423`）；E2 最稀 rate=0；E4 PASS 掉级；S1 `184311` 热接入 restart=0、onset 前不可见；摘要 `pillar_c_v2/CAMPAIGN_SUMMARY.md`；15m loop 停 |
 | 2026-07-26 | **Pillar-C E4 反例 DONE**：parent=`20260726_182630-pillar-c-e4-p3-sw-a-loud`@grj-w0；砍量=E3 动态去 SET↑（rate=0 SAMPLE_MS=500）；**PASS 掉级**（path_enough RSS∧SET：E3 Y→naive N）；禁 SET 控制 Y（log 缺席）；TT rows **0 vs E3 54054**；RSS 仍 Y（周期小表）；总落盘≈1.54GB 仍小；`E4_ABLATION.md`；未占 m0；w0 IDLE |

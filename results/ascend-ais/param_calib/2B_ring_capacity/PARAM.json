@@ -1,0 +1,232 @@
+{
+  "param": "torch_trace_ring_capacity_mb",
+  "exp_id": "2B_ring_capacity",
+  "swept_range": {
+    "unit": "MB_SI",
+    "values": [
+      5.0,
+      7.5,
+      10.0,
+      15.0,
+      20.0,
+      30.0,
+      40.0
+    ],
+    "nchunks_fixed": 8
+  },
+  "chosen_value": {
+    "chosen_mb": 10.0,
+    "steps": 407,
+    "rule": "min C in sweep s.t. steps(C) ≥ 4×W* (400)",
+    "rationale": "够 W*=100 且不浪费；10MB≈4× 余量"
+  },
+  "retention_curve": [
+    {
+      "capacity_mb": 5.0,
+      "capacity_bytes": 5000000,
+      "usable_bytes": 4999680,
+      "steps_retainable": 203,
+      "rows_retainable": 29575,
+      "margin_vs_W_star": 2.03
+    },
+    {
+      "capacity_mb": 7.5,
+      "capacity_bytes": 7500000,
+      "usable_bytes": 7499680,
+      "steps_retainable": 305,
+      "rows_retainable": 44363,
+      "margin_vs_W_star": 3.05
+    },
+    {
+      "capacity_mb": 10.0,
+      "capacity_bytes": 10000000,
+      "usable_bytes": 9999680,
+      "steps_retainable": 407,
+      "rows_retainable": 59152,
+      "margin_vs_W_star": 4.07
+    },
+    {
+      "capacity_mb": 15.0,
+      "capacity_bytes": 15000000,
+      "usable_bytes": 14999680,
+      "steps_retainable": 610,
+      "rows_retainable": 88729,
+      "margin_vs_W_star": 6.1
+    },
+    {
+      "capacity_mb": 20.0,
+      "capacity_bytes": 20000000,
+      "usable_bytes": 19999680,
+      "steps_retainable": 814,
+      "rows_retainable": 118307,
+      "margin_vs_W_star": 8.14
+    },
+    {
+      "capacity_mb": 30.0,
+      "capacity_bytes": 30000000,
+      "usable_bytes": 29999680,
+      "steps_retainable": 1221,
+      "rows_retainable": 177461,
+      "margin_vs_W_star": 12.21
+    },
+    {
+      "capacity_mb": 40.0,
+      "capacity_bytes": 40000000,
+      "usable_bytes": 39999680,
+      "steps_retainable": 1628,
+      "rows_retainable": 236615,
+      "margin_vs_W_star": 16.28
+    }
+  ],
+  "calibration": {
+    "table": "python.torch_trace",
+    "n_files": 32,
+    "n_runs": 2,
+    "nchunks": 8,
+    "chunk_size": 2500000,
+    "capacity_bytes_observed": 20000000,
+    "observed_steps": 546,
+    "observed_rows": 79353,
+    "step_min": 0,
+    "step_max": 545,
+    "fill_frac_mean": 0.6707377818045088,
+    "rows_overwritten_max": 0,
+    "bytes_per_row_median": 169.0489458495583,
+    "bytes_per_row_mean": 169.0489458495583,
+    "bytes_per_step_median": 24568.75641025641,
+    "bytes_per_step_mean": 24568.75641025641,
+    "rows_per_step_median": 145.33516483516485,
+    "how_bytes_measured": "Σ MEMT chunk.used (payload after 40B chunk header) / n_rows or n_unique(local_step)"
+  },
+  "by_run": [
+    {
+      "run_id": "20260725_230350-pillar-c-p3-sw-a-loud",
+      "n_files": 16,
+      "steps": 546,
+      "rows": 79353,
+      "fill_frac": 0.6707377818045088,
+      "bytes_per_step": 24568.75641025641,
+      "bytes_per_row": 169.0489458495583,
+      "rows_overwritten": 0,
+      "example_path": "project/probing-huawei/results/ascend-ais/pillar_c/20260725_230350-pillar-c-p3-sw-a-loud/full_fidelity/probing_data/240708/python.torch_trace"
+    },
+    {
+      "run_id": "20260725_233537-pillar-c-p3-sw-b-loud",
+      "n_files": 16,
+      "steps": 546,
+      "rows": 79353,
+      "fill_frac": 0.6707377818045088,
+      "bytes_per_step": 24568.75641025641,
+      "bytes_per_row": 169.0489458495583,
+      "rows_overwritten": 0,
+      "example_path": "project/probing-huawei/results/ascend-ais/pillar_c/20260725_233537-pillar-c-p3-sw-b-loud/full_fidelity/probing_data/406190/python.torch_trace"
+    }
+  ],
+  "legacy_baseline_check": {
+    "v2_slogan_steps": 546,
+    "observed_steps_at_20mb": 546,
+    "observed_fill_frac": 0.6707377818045088,
+    "observed_used_bytes": 13414541,
+    "capacity_bytes": 20000000,
+    "saturated_steps_at_20mb": 814,
+    "verdict": "CONFIRM_OBSERVED_SPAN",
+    "saturation_correction": "满环外推 814 步（非口号 546）；546 为 fill≈67% 时的观测跨度"
+  },
+  "w_star_cross": {
+    "W_star": 100,
+    "source": "E1-off P1-SW-C (pillar_c_v2/E1_off；非本队列②-A)",
+    "note": "非本队列②-A；仅交叉「够 W* 又不浪费」",
+    "default_mb": 10.0,
+    "steps_at_default": 407,
+    "margin": 4.07
+  },
+  "ground_truth_source": {
+    "table": "python.torch_trace MEMT ring (full_fidelity probing_data)",
+    "bytes_per_row": "Σchunk.used / n_rows",
+    "bytes_per_step": "Σchunk.used / n_unique(local_step)",
+    "forbid": "cold MiB directory size; training step_ms"
+  },
+  "supports_design": "Ring default 10MB retains ~407 steps (~4× E1-off W*=100); v2 20MB≈546 is observed unwrapped span at ~67% fill, saturation ≈814.",
+  "samples": [
+    {
+      "path": "project/probing-huawei/results/ascend-ais/pillar_c/20260725_230350-pillar-c-p3-sw-a-loud/full_fidelity/probing_data/240708/python.torch_trace",
+      "run_id": "20260725_230350-pillar-c-p3-sw-a-loud",
+      "pid": "240708",
+      "nchunks": 8,
+      "chunk_size": 2500000,
+      "capacity_bytes": 20000000,
+      "usable_bytes": 19999680,
+      "used_bytes": 13414541,
+      "fill_frac": 0.6707377818045088,
+      "n_rows": 79353,
+      "n_unique_steps": 546,
+      "step_min": 0,
+      "step_max": 545,
+      "bytes_per_row": 169.0489458495583,
+      "bytes_per_step": 24568.75641025641,
+      "rows_per_step": 145.33516483516485,
+      "rows_overwritten": 0,
+      "chunks_recycled": 0
+    },
+    {
+      "path": "project/probing-huawei/results/ascend-ais/pillar_c/20260725_230350-pillar-c-p3-sw-a-loud/full_fidelity/probing_data/240709/python.torch_trace",
+      "run_id": "20260725_230350-pillar-c-p3-sw-a-loud",
+      "pid": "240709",
+      "nchunks": 8,
+      "chunk_size": 2500000,
+      "capacity_bytes": 20000000,
+      "usable_bytes": 19999680,
+      "used_bytes": 13414541,
+      "fill_frac": 0.6707377818045088,
+      "n_rows": 79353,
+      "n_unique_steps": 546,
+      "step_min": 0,
+      "step_max": 545,
+      "bytes_per_row": 169.0489458495583,
+      "bytes_per_step": 24568.75641025641,
+      "rows_per_step": 145.33516483516485,
+      "rows_overwritten": 0,
+      "chunks_recycled": 0
+    },
+    {
+      "path": "project/probing-huawei/results/ascend-ais/pillar_c/20260725_230350-pillar-c-p3-sw-a-loud/full_fidelity/probing_data/240710/python.torch_trace",
+      "run_id": "20260725_230350-pillar-c-p3-sw-a-loud",
+      "pid": "240710",
+      "nchunks": 8,
+      "chunk_size": 2500000,
+      "capacity_bytes": 20000000,
+      "usable_bytes": 19999680,
+      "used_bytes": 13414541,
+      "fill_frac": 0.6707377818045088,
+      "n_rows": 79353,
+      "n_unique_steps": 546,
+      "step_min": 0,
+      "step_max": 545,
+      "bytes_per_row": 169.0489458495583,
+      "bytes_per_step": 24568.75641025641,
+      "rows_per_step": 145.33516483516485,
+      "rows_overwritten": 0,
+      "chunks_recycled": 0
+    },
+    {
+      "path": "project/probing-huawei/results/ascend-ais/pillar_c/20260725_230350-pillar-c-p3-sw-a-loud/full_fidelity/probing_data/240711/python.torch_trace",
+      "run_id": "20260725_230350-pillar-c-p3-sw-a-loud",
+      "pid": "240711",
+      "nchunks": 8,
+      "chunk_size": 2500000,
+      "capacity_bytes": 20000000,
+      "usable_bytes": 19999680,
+      "used_bytes": 13414541,
+      "fill_frac": 0.6707377818045088,
+      "n_rows": 79353,
+      "n_unique_steps": 546,
+      "step_min": 0,
+      "step_max": 545,
+      "bytes_per_row": 169.0489458495583,
+      "bytes_per_step": 24568.75641025641,
+      "rows_per_step": 145.33516483516485,
+      "rows_overwritten": 0,
+      "chunks_recycled": 0
+    }
+  ]
+}

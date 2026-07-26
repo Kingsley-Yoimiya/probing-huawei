@@ -1,0 +1,25 @@
+case_id: P3-SW-A
+dose: loud
+pillar: C
+arm: e3a_upgrade
+arm_dir: upgrade_rate_0.5
+out_family: param_calib/3A_upgrade_rate
+resident_rate: "0"
+parent_run_id: 20260727_014151-3a-p3-sw-a-loud
+arm_run_id: 20260727_014151-3a-p3-sw-a-loud-upgrade_rate_0.5
+pod: grj-megatron-32card-0716-worker-0
+world_size: 16
+probing: 1
+probing_gpu_sample_ms: 500
+probing_torch_profiling: "on,rate=0"
+probing_cold_max_total_mb: ""
+pillar_c_set_upgrade: 1
+pillar_c_set_at_step: 100
+pillar_c_set_rate: "0.5"
+probing_attach_at_step: 
+probing_data_dir: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/param_calib/3A_upgrade_rate/20260727_014151-3a-p3-sw-a-loud/upgrade_rate_0.5/probing_data
+inject_kind: 8a
+inject_note: "inline_8a every=1 stall_s=0.25"
+pod_out: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/param_calib/3A_upgrade_rate/20260727_014151-3a-p3-sw-a-loud/upgrade_rate_0.5
+gate_ref: _prep/pillar_c_gate/GATE.md
+cover_target: D4_reuse_B_loud_20260725_012957

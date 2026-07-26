@@ -1,0 +1,105 @@
+{
+  "case": "P3-SW-A",
+  "parent": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_182630-pillar-c-e4-p3-sw-a-loud",
+  "e3_ref": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_181423-pillar-c-e3-p3-sw-a-loud",
+  "resident_rate": "0",
+  "w_star": 100,
+  "naive": {
+    "label": "naive_cut",
+    "arm_dir": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_182630-pillar-c-e4-p3-sw-a-loud/naive_cut",
+    "exists": true,
+    "probing_data": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_182630-pillar-c-e4-p3-sw-a-loud/naive_cut/probing_data",
+    "total_dump_bytes": 1611753536,
+    "cold_bytes": 9509952,
+    "breakdown": {
+      "python.torch_trace": 320020480,
+      "python.comm_collective": 320018432,
+      "python.torch_step_timing": 320016384,
+      "python.trace_event": 320013312,
+      "python.variables": 320006144,
+      "cold": 9509952,
+      "cpu.utilization": 545792,
+      "gpu.utilization": 545792,
+      "gpu.hccs": 541696,
+      "cpu.tasks": 535552
+    },
+    "rss": {
+      "ok": true,
+      "note": "rise_kb=461300:max_kb=2519612:n=200",
+      "n": 200,
+      "rise": 461300,
+      "max": 2519612
+    },
+    "rss_ok": true,
+    "rss_path": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_182630-pillar-c-e4-p3-sw-a-loud/naive_cut/P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/probing/query_p3sw_rss_window.txt",
+    "set": {
+      "ok": false,
+      "present": false,
+      "note": "set_upgrade.log_absent",
+      "absent_ok": true
+    },
+    "set_control_ok": true,
+    "torch_trace_files": 16,
+    "torch_trace_bytes": 320020480,
+    "torch_trace_dense_ranks": 0,
+    "torch_trace_rows_all": 0,
+    "torch_trace_top": [],
+    "path_enough": false
+  },
+  "e3_positive": {
+    "label": "e3_dynamic",
+    "arm_dir": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_181423-pillar-c-e3-p3-sw-a-loud/rate_0",
+    "exists": true,
+    "probing_data": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_181423-pillar-c-e3-p3-sw-a-loud/rate_0/probing_data",
+    "total_dump_bytes": 1615633664,
+    "cold_bytes": 13390080,
+    "breakdown": {
+      "python.torch_trace": 320020480,
+      "python.comm_collective": 320018432,
+      "python.torch_step_timing": 320016384,
+      "python.trace_event": 320013312,
+      "python.variables": 320006144,
+      "cold": 13390080,
+      "cpu.utilization": 545792,
+      "gpu.utilization": 545792,
+      "gpu.hccs": 541696,
+      "cpu.tasks": 535552
+    },
+    "rss": {
+      "ok": true,
+      "note": "rise_kb=268260:max_kb=2489768:n=200",
+      "n": 200,
+      "rise": 268260,
+      "max": 2489768
+    },
+    "rss_ok": true,
+    "rss_path": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_181423-pillar-c-e3-p3-sw-a-loud/rate_0/P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/probing/query_p3sw_rss_window.txt",
+    "set": {
+      "ok": true,
+      "present": true,
+      "note": "SET_OK",
+      "latency_ms": 931,
+      "absent_ok": false
+    },
+    "set_control_ok": true,
+    "torch_trace_files": 16,
+    "torch_trace_bytes": 320020480,
+    "torch_trace_dense_ranks": 1,
+    "torch_trace_rows_all": 54054,
+    "torch_trace_top": [
+      {
+        "path": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_181423-pillar-c-e3-p3-sw-a-loud/rate_0/probing_data/1855451/python.torch_trace",
+        "file_bytes": 20001280,
+        "n_rows": 54054,
+        "nchunks": 8
+      }
+    ],
+    "path_enough": true
+  },
+  "dropped": true,
+  "volume_still_small": true,
+  "tt_drop": true,
+  "set_absent_ok": true,
+  "verdict": "PASS",
+  "note": "path_enough=RSS∧SET（完整动态路径）；砍量禁SET→掉级；RSS单独报告"
+}
