@@ -1,0 +1,13 @@
+experiment: E1
+case_id: P1-SW-C
+dose: loud
+parent_run_id: 20260726_173830-pillar-c-e1-p1-sw-c-loud
+pod: grj-megatron-32card-0716-master-0
+resident_rate: 0
+set_at_step: 100
+windows: [10, 25, 50, 100, 200, full]
+window_mode: offline_truncate
+out_family: pillar_c_v2
+pod_bundle: /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle
+pod_results: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais
+note: "在线极稀常驻+SET↑；尚无 online retention API → dump 后按步截窗（与 E1-off 同尺）；判分=duration 尖刺；禁 cold/step_ms"

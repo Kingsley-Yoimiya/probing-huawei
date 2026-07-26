@@ -1,0 +1,1 @@
+hot_files=144 hot_bytes=1602243584 cold_segs=16 cold_bytes=58598656 total=1660842240

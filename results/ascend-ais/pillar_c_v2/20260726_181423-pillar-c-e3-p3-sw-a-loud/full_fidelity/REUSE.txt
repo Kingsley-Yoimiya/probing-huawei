@@ -1,0 +1,4 @@
+reuse=1
+path=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260725_230350-pillar-c-p3-sw-a-loud/full_fidelity
+case=P3-SW-A
+note=训/注入配方与 Loud P3-SW-A 一致；SAMPLE_MS=50 rate=1.0 作上界锚点

@@ -30,28 +30,42 @@ def is_true(value):
 
 
 def optimizer_step_post_hook(optimizer, *args, **kwargs):
+    """Post-step hook: create tracer once, then pick up SET/config hot changes.
+
+    Ascend/NPU: Rust ``SET probing.torch.profiling=…`` only persists the spec
+    (Tokio must not call ``configure()`` / import torch). Live rate changes must
+    be applied on the training main thread here — this is the Pillar-C C0 bridge.
+    """
     global hooks
     from probing.tracing.hooks import maybe_auto_attach
 
     maybe_auto_attach(optimizer)
 
-    if optimizer not in hooks:
-        from probing.profiling.torch import install_hooks
-        from probing.profiling.torch.module_utils import get_toplevel_module
-        from probing.profiling.torch_probe import TorchProbe, TorchProbeConfig
+    from probing.profiling.torch_probe import (
+        TorchProbe,
+        TorchProbeConfig,
+        _sync_live_tracers,
+    )
 
-        spec = _torch_profiling_spec()
-        config = TorchProbeConfig.parse(spec)
+    spec = _torch_profiling_spec()
+    config = TorchProbeConfig.parse(spec)
+    log = logging.getLogger(__name__)
+
+    # First step for this optimizer: install tracer (or record disabled).
+    if optimizer not in hooks:
         if not config.enabled:
-            logging.getLogger(__name__).info(
+            log.info(
                 "Torch profiling disabled (torch.profiling=%s)",
                 spec or "",
             )
             hooks[optimizer] = None
             return
 
+        from probing.profiling.torch import install_hooks
+        from probing.profiling.torch.module_utils import get_toplevel_module
+
         tracer = TorchProbe(config=config)
-        logging.getLogger(__name__).info(
+        log.info(
             "Torch profiling enabled: mode=%s rate=%s shadow=%s:%s backward=%s tracepy=%s sync=%s exprs=%s",
             config.mode,
             config.rate,
@@ -68,6 +82,38 @@ def optimizer_step_post_hook(optimizer, *args, **kwargs):
             install_hooks(model, tracer=tracer, backward=config.backward)
         install_hooks(opt=optimizer, tracer=tracer, backward=config.backward)
         hooks[optimizer] = tracer
+        hooks["_last_spec"] = spec or ""
+        return
+
+    # Subsequent steps: if SQL/CLI SET changed the stored spec, push onto live
+    # tracers on the main thread (safe on Ascend). Enabling after a prior
+    # disabled state requires a process restart — we only hot-sync rate/flags.
+    last = hooks.get("_last_spec", None)
+    cur = spec or ""
+    if last == cur:
+        return
+    hooks["_last_spec"] = cur
+    tracer = hooks.get(optimizer)
+    if tracer is None:
+        log.info(
+            "Torch profiling spec changed to %r but no live tracer "
+            "(was disabled at first step); restart train to enable",
+            cur,
+        )
+        return
+    if not config.enabled:
+        # Soft-disable: stop sampling without tearing down hooks mid-train.
+        _sync_live_tracers(TorchProbeConfig(enabled=False, rate=0.0))
+        log.info("Torch profiling hot-disabled via config (%r)", cur)
+        return
+    _sync_live_tracers(config)
+    log.info(
+        "Torch profiling hot-updated: rate=%s layer_rate=%s backward=%s (spec=%r)",
+        config.rate,
+        config.layer_rate,
+        config.backward,
+        cur,
+    )
 
 
 def collective_hook():

@@ -1,0 +1,63 @@
+{
+  "case": "P3-SW-A",
+  "parent": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_173134-pillar-c-e2-p3-sw-a-loud",
+  "sparsest_trigger_rate": "0",
+  "rows": [
+    {
+      "rate": "0",
+      "arm_dir": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_173134-pillar-c-e2-p3-sw-a-loud/rate_0",
+      "exists": true,
+      "case": "P3-SW-A",
+      "rss": {
+        "ok": true,
+        "note": "rise_kb=307736:max_kb=2531648:n=200",
+        "n": 200,
+        "rise": 307736,
+        "max": 2531648
+      },
+      "rss_path": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_173134-pillar-c-e2-p3-sw-a-loud/rate_0/P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/probing/query_p3sw_rss_window.txt",
+      "set": {
+        "ok": false,
+        "note": "SET_FAIL",
+        "latency_ms": null,
+        "pid": null
+      },
+      "volume": {},
+      "total_dump_bytes": 1611932672,
+      "probing_data_bytes": 1611932672,
+      "torch_trace_files": 17,
+      "torch_trace_bytes": 320021659,
+      "trigger_ok": true,
+      "enough": false,
+      "evidence": "rss:rise_kb=307736:max_kb=2531648:n=200;set:SET_FAIL;dump_B=1611932672"
+    },
+    {
+      "rate": "0.05",
+      "arm_dir": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_173134-pillar-c-e2-p3-sw-a-loud/rate_0.05",
+      "exists": true,
+      "case": "P3-SW-A",
+      "rss": {
+        "ok": true,
+        "note": "rise_kb=390260:max_kb=2467364:n=200",
+        "n": 200,
+        "rise": 390260,
+        "max": 2467364
+      },
+      "rss_path": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_173134-pillar-c-e2-p3-sw-a-loud/rate_0.05/P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/probing/query_p3sw_rss_window.txt",
+      "set": {
+        "ok": false,
+        "note": "SET_FAIL",
+        "latency_ms": null,
+        "pid": null
+      },
+      "volume": {},
+      "total_dump_bytes": 1611985600,
+      "probing_data_bytes": 1611985600,
+      "torch_trace_files": 17,
+      "torch_trace_bytes": 320021659,
+      "trigger_ok": true,
+      "enough": false,
+      "evidence": "rss:rise_kb=390260:max_kb=2467364:n=200;set:SET_FAIL;dump_B=1611985600"
+    }
+  ]
+}

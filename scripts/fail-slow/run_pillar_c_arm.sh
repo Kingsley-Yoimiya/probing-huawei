@@ -7,31 +7,46 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck disable=SC1091
 source "${ROOT}/scripts/fail-slow/env.sh"
 
-ARM="${ARM:?need ARM=full_fidelity|probing_collapse|naive_downsample}"
+ARM="${ARM:?need ARM=full_fidelity|probing_collapse|naive_downsample|e2_rate|e4_naive|s1_mid_attach}"
 CASE_ID="${CASE_ID:-P3-SW-A}"
 DOSE="${DOSE:-loud}"
 POD="${POD:-${FS_HOLD_PODS_C:-grj-megatron-32card-0716-worker-0}}"
 NPROC="${NPROC:-16}"
 NNODES="${NNODES:-1}"
 PARENT_RUN_ID="${PARENT_RUN_ID:?need PARENT_RUN_ID}"
+OUT_FAMILY="${OUT_FAMILY:-pillar_c}"
 CASE_SLUG=$(echo "$CASE_ID" | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9-')
-ARM_RUN_ID="${ARM_RUN_ID:-${PARENT_RUN_ID}-${ARM}}"
+# e2_rate 臂目录名含 rate；e4_naive 固定 naive_cut；s1 固定 mid_attach
+if [[ "$ARM" == "e2_rate" ]]; then
+  RESIDENT_RATE="${RESIDENT_RATE:?need RESIDENT_RATE for ARM=e2_rate}"
+  ARM_DIR="rate_${RESIDENT_RATE}"
+elif [[ "$ARM" == "e4_naive" ]]; then
+  RESIDENT_RATE="${RESIDENT_RATE:-0}"
+  ARM_DIR="naive_cut"
+elif [[ "$ARM" == "s1_mid_attach" ]]; then
+  RESIDENT_RATE="${RESIDENT_RATE:-0}"
+  ARM_DIR="mid_attach"
+else
+  ARM_DIR="$ARM"
+fi
+ARM_RUN_ID="${ARM_RUN_ID:-${PARENT_RUN_ID}-${ARM_DIR}}"
 
 export FS_SHARED_SCRIPTS="${FS_SHARED_SCRIPTS:-/Users/yinjinrun/Codespace/myportal/project/probing-test/scripts/fail-slow}"
 export FS_PLATFORM_ASCEND="${FS_PLATFORM_ASCEND:-${FS_SHARED_SCRIPTS}/platform/ascend}"
 export POD_BUNDLE="${POD_BUNDLE:-/afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle}"
-export POD_RESULTS="${POD_RESULTS:-/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais}"
+# grj 无 /data/yinjinrun.p-huawei；强制 AFS（勿被 env.sh 的 DATA_HOME 默认盖掉）
+export POD_RESULTS="/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais"
 export LOCAL_RESULT_ROOT_BASE="${LOCAL_RESULT_ROOT_BASE:-${FS_HUAWEI_ROOT}/results/ascend-ais}"
 
-PARENT_LOCAL="${LOCAL_RESULT_ROOT_BASE}/pillar_c/${PARENT_RUN_ID}"
-LOCAL_RESULT_ROOT="${PARENT_LOCAL}/${ARM}"
-POD_OUT="${POD_RESULTS}/pillar_c/${PARENT_RUN_ID}/${ARM}"
+PARENT_LOCAL="${LOCAL_RESULT_ROOT_BASE}/${OUT_FAMILY}/${PARENT_RUN_ID}"
+LOCAL_RESULT_ROOT="${PARENT_LOCAL}/${ARM_DIR}"
+POD_OUT="${POD_RESULTS}/${OUT_FAMILY}/${PARENT_RUN_ID}/${ARM_DIR}"
 PROBING_DATA_DIR="${POD_OUT}/probing_data"
 
 mkdir -p "$LOCAL_RESULT_ROOT" "$PARENT_LOCAL"
 
 # GATE.md 三臂草稿（不重猜）
-unset PROBING_COLD PROBING_COLD_MAX_TOTAL_MB PILLAR_C_SET_UPGRADE 2>/dev/null || true
+unset PROBING_COLD PROBING_COLD_MAX_TOTAL_MB PILLAR_C_SET_UPGRADE PROBING_ATTACH_AT_STEP PROBING_DEFERRED_VALUE 2>/dev/null || true
 export PROBING=1
 export PROBING_GPU=on
 export PROBING_GPU_BACKEND=npu
@@ -94,6 +109,35 @@ case "$ARM" in
     export PROBING_TORCH_PROFILING='on,rate=0.05'
     export PILLAR_C_SET_UPGRADE=1
     export PILLAR_C_SET_AT_STEP="${PILLAR_C_SET_AT_STEP:-250}"
+    ;;
+  e2_rate)
+    # E2：常驻 rate 扫；周期小表保持 500ms；注入 onset 附近 SET↑ rate=1.0
+    export PROBING_GPU_SAMPLE_MS="${PROBING_GPU_SAMPLE_MS:-500}"
+    export PROBING_CPU_SAMPLE_MS="${PROBING_CPU_SAMPLE_MS:-500}"
+    export PROBING_TORCH_PROFILING="on,rate=${RESIDENT_RATE}"
+    export PILLAR_C_SET_UPGRADE=1
+    export PILLAR_C_SET_AT_STEP="${PILLAR_C_SET_AT_STEP:-100}"
+    ;;
+  e4_naive)
+    # E4：=E3 动态臂去掉触发升详（禁 mid SET）；常驻 rate 默认 0
+    export PROBING_GPU_SAMPLE_MS="${PROBING_GPU_SAMPLE_MS:-500}"
+    export PROBING_CPU_SAMPLE_MS="${PROBING_CPU_SAMPLE_MS:-500}"
+    export PROBING_TORCH_PROFILING="on,rate=${RESIDENT_RATE}"
+    export PILLAR_C_SET_UPGRADE=0
+    unset PILLAR_C_SET_AT_STEP 2>/dev/null || true
+    ;;
+  s1_mid_attach)
+    # S1：起训不挂 probing → step>=ATTACH_AT 才 site_hook；attach 在 onset 后
+    # 标定：E1-off 20MB≈546 步；注入窗 [100,300]；默认 ATTACH_AT=150
+    export PROBING=2
+    export PROBING_DEFERRED_VALUE="${PROBING_DEFERRED_VALUE:-2}"
+    export PROBING_ATTACH_AT_STEP="${PROBING_ATTACH_AT_STEP:-150}"
+    export PROBING_GPU_SAMPLE_MS="${PROBING_GPU_SAMPLE_MS:-500}"
+    export PROBING_CPU_SAMPLE_MS="${PROBING_CPU_SAMPLE_MS:-500}"
+    export PROBING_TORCH_PROFILING="on,rate=${RESIDENT_RATE}"
+    export PILLAR_C_SET_UPGRADE="${PILLAR_C_SET_UPGRADE:-1}"
+    # SET 略晚于 attach，等 site_hook 起来（jsonl 行数≈步）
+    export PILLAR_C_SET_AT_STEP="${PILLAR_C_SET_AT_STEP:-$((PROBING_ATTACH_AT_STEP + 5))}"
     ;;
   *)
     echo "unknown ARM=$ARM" >&2
@@ -175,6 +219,9 @@ case_id: ${CASE_ID}
 dose: ${DOSE}
 pillar: C
 arm: ${ARM}
+arm_dir: ${ARM_DIR}
+out_family: ${OUT_FAMILY}
+resident_rate: "${RESIDENT_RATE:-}"
 parent_run_id: ${PARENT_RUN_ID}
 arm_run_id: ${ARM_RUN_ID}
 pod: ${POD}
@@ -185,6 +232,7 @@ probing_torch_profiling: "${PROBING_TORCH_PROFILING}"
 probing_cold_max_total_mb: "${PROBING_COLD_MAX_TOTAL_MB:-}"
 pillar_c_set_upgrade: ${PILLAR_C_SET_UPGRADE:-0}
 pillar_c_set_at_step: ${PILLAR_C_SET_AT_STEP:-}
+probing_attach_at_step: ${PROBING_ATTACH_AT_STEP:-}
 probing_data_dir: ${PROBING_DATA_DIR}
 inject_kind: ${INJECT_KIND}
 inject_note: "${INJECT_NOTE}"
@@ -193,8 +241,8 @@ gate_ref: _prep/pillar_c_gate/GATE.md
 cover_target: ${COVER_TARGET}
 YAML
 
-echo "[pillar-c] ARM=$ARM RUN=$ARM_RUN_ID POD=$POD CASE=$CASE_ID inject=$INJECT_KIND"
-echo "[pillar-c] knobs: SAMPLE_MS=$PROBING_GPU_SAMPLE_MS TORCH=$PROBING_TORCH_PROFILING SET_UP=${PILLAR_C_SET_UPGRADE:-0} SET_AT=${PILLAR_C_SET_AT_STEP:-inject} COLD_MAX=${PROBING_COLD_MAX_TOTAL_MB:-inf}"
+echo "[pillar-c] ARM=$ARM DIR=$ARM_DIR RUN=$ARM_RUN_ID POD=$POD CASE=$CASE_ID inject=$INJECT_KIND out=${OUT_FAMILY}"
+echo "[pillar-c] knobs: SAMPLE_MS=$PROBING_GPU_SAMPLE_MS TORCH=$PROBING_TORCH_PROFILING SET_UP=${PILLAR_C_SET_UPGRADE:-0} SET_AT=${PILLAR_C_SET_AT_STEP:-inject} ATTACH_AT=${PROBING_ATTACH_AT_STEP:-n/a} COLD_MAX=${PROBING_COLD_MAX_TOTAL_MB:-inf}"
 echo "[pillar-c] dose: $INJECT_NOTE"
 echo "$ARM_RUN_ID" >"${LOCAL_RESULT_ROOT}/RUN_ID.txt"
 echo "$ARM_RUN_ID" >"${PARENT_LOCAL}/CURRENT_ARM_RUN_ID.txt"
@@ -222,6 +270,8 @@ env_args=(
   "PROBING_DATA_DIR=${PROBING_DATA_DIR}"
   "PILLAR_C_SET_UPGRADE=${PILLAR_C_SET_UPGRADE:-0}"
   "PILLAR_C_SET_AT_STEP=${PILLAR_C_SET_AT_STEP:-}"
+  "PROBING_ATTACH_AT_STEP=${PROBING_ATTACH_AT_STEP:-}"
+  "PROBING_DEFERRED_VALUE=${PROBING_DEFERRED_VALUE:-}"
   "ACCEPT_SCRIPT=${ACCEPT_SCRIPT}"
   "DUMP_PROBING_SQL=${DUMP_PROBING_SQL}"
   "FS_SHARED_SCRIPTS=${FS_SHARED_SCRIPTS}"

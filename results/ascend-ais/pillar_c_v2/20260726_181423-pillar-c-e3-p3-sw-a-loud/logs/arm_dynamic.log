@@ -1,0 +1,91 @@
+[fs-ascend] FS_HUAWEI_ROOT=/Users/yinjinrun/Codespace/myportal/project/probing-huawei
+[fs-ascend] FS_SHARED_SCRIPTS=/Users/yinjinrun/Codespace/myportal/project/probing-test/scripts/fail-slow
+[fs-ascend] LOCAL_RESULT_ROOT_BASE=/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais
+[fs-ascend] POD_RESULTS=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais  AFS_HOME=/afs-a3-weight-share/yinjinrun.p-huawei
+[fs-ascend] KUBECONFIG=/Users/yinjinrun/.kube/config-vc-a3-241ceshi-songyiyang.yaml
+[fs-ascend] JUMP=ais-cf3e61a5 KUBECTL=/root/.cache/volcano/kubectl/kubectl
+[fs-ascend] FS_RUN_MODE=hold-exec HOLD=yysong PREFIX=yjr-as
+[fs-ascend] note: myportal NOT required; override LOCAL_RESULT_ROOT_BASE / FS_SHARED_SCRIPTS as needed
+[pillar-c] ARM=e2_rate DIR=rate_0 RUN=20260726_181423-pillar-c-e3-p3-sw-a-loud-dynamic POD=grj-megatron-32card-0716-worker-0 CASE=P3-SW-A inject=8a out=pillar_c_v2
+[pillar-c] knobs: SAMPLE_MS=500 TORCH=on,rate=0 SET_UP=1 SET_AT=100 COLD_MAX=inf
+[pillar-c] dose: inline_8a every=1 stall_s=0.25
+[fs-ascend] FS_HUAWEI_ROOT=/Users/yinjinrun/Codespace/myportal/project/probing-huawei
+[fs-ascend] FS_SHARED_SCRIPTS=/Users/yinjinrun/Codespace/myportal/project/probing-test/scripts/fail-slow
+[fs-ascend] LOCAL_RESULT_ROOT_BASE=/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais
+[fs-ascend] POD_RESULTS=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais  AFS_HOME=/afs-a3-weight-share/yinjinrun.p-huawei
+[fs-ascend] KUBECONFIG=/Users/yinjinrun/.kube/config-vc-a3-241ceshi-songyiyang.yaml
+[fs-ascend] JUMP=ais-cf3e61a5 KUBECTL=/root/.cache/volcano/kubectl/kubectl
+[fs-ascend] FS_RUN_MODE=hold-exec HOLD=yysong PREFIX=yjr-as
+[fs-ascend] note: myportal NOT required; override LOCAL_RESULT_ROOT_BASE / FS_SHARED_SCRIPTS as needed
+[hold-exec] RUN_ID=20260726_181423-pillar-c-e3-p3-sw-a-loud-dynamic POD=grj-megatron-32card-0716-worker-0 CASE=P3-SW-A configs=C2_probing
+[hold-exec] sync train → /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/train_bench_probe_npu.py
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[hold-exec] jsync train_bench_probe_npu.py -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/train_bench_probe_npu.py rc=0
+[hold-exec] sync sidecar → /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/sidecar_inject_npu.py
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[hold-exec] jsync sidecar_inject_npu.py -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/sidecar_inject_npu.py rc=0
+[hold-exec] sync 8c sidecar → /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/sidecar_inject_8c.py
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[hold-exec] jsync sidecar_inject_8c.py -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/sidecar_inject_8c.py rc=0
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[hold-exec] jsync dump_probing_sql.sh -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/dump_probing_sql.sh rc=0
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+[hold-exec] MASTER_IP=10.119.0.186
+[hold-exec] grj-megatron-32card-0716-worker-0 IDLE
+========== P3-SW-A / C2_probing (gid=2 port=30200) ==========
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 137
+[hold-exec] prep outdir /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c_v2/20260726_181423-pillar-c-e3-p3-sw-a-loud/rate_0/P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[hold-exec] jsync run_2.sh -> /tmp/run_2.sh rc=0
+[hold-exec] firing C2_probing…
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+FIRE_OK
+  warmup ok (20s)
+  wait measure step 100…
+  measure step 100 reached (10s)
+  inline 8a GC/stall active (victim=7 every=1 stall=0.25)
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+  Pillar-C SET↑ wait L>=100 (jsonl lines; NOT step marker)…
+  L=119 >= 100 (0s) → attach/SET
+  Pillar-C SET upgrade torch.profiling → on,rate=1.0 (SHOW TABLES→worker)…
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+  waiting 45s into inject window for SQL dump…
+  dumping Probing SQL / host_psi…
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+  SQL dump attempted → /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c_v2/20260726_181423-pillar-c-e3-p3-sw-a-loud/rate_0/P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/probing/
+  measure step 300 → stop injectors
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+  done (30s)
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+[hold-exec] pull /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c_v2/20260726_181423-pillar-c-e3-p3-sw-a-loud/rate_0 → /Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_181423-pillar-c-e3-p3-sw-a-loud/rate_0
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+[hold-exec] jsonl_files=16
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 137
+[hold-exec] DONE rc=0 LOCAL=/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_181423-pillar-c-e3-p3-sw-a-loud/rate_0

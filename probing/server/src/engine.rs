@@ -47,7 +47,7 @@ pub async fn initialize_engine() -> Result<()> {
     let builder = builder.with_data_source(cc::KMsgProbeDataSource::create("process", "kmsg"));
 
     let result = probing_core::initialize_engine(builder).await;
-    // Opt-in background hot→cold compaction (PROBING_COLD=on / SET memtable.cold_compaction).
+    // Background hot→cold compaction (default on; PROBING_COLD=off / SET memtable.cold_compaction=off).
     crate::memtable_ext::start_cold_compaction_from_env();
     if result.is_ok() {
         cc::start_cpu_sampling_from_env();

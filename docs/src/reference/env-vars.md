@@ -19,7 +19,7 @@ Prefix syntax: `init:SCRIPT+<mode>` runs `exec(open(SCRIPT).read())` after activ
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PROBING_DATA_DIR` | Platform-specific | Root directory for mmap ring buffer files (MEMT tables). Each process creates a subdirectory named by its PID. |
-| `PROBING_COLD` | unset | Set to `on` to enable hot-to-cold compaction of mmap tables. |
+| `PROBING_COLD` | on (unset) | Hot-to-cold compaction of mmap tables. Default **on** when unset; set `off`/`0`/`false`/`no` to disable. |
 | `PROBING_COLD_TARGET_MB` | — | Target size per cold chunk after compaction. |
 | `PROBING_COLD_MAX_TOTAL_MB` | — | Maximum total size of all cold storage files. |
 | `PROBING_COLD_TTL_SECS` | — | Minimum age of a chunk before it's eligible for cold compaction. |

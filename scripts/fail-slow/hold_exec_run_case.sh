@@ -385,6 +385,13 @@ fire_config() {
     else
       denv="${denv} unset PROBING_COLD 2>/dev/null || true;"
     fi
+    # Pillar-C S1：晚 attach（训练步内 site_hook；非 ptrace — Ascend 无 libprobing.so）
+    if [[ -n "${PROBING_ATTACH_AT_STEP:-}" ]]; then
+      denv="${denv} export PROBING_ATTACH_AT_STEP=${PROBING_ATTACH_AT_STEP};"
+      if [[ -n "${PROBING_DEFERRED_VALUE:-}" ]]; then
+        denv="${denv} export PROBING_DEFERRED_VALUE=${PROBING_DEFERRED_VALUE};"
+      fi
+    fi
   fi
   # C1/C2：inline cube（同进程）
   if [[ "$cfg" == C1_* || "$cfg" == C2_* ]] && [[ "$INJECT_KIND" == inline_cube ]]; then
@@ -651,7 +658,8 @@ LAUNCH
         echo "  Pillar-C SET↑ at inject start…"
       fi
       echo "  Pillar-C SET upgrade torch.profiling → on,rate=1.0 (SHOW TABLES→worker)…"
-      jexec "export PATH='${POD_PYDEPS}/bin:${PYBIN}:\${PATH:-}' PYTHONPATH='${POD_PYDEPS}:\${PYTHONPATH:-}'
+      # 必须带 /usr/bin:/bin：jexec 非 login 时 PATH 可能空，否则 date/ps/awk 全挂 → SET_FAIL_ALL
+      jexec "export PATH='/usr/bin:/bin:${POD_PYDEPS}/bin:${PYBIN}:\${PATH:-}' PYTHONPATH='${POD_PYDEPS}:\${PYTHONPATH:-}'
 : >'${out}/set_upgrade.log'
 TS0=\$(date -Iseconds); echo SET_BEGIN ts=\$TS0 trigger=L_ge_${set_at_l:-inject} >>'${out}/set_upgrade.log'
 L=\$(wc -l <'${out}/ranks/rank_0000.jsonl' 2>/dev/null || echo 0); echo SET_L=\$L >>'${out}/set_upgrade.log'
@@ -665,14 +673,26 @@ for pid in \$cands; do
     echo ATTACH_OK pid=\$pid >>'${out}/set_upgrade.log'
     T_ATT=\$(python3 -c 'import time;print(int(time.time()*1000))')
     echo ATTACH_T_MS=\$T_ATT >>'${out}/set_upgrade.log'
-    probing -t \$pid config torch.profiling=on,rate=1.0 >>'${out}/set_upgrade.log' 2>&1
-    probing -t \$pid config probing.torch.profiling >>'${out}/set_upgrade.log' 2>&1
+    # C0 真相键：probing.torch.profiling（勿写 torch.profiling=；后者不触发 live sync）
+    if ! probing -t \$pid config 'probing.torch.profiling=on,rate=1.0' >>'${out}/set_upgrade.log' 2>&1; then
+      echo SET_CMD_FAIL pid=\$pid >>'${out}/set_upgrade.log'
+      continue
+    fi
+    # 读回校验（GET）；失败则不算 OK
+    if ! probing -t \$pid query \"SELECT value FROM information_schema.df_settings WHERE name='probing.torch.profiling'\" >/tmp/probe_cfg_\$pid.txt 2>&1; then
+      probing -t \$pid eval \"import probing; print(getattr(probing,'get_config',lambda k:None)('probing.torch.profiling'))\" >/tmp/probe_cfg_\$pid.txt 2>&1 || true
+    fi
+    cat /tmp/probe_cfg_\$pid.txt >>'${out}/set_upgrade.log' 2>/dev/null || true
+    if ! grep -qE 'on,rate=1(\\.0)?|rate=1(\\.0)?' /tmp/probe_cfg_\$pid.txt 2>/dev/null; then
+      # 读回路径因环境而异；若 SET 命令已成功且无报错，仍记 SET_OK（与 C0 一致以密度为准）
+      echo SET_READBACK_UNVERIFIED pid=\$pid >>'${out}/set_upgrade.log'
+    fi
     T_SET=\$(python3 -c 'import time;print(int(time.time()*1000))')
     echo SET_T1_MS=\$T_SET >>'${out}/set_upgrade.log'
     echo SET_OK_WORKER pid=\$pid >>'${out}/set_upgrade.log'
     python3 -c \"t0=int('\$T_MARK'); t1=int('\$T_SET'); print(f'SET_LATENCY_MS={t1-t0}')\" >>'${out}/set_upgrade.log' 2>/dev/null || echo SET_LATENCY_MS=? >>'${out}/set_upgrade.log'
     OK=\$pid
-    break
+    # 勿 break：多 rank 均需升详，否则仅 1/16 写 torch_trace（E3 教训）
   else
     echo ATTACH_FAIL pid=\$pid >>'${out}/set_upgrade.log'
   fi

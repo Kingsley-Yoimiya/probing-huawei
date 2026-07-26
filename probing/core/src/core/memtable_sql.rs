@@ -1077,7 +1077,8 @@ pub struct ColdRuntimeConfig {
 impl Default for ColdRuntimeConfig {
     fn default() -> Self {
         Self {
-            enabled: false,
+            // Default on when probing is attached; opt-out with PROBING_COLD=off.
+            enabled: true,
             poll: Duration::from_secs(2),
             target_segment_bytes: 64 * 1024 * 1024,
             max_segment_age: Duration::from_secs(300),
@@ -1098,15 +1099,30 @@ impl ColdRuntimeConfig {
         }
     }
 
+    /// Parse `PROBING_COLD` / SET-style truthy|falsy tokens.
+    /// Truthy: `1`/`on`/`true`/`yes`. Falsy: `0`/`off`/`false`/`no`.
+    pub fn parse_enabled_token(v: &str) -> Option<bool> {
+        match v.trim().to_ascii_lowercase().as_str() {
+            "1" | "on" | "true" | "yes" => Some(true),
+            "0" | "off" | "false" | "no" => Some(false),
+            _ => None,
+        }
+    }
+
     /// Build a config from `PROBING_COLD*` environment variables, used to
-    /// auto-start compaction at engine init (opt-in, off by default).
+    /// auto-start compaction at engine init.
+    ///
+    /// Default: **enabled** (unset → on). Explicit opt-out: `PROBING_COLD=off`
+    /// (also `0` / `false` / `no`).
     pub fn from_env() -> Self {
         fn env_u64(k: &str) -> Option<u64> {
             std::env::var(k).ok().and_then(|v| v.trim().parse().ok())
         }
         let mut c = Self::default();
         if let Ok(v) = std::env::var("PROBING_COLD") {
-            c.enabled = matches!(v.trim(), "1" | "on" | "true" | "yes");
+            if let Some(on) = Self::parse_enabled_token(&v) {
+                c.enabled = on;
+            }
         }
         if let Some(mb) = env_u64("PROBING_COLD_TARGET_MB") {
             c.target_segment_bytes = mb.saturating_mul(1024 * 1024);
@@ -1301,17 +1317,21 @@ pub struct MemTableProbeExtension {
 }
 
 impl MemTableProbeExtension {
-    fn cold_enabled(&self) -> bool {
-        matches!(
-            self.cold_compaction,
-            Maybe::Just(ref s) if matches!(s.trim(), "1" | "on" | "true" | "yes")
-        )
+    /// Effective on/off from the SET surface; `None` means "leave env/default".
+    fn cold_enabled_override(&self) -> Option<bool> {
+        match &self.cold_compaction {
+            Maybe::Just(s) => ColdRuntimeConfig::parse_enabled_token(s),
+            _ => None,
+        }
     }
 
     /// Merge the current option fields over the env-derived defaults.
+    /// Unset `cold_compaction` must not force-disable the default-on env path.
     fn cold_config(&self) -> ColdRuntimeConfig {
         let mut cfg = ColdRuntimeConfig::from_env();
-        cfg.enabled = self.cold_enabled();
+        if let Some(on) = self.cold_enabled_override() {
+            cfg.enabled = on;
+        }
         if let Maybe::Just(mb) = self.cold_max_total_mb {
             cfg.max_total_bytes = (mb > 0).then(|| (mb as u64).saturating_mul(1024 * 1024));
         }

@@ -1,0 +1,5 @@
+TS=20260726_172201
+ART=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/_prep/pillar_c_gate/artifacts/c0_mech_20260726_172201
+C0B_VERDICT=PASS
+C0A_VERDICT=PASS
+C0_VERDICT=PASS

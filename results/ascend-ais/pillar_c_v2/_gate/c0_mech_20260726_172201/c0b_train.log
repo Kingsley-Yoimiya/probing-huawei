@@ -1,0 +1,15 @@
+[c0_train_worker] boot pid 1732603
+[c0_train_worker] probing imported
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/autograd/__init__.py:221: UserWarning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (Triggered internally at build/CMakeFiles/torch_npu.dir/compiler_depend.ts:338.)
+  torch.ones_like(out, memory_format=torch.preserve_format)
+[c0_train_worker] pre step=0
+[c0_train_worker] pre step=1
+[c0_train_worker] pre step=2
+[c0_train_worker] pre step=4
+[c0_train_worker] pre step=8
+[c0_train_worker] pre step=12
+[c0_train_worker] pre step=16
+[c0_train_worker] pre step=20
+[c0_train_worker] pre step=24
+[c0_train_worker] pre step=28
+[c0_train_worker] SUCCESS linger=12.0

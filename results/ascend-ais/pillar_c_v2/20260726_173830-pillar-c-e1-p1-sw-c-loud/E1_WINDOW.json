@@ -1,0 +1,93 @@
+{
+  "parent": "20260726_173830-pillar-c-e1-p1-sw-c-loud",
+  "arm_dir": "rate_0",
+  "case": "P1-SW-C",
+  "status": "NO_W_STAR",
+  "W_star": null,
+  "window_mode": "offline_truncate",
+  "windows": [
+    {
+      "W": "50",
+      "enough": false,
+      "evidence": "no_spike:top_step=269:dur_s=0.3466:med=0.1973:n_steps=50",
+      "primary": "torch_trace.duration_spike",
+      "n_tt_rows": 7280,
+      "n_tt_steps": 50,
+      "anchor_step": 300
+    },
+    {
+      "W": "100",
+      "enough": false,
+      "evidence": "no_spike:top_step=269:dur_s=0.3466:med=0.1990:n_steps=100",
+      "primary": "torch_trace.duration_spike",
+      "n_tt_rows": 14560,
+      "n_tt_steps": 100,
+      "anchor_step": 300
+    },
+    {
+      "W": "200",
+      "enough": false,
+      "evidence": "no_spike:top_step=269:dur_s=0.3466:med=0.1994:n_steps=112",
+      "primary": "torch_trace.duration_spike",
+      "n_tt_rows": 16198,
+      "n_tt_steps": 112,
+      "anchor_step": 300
+    },
+    {
+      "W": "full",
+      "enough": false,
+      "evidence": "no_spike:top_step=269:dur_s=0.3466:med=0.1994:n_steps=112",
+      "primary": "torch_trace.duration_spike",
+      "n_tt_rows": 16198,
+      "n_tt_steps": 112,
+      "anchor_step": 300
+    }
+  ],
+  "set_upgrade": {
+    "ok": true,
+    "path": "results/ascend-ais/pillar_c_v2/20260726_173830-pillar-c-e1-p1-sw-c-loud/rate_0/P1-SW-C/by_pod/grj-megatron-32card-0716-master-0/round_1/C2_probing/set_upgrade.log",
+    "note": "SET_OK"
+  },
+  "density": {
+    "victim_pid": "202843",
+    "n_rows": 51870,
+    "step_min": 189,
+    "step_max": 545,
+    "n_steps": 357,
+    "rows_before_step134": 0,
+    "rows_from_step134": 51870,
+    "steps_before_134": 0,
+    "steps_from_134": 357,
+    "dense_steps_ge50rows_from134": 285,
+    "sparse_steps_lt50rows_from134": 72,
+    "first_step_in_ring": 189,
+    "note": "rate=0 起训；SET@L=134 用旧键 torch.profiling=（非 probing.torch.profiling=）；环内最早步=189→onset 前无详采",
+    "top3_post_dur_inject": [
+      {
+        "dur_s": 0.3466,
+        "step": 269,
+        "module": "DistributedDataParallel"
+      },
+      {
+        "dur_s": 0.3445,
+        "step": 269,
+        "module": "DistributedDataParallel.module"
+      },
+      {
+        "dur_s": 0.2311,
+        "step": 262,
+        "module": "DistributedDataParallel"
+      }
+    ]
+  },
+  "set_upgrade_detail": {
+    "log_says": "SET_OK_WORKER",
+    "anomaly": "Failed SET query 'set probing.torch.profiling' on verify GET (旧脚本第二命令无 =value)",
+    "set_cmd_used": "torch.profiling=on,rate=1.0 (非 C0 真相键 probing.torch.profiling=)",
+    "density_verdict": "有详采行(51k)但非全量升详：多步仅1行；inject 窗无≥0.4s&≥3×med 尖刺"
+  },
+  "e1_off_W_star": 100,
+  "reproduced_W_star_100": false,
+  "total_bytes_probing_data": 1613283136,
+  "torch_trace_path": "results/ascend-ais/pillar_c_v2/20260726_173830-pillar-c-e1-p1-sw-c-loud/rate_0/probing_data/202843/python.torch_trace"
+}

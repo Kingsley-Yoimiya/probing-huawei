@@ -279,7 +279,7 @@ re-validates).
 
 | `SET memtable.*` | env | meaning | default |
 |---|---|---|---|
-| `cold_compaction` | `PROBING_COLD` | run the background compactor (`on`/`off`) | off |
+| `cold_compaction` | `PROBING_COLD` | run the background compactor (`on`/`off`) | on (unset); opt-out with `off` |
 | `cold_max_total_mb` | `PROBING_COLD_MAX_TOTAL_MB` | cold-store byte budget (MiB) | unlimited |
 | `cold_ttl_secs` | `PROBING_COLD_TTL_SECS` | evict cold segments older than this | none |
 | — | `PROBING_COLD_TARGET_MB` | segment roll size (MiB) | 64 |

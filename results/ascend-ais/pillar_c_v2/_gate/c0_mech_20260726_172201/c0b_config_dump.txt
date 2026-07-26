@@ -1,0 +1,106 @@
+sending ctrl commands via unix socket...
+┌────────────────────────────────┬───────────┬─────────────────────────────────┐
+│ name                           │ value     │ description                     │
+├────────────────────────────────┼───────────┼─────────────────────────────────┤
+│ probing.cpu.cpu_sample_interva │           │ CPU sampling interval in millis │
+│ l_ms                           │           │ econds (0 disables collection). │
+│                                │           │ .                               │
+│                                │           │ ENV[PROBING_CPU_CPU_CPU_SAMPLE_ │
+│                                │           │ INTERVAL_MS]                    │
+│ probing.cpu.cpu_thread_top_n   │           │ Max threads to record per sampl │
+│                                │           │ e (0 = process-level only)..    │
+│                                │           │ ENV[PROBING_CPU_CPU_CPU_THREAD_ │
+│                                │           │ TOP_N]                          │
+│ probing.gpu.gpu_sample_interva │           │ GPU memory sampling interval in │
+│ l_ms                           │           │  milliseconds (0 disables colle │
+│                                │           │ ction)..                        │
+│                                │           │ ENV[PROBING_GPU_GPU_GPU_SAMPLE_ │
+│                                │           │ INTERVAL_MS]                    │
+│ probing.gpu.gpu_backend        │ npu       │ Backend filter: `auto`, `cuda`, │
+│                                │           │  `npu`, `ascend`, `rocm`, `meta │
+│                                │           │ l`, or comma-separated list..   │
+│                                │           │ ENV[PROBING_GPU_GPU_GPU_BACKEND │
+│                                │           │ ]                               │
+│ probing.memtable.cold_compacti │           │ Background hot→cold compaction  │
+│ on                             │           │ switch: "on" or "off"..         │
+│                                │           │ ENV[PROBING_MEMTABLE_MEMTABLE_C │
+│                                │           │ OLD_COMPACTION]                 │
+│ probing.memtable.cold_max_tota │           │ Cold-store byte budget in MiB ( │
+│ l_mb                           │           │ oldest segments evicted past it │
+│                                │           │ )..                             │
+│                                │           │ ENV[PROBING_MEMTABLE_MEMTABLE_C │
+│                                │           │ OLD_MAX_TOTAL_MB]               │
+│ probing.memtable.cold_ttl_secs │           │ Evict cold segments older than  │
+│                                │           │ this many seconds..             │
+│                                │           │ ENV[PROBING_MEMTABLE_MEMTABLE_C │
+│                                │           │ OLD_TTL_SECS]                   │
+│ probing.pprof.sample_freq      │           │ CPU profiling sample frequency  │
+│                                │           │ in Hz (higher values increase o │
+│                                │           │ verhead).                       │
+│                                │           │ ENV[PROBING_PPROF_PPROF_SAMPLE_ │
+│                                │           │ FREQ]                           │
+│ probing.pythonext.crash_handle │           │ Enable the crash handler module │
+│ r                              │           │  (`probing.crash`). Aliases: `c │
+│                                │           │ rash.handler`..                 │
+│                                │           │ ENV[PROBING_PYTHONEXT_PYTHONEXT │
+│                                │           │ _CRASH_HANDLER]                 │
+│ probing.pythonext.monitoring   │           │ Path to Python monitoring handl │
+│                                │           │ er script.                      │
+│                                │           │ ENV[PROBING_PYTHONEXT_PYTHONEXT │
+│                                │           │ _MONITORING]                    │
+│ probing.pythonext.enabled      │           │ Enable Python extensions by set │
+│                                │           │ ting `python.enabled=<extension │
+│                                │           │ _statement>`.                   │
+│                                │           │ ENV[PROBING_PYTHONEXT_PYTHONEXT │
+│                                │           │ _ENABLED]                       │
+│ probing.pythonext.disabled     │           │ Disable Python extension by set │
+│                                │           │ ting `python.disabled=<extensio │
+│                                │           │ n_statement>`.                  │
+│                                │           │ ENV[PROBING_PYTHONEXT_PYTHONEXT │
+│                                │           │ _DISABLED]                      │
+│ probing.rdma.sample_rate       │           │ .                               │
+│                                │           │ ENV[PROBING_RDMA_RDMA_SAMPLE_RA │
+│                                │           │ TE]                             │
+│ probing.rdma.hca_name          │           │ .                               │
+│                                │           │ ENV[PROBING_RDMA_RDMA_HCA_NAME] │
+│ probing.server.address         │           │ Server bind address (e.g. 127.0 │
+│                                │           │ .0.1:8080).                     │
+│                                │           │ ENV[PROBING_SERVER_SERVER_ADDRE │
+│                                │           │ SS]                             │
+│ probing.server.unix_socket     │           │ Unix domain socket path (e.g. / │
+│                                │           │ tmp/probing/<pid>)              │
+│                                │           │ This option is readonly..       │
+│                                │           │ ENV[PROBING_SERVER_SERVER_UNIX_ │
+│                                │           │ SOCKET]                         │
+│ probing.server.report_addr     │           │ Report server address (e.g. 127 │
+│                                │           │ .0.0.1:9922).                   │
+│                                │           │ ENV[PROBING_SERVER_SERVER_REPOR │
+│                                │           │ T_ADDR]                         │
+│ probing.server.auth_token      │           │ Authentication token for the se │
+│                                │           │ rver.                           │
+│                                │           │ ENV[PROBING_SERVER_SERVER_AUTH_ │
+│                                │           │ TOKEN]                          │
+│ probing.server.max_connections │ 128       │ Maximum number of connections a │
+│                                │           │ llowed.                         │
+│                                │           │ ENV[PROBING_SERVER_SERVER_MAX_C │
+│                                │           │ ONNECTIONS]                     │
+│ probing.server.timeout         │ 30        │ Connection timeout in seconds.  │
+│                                │           │ ENV[PROBING_SERVER_SERVER_TIMEO │
+│                                │           │ UT]                             │
+│ probing.server.debug           │ false     │ Enable debug mode.              │
+│                                │           │ ENV[PROBING_SERVER_SERVER_DEBUG │
+│                                │           │ ]                               │
+│ probing.server.log_level       │ info      │ Log level (trace, debug, info,  │
+│                                │           │ warn, error).                   │
+│                                │           │ ENV[PROBING_SERVER_SERVER_LOG_L │
+│                                │           │ EVEL]                           │
+│ probing.server.assets_root     │           │ Root path for assets used by th │
+│                                │           │ e probing UI dashboard.         │
+│                                │           │ ENV[PROBING_SERVER_SERVER_ASSET │
+│                                │           │ S_ROOT]                         │
+│ probing.torch.profiling        │ on,rate=0 │ Combined PyTorch profiling spec │
+│                                │           │ ification string (see TorchProb │
+│                                │           │ eConfig)..                      │
+│                                │           │ ENV[PROBING_TORCH_TORCH_PROFILI │
+│                                │           │ NG]                             │
+└────────────────────────────────┴───────────┴─────────────────────────────────┘

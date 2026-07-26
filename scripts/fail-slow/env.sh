@@ -46,7 +46,9 @@ export AFS_HOME="${AFS_HOME:-/afs-a3-weight-share/yinjinrun.p-huawei}"
 export DATA_HOME="${DATA_HOME:-/data/yinjinrun.p-huawei}"
 export AFS_RESULTS="${AFS_RESULTS:-${AFS_HOME}/results}"
 export AFS_PROBING="${AFS_PROBING:-${AFS_HOME}/probing-huawei}"
-export POD_RESULTS="${POD_RESULTS:-${DATA_HOME}/results/ascend-ais}"
+# 勿在此默认 /data/...：会抢在下方 AFS 默认之前赋值，导致 grj（无该路径）整轮写飞。
+# yysong 若确有 /data 真盘，调用方显式 export POD_RESULTS=${DATA_HOME}/results/ascend-ais。
+# export POD_RESULTS="${POD_RESULTS:-${DATA_HOME}/results/ascend-ais}"
 
 # --- 集群身份（借用 SYY 进 vc-a3-241ceshi；落盘仍 yinjinrun.p-huawei）---
 # kube 文件自备：见 docs/fail-slow/IDENTITY.md（不进仓密钥正文）

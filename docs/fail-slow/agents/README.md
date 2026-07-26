@@ -1,34 +1,24 @@
-# 昇腾 Fail-Slow · Agent 边界包
-
-> 给 **loop 编排器** 和 **子 Agent** 用的任务定义。方法论仍服从 [`../rules.md`](../rules.md)；环境事实在 [`../ledger.md`](../ledger.md)。
-
-## 现役战役（2026-07-25 起）：Dose Sweep ∥ Pillar C
+## 现役战役（2026-07-26 起）：Pillar C v2（E1–E4）
 
 | 流水线 | 目标 | 落点 | 谁跑 |
 |--------|------|------|------|
-| **1 · Dose Sweep** | Quiet/Masked：Probing + GH/XPU | **grj-m0** + yysong-w2 | Dose + Baseline Contrast |
-| **2 · Pillar C** | 门禁 → 三臂 + 三场景 | **grj-w0** | Pilot → Runner |
+| **Pillar C v2** | C0→E1–E4（同覆盖总落盘） | **grj-w0** + `pillar_c_v2/` | Runner（GATE 已绿；看 MECH_FIX） |
+| Dose（收官） | 代表+扩展 Quiet/Masked 已齐 | DOSE_QUEUE | 仅残留 P2 顺手 |
 
-- Loud 已收官 → [`LOOP_LOUD.md`](LOOP_LOUD.md)。  
-- 进集群：SYY；落盘：`yinjinrun.p-huawei`；**可空闲借 grj**；**仍禁 a3**。
+- 方案：`EVAL-GAP-AND-PILLAR-C-PLAN.md`；队列：[`../PILLAR_C_QUEUE.md`](../PILLAR_C_QUEUE.md)。  
+- 旧 cold 三臂 = **SUPERSEDED**。Loud → [`LOOP_LOUD.md`](LOOP_LOUD.md)。
 
 ## 文件
 
 | 文件 | 角色 |
 |------|------|
-| [`LOOP.md`](LOOP.md) | **现役**双流水线状态机（Dose + C） |
-| [`LOOP_PROMPT.md`](LOOP_PROMPT.md) | `/loop` 可粘贴提示词 |
-| [`LOOP_LOUD.md`](LOOP_LOUD.md) | Loud 战役归档（勿再开） |
-| [`DOSE_SWEEP.md`](DOSE_SWEEP.md) | B 强度维任务卡 |
-| [`../DOSE_QUEUE.md`](../DOSE_QUEUE.md) | Quiet/Masked 队列 |
-| [`PILLAR_C_PILOT.md`](PILLAR_C_PILOT.md) | C 机制门禁 |
-| [`PILLAR_C_RUNNER.md`](PILLAR_C_RUNNER.md) | C 正式采集（硬依赖 GATE 全绿） |
-| [`CASE_RUNNER.md`](CASE_RUNNER.md) | Dose 复用（dose=quiet\|masked） |
-| [`BASELINE_CONTRAST.md`](BASELINE_CONTRAST.md) | 弱档对照（dose 换档） |
+| [`LOOP.md`](LOOP.md) / [`LOOP_PROMPT.md`](LOOP_PROMPT.md) | **现役** C v2 状态机 |
+| [`PILLAR_C_RUNNER.md`](PILLAR_C_RUNNER.md) | E1–E4 正式采集 |
+| [`PILLAR_C_PILOT.md`](PILLAR_C_PILOT.md) | 门禁（已绿；G3≠live） |
+| [`../PILLAR_C_QUEUE.md`](../PILLAR_C_QUEUE.md) | C0/E1–E4 队列 |
 | [`RESOURCE.md`](RESOURCE.md) | 机器池 |
-| [`CONCERNS.md`](CONCERNS.md) | 隔离与三问 |
-| [`BASELINE_COMMON.md`](BASELINE_COMMON.md) 等 | 适配期参考（归档） |
+| 其余 Dose/Loud 卡 | 归档或顺手 |
 
 ## Loop 一句话
 
-每轮：**(1)** master 空 → 派下一 Dose 格；**(2)** w1/w2 空 → 派弱档对照；**(3)** w0：GATE 未绿派 Pilot，全绿派 Runner；**(4)** 更新 DOSE_QUEUE + GATE + ledger + LOOP_LAST。
+每轮：**(1)** C0/MECH_FIX？**(2)** E1-off？**(3)** w0 IDLE → 下一 E 格；**(4)** 更新队列 + LOOP_LAST。主尺=总落盘。

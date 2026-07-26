@@ -67,7 +67,8 @@ probing-test/scripts/fail-slow/platform/ascend/
 | 本机/编排备份 | `$FS_HUAWEI_ROOT/results/ascend-ais/` | `source scripts/fail-slow/env.sh` 后 `LOCAL_RESULT_ROOT_BASE`（默认本仓） |
 | Pod 真盘 | `/data/yinjinrun.p-huawei/results/ascend-ais/` | hold-exec 写入；回拉到本机 |
 | AFS 前缀 | `/afs-a3-weight-share/yinjinrun.p-huawei/` | 部分节点假挂载，以 pod `/data` 为准 |
-| **ais-cf3e61a5 开发机备份** | `/root/backups/ascend-ais-dose-sweep-20260726` | 2026-07-26 Dose Sweep 约 1.7G（排除 pillar_c）；说明见同机 `/root/backups/README-ascend-ais-dose-sweep.md`；细节 [`../results/ascend-ais/INDEX.md`](../../results/ascend-ais/INDEX.md) |
+| **ais-cf3e61a5 开发机备份** | `/root/backups/ascend-ais-dose-sweep-20260726` | 2026-07-26 Dose Sweep 约 1.7G（排除 pillar_c）；说明见同机 `/root/backups/README-ascend-ais-dose-sweep.md` |
+| **ais-cf3e61a5 · Pillar C v2** | `/root/backups/ascend-ais-pillar-c-v2-20260726` | 2026-07-26 Pillar C v2 全量 ≈11G（tar.gz 54M，md5 `9b65f31d…`）；摘要见 `probing-huawei/results/ascend-ais/pillar_c_v2/CAMPAIGN_SUMMARY.md`；细节 [`BACKUP.md`](BACKUP.md) |
 
 覆盖示例：
 

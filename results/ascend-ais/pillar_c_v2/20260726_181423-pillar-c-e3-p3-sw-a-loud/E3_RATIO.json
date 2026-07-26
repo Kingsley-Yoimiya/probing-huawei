@@ -1,0 +1,249 @@
+{
+  "case": "P3-SW-A",
+  "parent": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_181423-pillar-c-e3-p3-sw-a-loud",
+  "resident_rate": "0",
+  "w_star": 100,
+  "headline_pct": 72.6,
+  "headline_note": "W*_content_est",
+  "ratio_raw_pct": 90.16,
+  "ratio_w_star_pct": 72.6,
+  "same_cover": true,
+  "dynamic": {
+    "total_dump_bytes": 1615633664,
+    "total_dump_bytes_w_star_est": 1300989872,
+    "cold_bytes": 13390080,
+    "breakdown": {
+      "python.torch_trace": 320020480,
+      "python.comm_collective": 320018432,
+      "python.torch_step_timing": 320016384,
+      "python.trace_event": 320013312,
+      "python.variables": 320006144,
+      "cold": 13390080,
+      "cpu.utilization": 545792,
+      "gpu.utilization": 545792,
+      "gpu.hccs": 541696,
+      "cpu.tasks": 535552
+    },
+    "rss": {
+      "ok": true,
+      "note": "rise_kb=268260:max_kb=2489768:n=200",
+      "n": 200,
+      "rise": 268260,
+      "max": 2489768
+    },
+    "set": {
+      "ok": true,
+      "note": "SET_OK",
+      "latency_ms": 931,
+      "has_correct_key": true,
+      "wrong_key_noise": false
+    },
+    "torch_trace_bytes_all_ranks": 320020480,
+    "torch_trace_bytes_w_star_est": 5376688,
+    "torch_trace_dense_ranks": 1,
+    "torch_trace_ranks": [
+      {
+        "pid": "1855451",
+        "file_bytes": 20001280,
+        "n_rows": 54054,
+        "n_steps": 372,
+        "step_min": 174,
+        "step_max": 545,
+        "n_steps_w": 100,
+        "est_tt_bytes_w": 5376688,
+        "note": "anchor_inject_stop"
+      },
+      {
+        "pid": "1855452",
+        "file_bytes": 20001280,
+        "n_rows": 0,
+        "n_steps": 0,
+        "step_min": null,
+        "step_max": null,
+        "n_steps_w": 0,
+        "est_tt_bytes_w": 0,
+        "note": "anchor_inject_stop"
+      },
+      {
+        "pid": "1855453",
+        "file_bytes": 20001280,
+        "n_rows": 0,
+        "n_steps": 0,
+        "step_min": null,
+        "step_max": null,
+        "n_steps_w": 0,
+        "est_tt_bytes_w": 0,
+        "note": "anchor_inject_stop"
+      },
+      {
+        "pid": "1855454",
+        "file_bytes": 20001280,
+        "n_rows": 0,
+        "n_steps": 0,
+        "step_min": null,
+        "step_max": null,
+        "n_steps_w": 0,
+        "est_tt_bytes_w": 0,
+        "note": "anchor_inject_stop"
+      },
+      {
+        "pid": "1855455",
+        "file_bytes": 20001280,
+        "n_rows": 0,
+        "n_steps": 0,
+        "step_min": null,
+        "step_max": null,
+        "n_steps_w": 0,
+        "est_tt_bytes_w": 0,
+        "note": "anchor_inject_stop"
+      },
+      {
+        "pid": "1855456",
+        "file_bytes": 20001280,
+        "n_rows": 0,
+        "n_steps": 0,
+        "step_min": null,
+        "step_max": null,
+        "n_steps_w": 0,
+        "est_tt_bytes_w": 0,
+        "note": "anchor_inject_stop"
+      },
+      {
+        "pid": "1855457",
+        "file_bytes": 20001280,
+        "n_rows": 0,
+        "n_steps": 0,
+        "step_min": null,
+        "step_max": null,
+        "n_steps_w": 0,
+        "est_tt_bytes_w": 0,
+        "note": "anchor_inject_stop"
+      },
+      {
+        "pid": "1855458",
+        "file_bytes": 20001280,
+        "n_rows": 0,
+        "n_steps": 0,
+        "step_min": null,
+        "step_max": null,
+        "n_steps_w": 0,
+        "est_tt_bytes_w": 0,
+        "note": "anchor_inject_stop"
+      },
+      {
+        "pid": "1855459",
+        "file_bytes": 20001280,
+        "n_rows": 0,
+        "n_steps": 0,
+        "step_min": null,
+        "step_max": null,
+        "n_steps_w": 0,
+        "est_tt_bytes_w": 0,
+        "note": "anchor_inject_stop"
+      },
+      {
+        "pid": "1855460",
+        "file_bytes": 20001280,
+        "n_rows": 0,
+        "n_steps": 0,
+        "step_min": null,
+        "step_max": null,
+        "n_steps_w": 0,
+        "est_tt_bytes_w": 0,
+        "note": "anchor_inject_stop"
+      },
+      {
+        "pid": "1855461",
+        "file_bytes": 20001280,
+        "n_rows": 0,
+        "n_steps": 0,
+        "step_min": null,
+        "step_max": null,
+        "n_steps_w": 0,
+        "est_tt_bytes_w": 0,
+        "note": "anchor_inject_stop"
+      },
+      {
+        "pid": "1855462",
+        "file_bytes": 20001280,
+        "n_rows": 0,
+        "n_steps": 0,
+        "step_min": null,
+        "step_max": null,
+        "n_steps_w": 0,
+        "est_tt_bytes_w": 0,
+        "note": "anchor_inject_stop"
+      },
+      {
+        "pid": "1855463",
+        "file_bytes": 20001280,
+        "n_rows": 0,
+        "n_steps": 0,
+        "step_min": null,
+        "step_max": null,
+        "n_steps_w": 0,
+        "est_tt_bytes_w": 0,
+        "note": "anchor_inject_stop"
+      },
+      {
+        "pid": "1855464",
+        "file_bytes": 20001280,
+        "n_rows": 0,
+        "n_steps": 0,
+        "step_min": null,
+        "step_max": null,
+        "n_steps_w": 0,
+        "est_tt_bytes_w": 0,
+        "note": "anchor_inject_stop"
+      },
+      {
+        "pid": "1855465",
+        "file_bytes": 20001280,
+        "n_rows": 0,
+        "n_steps": 0,
+        "step_min": null,
+        "step_max": null,
+        "n_steps_w": 0,
+        "est_tt_bytes_w": 0,
+        "note": "anchor_inject_stop"
+      },
+      {
+        "pid": "1855466",
+        "file_bytes": 20001280,
+        "n_rows": 0,
+        "n_steps": 0,
+        "step_min": null,
+        "step_max": null,
+        "n_steps_w": 0,
+        "est_tt_bytes_w": 0,
+        "note": "anchor_inject_stop"
+      }
+    ],
+    "w_truncate": {
+      "mode": "offline_truncate_estimate",
+      "w": 100,
+      "anchor": 300,
+      "note": "empty_rank_tt_counted_0; dense_rank_scaled_by_steps_in_W; SET_loop_breaks_after_first_worker"
+    },
+    "enough": true
+  },
+  "full": {
+    "reuse": true,
+    "total_dump_bytes": 1791975360,
+    "cold_bytes": 169366016,
+    "breakdown": {
+      "python.torch_trace": 320020480,
+      "python.comm_collective": 320018432,
+      "python.torch_step_timing": 320016384,
+      "python.trace_event": 320013312,
+      "python.variables": 320006144,
+      "cold": 169366016,
+      "cpu.utilization": 545792,
+      "gpu.utilization": 545792,
+      "gpu.hccs": 541696,
+      "cpu.tasks": 535552
+    },
+    "full_ref": "/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260725_230350-pillar-c-p3-sw-a-loud/full_fidelity",
+    "enough": true
+  }
+}

@@ -43,3 +43,10 @@ results/ascend-ais/baseline/**/*.so
 results/ascend-ais/baseline/**/hcclprobe.collect*
 results/ascend-ais/baseline/**/ascend_trace*
 results/ascend-ais/pillar_c/
+
+# Pillar C v2：全量 probing_data / memc 不入库（备份在 ais + AFS）
+results/ascend-ais/pillar_c_v2/**/probing_data/
+results/ascend-ais/pillar_c_v2/**/*.memc
+results/ascend-ais/pillar_c_v2/**/python.variables
+results/ascend-ais/pillar_c_v2/**/python.trace_event
+results/ascend-ais/pillar_c_v2/**/*.tar

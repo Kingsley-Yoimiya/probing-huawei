@@ -255,16 +255,19 @@
 
 # 四、Agent 双流水线（编排）
 
-## 4.1 现役（2026-07-25 起）：Dose Sweep ∥ Pillar C
+## 4.1 现役（2026-07-26 起）：Pillar C v2（E1–E4）
 
 | 轨 | 文档 | 状态落点 |
 |---|---|---|
 | Loop | [`agents/LOOP.md`](agents/LOOP.md) / [`LOOP_PROMPT.md`](agents/LOOP_PROMPT.md) | `$LOCAL_RESULT_ROOT_BASE/_prep/LOOP_LAST.md` |
-| 流水线1 Dose | [`agents/DOSE_SWEEP.md`](agents/DOSE_SWEEP.md) + CASE_RUNNER / BASELINE_CONTRAST | [`DOSE_QUEUE.md`](DOSE_QUEUE.md) + recipes quiet/masked |
-| 流水线2 Pillar C | [`agents/PILLAR_C_PILOT.md`](agents/PILLAR_C_PILOT.md) → [`PILLAR_C_RUNNER.md`](agents/PILLAR_C_RUNNER.md) | `_prep/pillar_c_gate/GATE.md` + `pillar_c/<run_id>/` |
-| 资源 | master-0=Dose Probing；w1=GH；w2=XPU；**w0=C** | [`agents/RESOURCE.md`](agents/RESOURCE.md) |
+| Pillar C v2 | [`PILLAR_C_QUEUE.md`](PILLAR_C_QUEUE.md) + [`agents/PILLAR_C_RUNNER.md`](agents/PILLAR_C_RUNNER.md) | `_prep/pillar_c_gate/{GATE,MECH_FIX}.md` + `pillar_c_v2/<run_id>/` |
+| 方案真相源 | `project/reading-paper/writing/probing-paper/EVAL-GAP-AND-PILLAR-C-PLAN.md` §2–§5 | E1–E4；主尺=总落盘 |
+| Dose（收官/残留） | [`DOSE_QUEUE.md`](DOSE_QUEUE.md) | 代表+扩展已齐；P2-SW-B/C 顺手，不挡 C |
+| 资源 | **w0=C**；m0=C0 短测/备用 | [`agents/RESOURCE.md`](agents/RESOURCE.md) |
 
-Loud 战役已收官（归档 [`agents/LOOP_LOUD.md`](agents/LOOP_LOUD.md)）。本波工具仍仅 GH+XPU。
+**旧 C 作废**：`pillar_c/*/VOLUME_RATIO.md`（cold 三臂比）、C-2 `COLD_MAX` 主线、C-3 mid_set 当终态 → **SUPERSEDED**（尺用错 + SET 未进 live tracer + 用训练 D 判臂）。见队列 §0。
+
+Loud 归档 [`agents/LOOP_LOUD.md`](agents/LOOP_LOUD.md)。
 
 ## 4.2 Loud 战役落点（归档参考）
 
@@ -277,6 +280,16 @@ Loud 战役已收官（归档 [`agents/LOOP_LOUD.md`](agents/LOOP_LOUD.md)）。
 
 | 日期 | 变更 |
 |---|---|
+| 2026-07-26 | **Pillar-C v2 备份**：ais `/root/backups/ascend-ais-pillar-c-v2-20260726`（11G / tar.gz 54M md5 `9b65f31d…`）；AFS 同路径；本仓瘦身入库 `results/ascend-ais/pillar_c_v2/`；见 `BACKUP.md` / `CAMPAIGN_SUMMARY.md` |
+| 2026-07-26 | **Pillar-C v2 主线收官**：C0→E1-off→E1→E2→E3→E4→S1 全 ✅；头条动态/全量=**72.6%**（`181423`）；E2 最稀 rate=0；E4 PASS 掉级；S1 `184311` 热接入 restart=0、onset 前不可见；摘要 `pillar_c_v2/CAMPAIGN_SUMMARY.md`；15m loop 停 |
+| 2026-07-26 | **Pillar-C E4 反例 DONE**：parent=`20260726_182630-pillar-c-e4-p3-sw-a-loud`@grj-w0；砍量=E3 动态去 SET↑（rate=0 SAMPLE_MS=500）；**PASS 掉级**（path_enough RSS∧SET：E3 Y→naive N）；禁 SET 控制 Y（log 缺席）；TT rows **0 vs E3 54054**；RSS 仍 Y（周期小表）；总落盘≈1.54GB 仍小；`E4_ABLATION.md`；未占 m0；w0 IDLE |
+| 2026-07-26 | **Pillar-C E3 头条 DONE**：parent=`20260726_181423-pillar-c-e3-p3-sw-a-loud`@grj-w0；P3-SW-A；动态 rate=0→SET `probing.torch.profiling=on,rate=1.0`（SET_OK 931ms）vs 复用 full `230350`；**动态/全量=72.6%**（W\*=100 content est；raw=90.16%）；RSS 同覆盖；cold 12.8 vs 161.5 MiB；SET 仅首 worker（脚本 `break`）；`E3_RATIO.md`；未占 m0 |
+| 2026-07-26 | **Pillar-C E3 头条 DONE**：parent=`20260726_181423-pillar-c-e3-p3-sw-a-loud`@grj-w0；P3-SW-A；动态/全量=**72.6%**（W\*=100 content est；raw=90.16%）；SET_OK（`probing.torch.profiling=`）；RSS 同覆盖；cold 7.9%；仅 1/16 rank 实写 TT（SET 脚本首 worker 后 break）；`E3_RATIO.md`；下一 E4 |
+| 2026-07-26 | **Pillar-C E1 收口 NO_W_STAR**：`173830`@grj-m0 P1-SW-C；offline_truncate W=50/100/200/full 均无 duration 尖刺（top@269≈0.35s）；**未复现** E1-off W\*=100；SET 当时键=`torch.profiling=`（非 `probing.torch.profiling=`）；`hold_exec` 已改真相键；`173220` INVALID PATH；设计窗仍用 E1-off=**100** 供 E3 |
+| 2026-07-26 | **Pillar-C E2 BOUNDARY DONE**：parent=`20260726_173134-pillar-c-e2-p3-sw-a-loud`@grj-w0；P3-SW-A；够触发最稀常驻率=**0**（0/0.05 均 RSS trigger_ok≈308/390MB）；中间 0.001/0.01 跳过；总落盘≈1.61GB/臂（cold≈9MB 非主尺）；SET↑ 两臂 FAIL（jexec PATH 缺 `/usr/bin`，非 rate 盲区）；`hold_exec` 已补 PATH、`env.sh` 去 `/data` 早默认；`E2_RATE.md`；`172752` 仍 INVALID |
+| 2026-07-26 | **Pillar-C E1-off DONE**：`pillar_c_v2/E1_off/W_STAR.md`；P1-SW-C **W\*=100**（duration 尖刺@238）；P3-SW-A/B **UNRESOLVED**（`cpu.utilization` 环与注入窗时间错位；C2 可证 RSS rise）；P1-HW-B **NO_W_STAR**（注入窗 torch alloc 平坦）；环 20MB≈**546**步；脚本 `e1_offline_window_score.py`；未用 cold 冒充 |
+| 2026-07-26 | **Pillar-C C0-a/b PASS**：`c0_mech_20260726_172201`@grj-w0；rate=0→`torch_trace=0`/`timing=28`；mid SET `0.05→1.0`→TT **29→309**（Δ=280）；Python 已同步两边 probe-bundle；`MECH_FIX.md` 勾放行；**可开 E1/E2**；E1-off/C0-c 并行 |
+| 2026-07-26 | **Pillar C v2 重开**：对照 EVAL-GAP §2；旧 cold 三臂/`COLD_MAX`/mid_set 标 **SUPERSEDED**；新增 [`PILLAR_C_QUEUE.md`](PILLAR_C_QUEUE.md)；重写 `PILLAR_C_RUNNER`/`LOOP`/`LOOP_PROMPT` 对齐 E1–E4；主尺=总落盘；C0=§2.0 三缺口（SET→live / rate=0 / 窗）；产物目录 `pillar_c_v2/`；Dose 代表+扩展已收官，C 为主 |
 | 2026-07-26 | **XPUTimer masked 对照 P3-EXT-B DONE**：`contrast-p3-ext-b-masked-20260726_160000`@yysong-w2；dose `fio_nj=4,iodepth=16,bs=4k,size=1G,ckpt_every=50,io_read_kb=256`（=quiet lean）；自主 hang/slow=**0**；跨-run coll=**1.023** FAIL（thr1.05）；dose_check step_ms=**1.113** PASS（金标≈1.078；fio-3.29 held≈39s@~19.4MiB/s）；detect_mode=`cross_run_contrast`；detect_ok=no；与 masked GH `155151`（no_bite）同向无咬合；未改对手阈值；未覆盖 Probing 分；未占 grj；w2 已 IDLE；DOSE_QUEUE masked XPU=DONE；**P3-EXT-B Quiet+Masked 全齐 → 扩展集收官** |
 | 2026-07-26 | **Greyhound masked 对照 P3-EXT-B DONE**：`contrast-p3-ext-b-masked-20260726_155151`@yysong-w2；dose `fio_nj=4,iodepth=16,bs=4k,size=1G,ckpt_every=50,io_read_kb=256`（=quiet lean）；coll=**1.024** FAIL（thr1.05）；Rbeast collect_seq C1/C0 cp=**0/0** miss；step_ms=**0.777** dose_WEAK（金标≈1.078；fio-3.29 held≈39s@~19.5MiB/s）；detect_mode=`no_bite`；detect_ok=no；与 quiet/Loud GH 同向无咬合；未改对手阈值；未覆盖 Probing 分；未占 grj；w2 已 IDLE 交 XPU；DOSE_QUEUE masked GH=DONE |
 | 2026-07-26 | **XPUTimer quiet 对照 P3-EXT-B DONE**：`contrast-p3-ext-b-quiet-20260726_073224`@yysong-w2；dose `fio_nj=4,iodepth=16,bs=4k,size=1G,ckpt_every=50,io_read_kb=256`；自主 hang/slow=**0**；跨-run coll=**0.977** FAIL（thr1.15）；dose_check step_ms=**1.256** PASS（金标≈1.709；fio-3.29 held≈38s@~20.6MiB/s）；detect_mode=`cross_run_contrast`；detect_ok=no；与 quiet GH `072233`（no_bite）同向无咬合；未改对手阈值；未覆盖 Probing 分；未占 grj；w2 已 IDLE；DOSE_QUEUE quiet XPU=DONE；P3-EXT-B quiet 格齐 |

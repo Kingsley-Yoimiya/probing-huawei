@@ -227,7 +227,7 @@ class TorchProbeConfig:
                             "shadow" | "backward"
         rate-spec     ::=  [mode ":"] rate [":" layer_rate]
         mode          ::=  "random"           # back-compat alias, always random
-        rate          ::=  <float in (0, 1]>  # step sampling density
+        rate          ::=  <float in [0, 1]>  # step sampling density; 0 = never sample
         layer_rate    ::=  <float in (0, 1]>  # per-layer hit prob on sampled step
 
     Examples
@@ -301,7 +301,8 @@ class TorchProbeConfig:
                         except ValueError:
                             pass
                         else:
-                            if parsed > 0:
+                            # rate=0 is legal: enabled but never sample torch_trace.
+                            if parsed >= 0:
                                 cfg.rate = parsed
                     if len(parts) > rate_idx + 1:
                         try:
@@ -334,7 +335,8 @@ class TorchProbeConfig:
                     parsed = float(value)
                 except ValueError:
                     continue
-                if parsed <= 0:
+                # Accept 0 (= never sample detailed traces) and (0, 1].
+                if parsed < 0:
                     continue
                 cfg.rate = parsed
             elif key in {"layer_rate", "layer-rate"}:
@@ -735,7 +737,13 @@ class Sampler:
         self._planned_cycle = None
 
     def _sample_period(self) -> int:
-        """Steps between samples: ``round(1/rate)`` (>=1)."""
+        """Steps between samples: ``round(1/rate)`` (>=1).
+
+        ``rate <= 0`` means never sample (caller must short-circuit before
+        dividing); treated as an infinite period only as a defensive fallback.
+        """
+        if self.rate <= 0:
+            return 10**9
         if self.rate >= 1.0:
             return 1
         return max(1, round(1.0 / self.rate))
@@ -751,6 +759,8 @@ class Sampler:
         (which advances one-for-one on every rank), so all ranks pick the same
         step and the host RNG is never touched. Cached per cycle so it stays
         stable across gradient-accumulation micro-steps.
+
+        ``rate <= 0``: enabled but never sample ``torch_trace`` (Pillar-C E1/E2).
         """
         if not self.finalized or not self._auto_plan:
             return
@@ -759,6 +769,10 @@ class Sampler:
             return
         self._planned_cycle = cycle
         self._sampled_mods_this_step = set()
+
+        if self.rate <= 0:
+            self.sampled_step = False
+            return
 
         period = self._sample_period()
         self.sampled_step = (cycle % period) == 0
@@ -833,7 +847,9 @@ class Sampler:
             rate = parts[rate_idx]
             layer_idx = rate_idx + 1
 
-            self.rate = float(rate) if 0 < float(rate) <= 1 else DEFAULT_SAMPLE_RATE
+            self.rate = (
+                float(rate) if 0 <= float(rate) <= 1 else DEFAULT_SAMPLE_RATE
+            )
             if len(parts) > layer_idx and 0 < float(parts[layer_idx]) <= 1:
                 self.layer_rate = float(parts[layer_idx])
             else:

@@ -1,0 +1,56 @@
+{
+  "experiment": "S1",
+  "case": "P3-SW-A",
+  "attach_at_requested": 150,
+  "inject_window": [
+    100,
+    300
+  ],
+  "ring_calibrated_steps_e1off": 546,
+  "attach": {
+    "ok": true,
+    "step": 150,
+    "ts": 1785062687.3243973,
+    "note": "marker_ok",
+    "raw": "step=150\nts=1785062687.3243973"
+  },
+  "attach_after_onset": true,
+  "onset_ts_s": 1785062665.689,
+  "attach_ts_s": 1785062687.3243973,
+  "rss": {
+    "ok": true,
+    "note": "rise_kb=121248:max_kb=2397712:n=179",
+    "n": 179,
+    "rise": 121248,
+    "max": 2397712
+  },
+  "rss_path": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_184311-pillar-c-s1-p3-sw-a-loud/mid_attach/P3-SW-A/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/probing/query_p3sw_rss_window.txt",
+  "time_cover": {
+    "n_samples": 179,
+    "span_s": 89.379,
+    "pre_onset_n": 0,
+    "pre_attach_n": 0,
+    "post_attach_n": 179,
+    "pre_onset_visible": false,
+    "steps_covered_post_attach": 351
+  },
+  "lookback_pre_onset": false,
+  "set_upgrade": {
+    "ok": true,
+    "note": "SET_OK"
+  },
+  "volume": {
+    "hot_files": 144,
+    "hot_bytes": 1602243584,
+    "cold_segs": 16,
+    "cold_bytes": 58598656,
+    "source": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v2/20260726_184311-pillar-c-s1-p3-sw-a-loud/mid_attach/volume_meta.txt",
+    "total_dump_bytes": 1660842240
+  },
+  "contrast": {
+    "probing_restart_gpu_steps": 0,
+    "opponent_restart_gpu_steps_est": 150,
+    "note": "对手若只触发后采/需重启才能挂采集，则丢 onset 前基线；Probing 热接入 restart=0 可开始采。环形 20MB≈546 步只保留「接入后已写入」的历史，不能发明 attach 前未采样本。"
+  },
+  "verdict": "PASS_ATTACH_NO_PRE_ONSET"
+}

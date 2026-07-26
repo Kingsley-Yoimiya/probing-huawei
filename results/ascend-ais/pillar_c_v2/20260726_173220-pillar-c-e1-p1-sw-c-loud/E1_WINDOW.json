@@ -1,0 +1,12 @@
+{
+  "parent": "20260726_173220-pillar-c-e1-p1-sw-c-loud",
+  "arm_dir": "rate_0",
+  "case": "P1-SW-C",
+  "status": "BLOCKED",
+  "W_star": null,
+  "window_mode": "offline_truncate",
+  "windows": null,
+  "set_upgrade": null,
+  "total_bytes_probing_data": null,
+  "torch_trace_path": null
+}

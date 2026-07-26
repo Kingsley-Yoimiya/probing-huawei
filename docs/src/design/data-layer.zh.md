@@ -246,7 +246,7 @@ chunk。每行恰好计数一次，且去重对环形回收免疫（generation �
 
 | `SET memtable.*` | 环境变量 | 含义 | 默认 |
 |---|---|---|---|
-| `cold_compaction` | `PROBING_COLD` | 运行后台 compactor（`on`/`off`） | 关闭 |
+| `cold_compaction` | `PROBING_COLD` | 运行后台 compactor（`on`/`off`） | 默认开（unset）；`off` 可关 |
 | `cold_max_total_mb` | `PROBING_COLD_MAX_TOTAL_MB` | 冷层字节预算（MiB） | 无限 |
 | `cold_ttl_secs` | `PROBING_COLD_TTL_SECS` | 淘汰早于此时长的冷段 | 无 |
 | — | `PROBING_COLD_TARGET_MB` | 段滚动大小（MiB） | 64 |

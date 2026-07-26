@@ -1,0 +1,1 @@
+FULL_TAR_PULL_KILLED (1.6G probing_data); selective essentials + volume_meta pulled; training/attach/dump OK

@@ -1,0 +1,1 @@
+INVALID: SET_FAIL_ALL (PATH missing /usr/bin → date/ps/awk not found); torch_trace empty under rate=0; superseded by retry
