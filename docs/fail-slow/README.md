@@ -6,6 +6,7 @@
 | 文件 | 作用 |
 |------|------|
 | [`SHARE.md`](SHARE.md) | **对外入口**：两公开仓、身份、无 myportal |
+| [`BACKUP.md`](BACKUP.md) | **备份落点**：ais-cf3e61a5 / AFS / 本机（检查用） |
 | [`IDENTITY.md`](IDENTITY.md) | kube / 跳板 / 落盘约定 |
 | [`rules.md`](rules.md) | 不变的方法论（红线 / 控变 / 三阶段 / D0–D5） |
 | [`ledger.md`](ledger.md) | 华为环境门禁、剂量、已跑 case 速览 |

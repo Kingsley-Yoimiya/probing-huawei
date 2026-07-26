@@ -16,3 +16,15 @@
 - 代表集 + 扩展集 Quiet/Masked 表序格全 DONE（见 `docs/fail-slow/DOSE_QUEUE.md`）
 - 末格 P3-EXT-B：quiet formal `065841` / masked formal `154204`；对照 GH/XPU 均 detect_ok=no
 - 大 dump：AFS `/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais`（含 pillar_c≈42G、baseline 自 w2 同步）；本仓只瘦身入库
+
+### 备份位置（检查用）
+
+| 落点 | 路径 | 体量 |
+|---|---|---|
+| **ais-cf3e61a5 开发机** | `/root/backups/ascend-ais-dose-sweep-20260726` | ≈1.7G 解压；同目录 tar.gz 60M（md5 `28732ddd…c5df`） |
+| ais README | `/root/backups/README-ascend-ais-dose-sweep.md` | 备份说明 |
+| AFS 全量（pod 内） | `/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais` | ≈44G（含 pillar_c） |
+
+```bash
+ssh ais-cf3e61a5 "du -sh /root/backups/ascend-ais-dose-sweep-20260726*"
+```
