@@ -1,0 +1,84 @@
+{
+  "experiment": "PR2_B_E3_RATIO",
+  "case": "P3-SW-A",
+  "parent": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize/20260728_185909-pillar-c-v3-pr2-e3-b7",
+  "dynamic_reuse_run": "20260728_185909-pillar-c-v3-pr2-e3-b7",
+  "dynamic_arm": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize/20260728_185909-pillar-c-v3-pr2-e3-b7/dynamic",
+  "resident_rate": "0",
+  "w_star": 100,
+  "dynamic": {
+    "label": "dynamic",
+    "arm_dir": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize/20260728_185909-pillar-c-v3-pr2-e3-b7/dynamic",
+    "exists": true,
+    "probing_data": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize/20260728_185909-pillar-c-v3-pr2-e3-b7/dynamic/probing_data",
+    "total_dump_bytes": 854171456,
+    "cold_bytes": 48714496,
+    "breakdown": {
+      "python.torch_step_timing": 335560704,
+      "cpu.utilization": 134239232,
+      "gpu.utilization": 134239232,
+      "cpu.tasks": 134228992,
+      "gpu.hccs": 67126272,
+      "cold": 48714496,
+      "983508": 26004,
+      "983510": 24848,
+      "982969": 11676
+    },
+    "rss": {
+      "ok": true,
+      "note": "rise_kb=6168:max_kb=2329840:n=200",
+      "n": 200,
+      "rise": 6168,
+      "max": 2329840
+    },
+    "rss_path": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize/20260728_185909-pillar-c-v3-pr2-e3-b7/dynamic/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/probing/query_p3sw_rss_window.txt",
+    "set": {
+      "ok": true,
+      "note": "SET_OK",
+      "latency_ms": 17527,
+      "has_correct_key": true,
+      "wrong_key_noise": false
+    },
+    "torch_trace_files": 0,
+    "torch_trace_bytes_all_ranks": 0,
+    "torch_trace_victim": null,
+    "torch_trace_info": {},
+    "enough": true,
+    "localize": {
+      "culprit_rank": 5,
+      "culprit_pid": 983508,
+      "localize_fallback": 0,
+      "localize_elapsed_ms": 8836,
+      "localize_fallback_bool": false,
+      "localize_head": "LOCALIZE_SQL: query='SELECT COALESCE(max(step_duration_sec), 0) AS metric FROM python.torch_step_timing WHERE local_step >= 119 AND local_step <= 139' mode=step_ms trigger_step=139 window=20 culprit_rank=5 culprit_pid=983508 fallback=False reason=sql_max_metric ts=1785236476",
+      "localize_sql": true
+    },
+    "torch_trace_ranks": [],
+    "torch_trace_dense_ranks": 0,
+    "torch_trace_dense_pids": [],
+    "torch_trace_bytes_w_star_est": 0,
+    "w_truncate": {
+      "mode": "offline_truncate_estimate",
+      "w": 100,
+      "anchor": 300,
+      "note": "empty_rank_tt_counted_0; dense_rank_scaled_by_steps_in_W; PR2_SQL_localize_not_break_pid"
+    },
+    "dense_rank_matches_culprit": false,
+    "semantic": "orchestration_sql_localize_culprit_only_set"
+  },
+  "full": {
+    "label": "full_fidelity",
+    "reuse": true,
+    "exists": true,
+    "total_dump_bytes": 1791975360,
+    "enough": true,
+    "evidence_note": "reuse_full_fidelity_upper_bound",
+    "full_ref": "/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260725_230350-pillar-c-p3-sw-a-loud/full_fidelity"
+  },
+  "ratio_raw_pct": 47.67,
+  "ratio_w_star_pct": null,
+  "headline_pct": 47.67,
+  "headline_note": "raw_dump",
+  "same_cover": true,
+  "v2_ref_headline_pct": 72.6
+}

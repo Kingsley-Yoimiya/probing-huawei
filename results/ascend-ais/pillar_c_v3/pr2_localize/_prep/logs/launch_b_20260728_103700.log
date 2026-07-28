@@ -1,0 +1,15 @@
+[pr2-b] wait pod IDLE (max 7200s) …
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 90
+OWNER_BUSY
+1459316 /root/miniconda3/envs/llm_test/bin/python3.10 /root/miniconda3/envs/llm_test/bin/torchrun --nnodes=1 --nproc_per_node=16 --node_rank=0 --master_addr=10.119.7.40 --master_port=30200 /tmp/tbp_npu.py --iters=1800 --warmup=50 --seed=42 --mode=host_bound --model=gpt2 --seq=1024 --batch=8 --flush-every=5 --ckpt-every=100 --io-payload= --io-read-kb=0 --run-id=20260728_102830-pillar-c-v3-pr2-localize-a6-upgrade_rate_1.0 --group=2 --config=C2_probing --round=1 --out-dir=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_102830-pillar-c-v3-pr2-localize-a6/upgrade_rate_1.0/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks
+[pr2-b] wait pod IDLE (max 14400s) …
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 90
+OWNER_BUSY
+1459316 /root/miniconda3/envs/llm_test/bin/python3.10 /root/miniconda3/envs/llm_test/bin/torchrun --nnodes=1 --nproc_per_node=16 --node_rank=0 --master_addr=10.119.7.40 --master_port=30200 /tmp/tbp_npu.py --iters=1800 --warmup=50 --seed=42 --mode=host_bound --model=gpt2 --seq=1024 --batch=8 --flush-every=5 --ckpt-every=100 --io-payload= --io-read-kb=0 --run-id=20260728_102830-pillar-c-v3-pr2-localize-a6-upgrade_rate_1.0 --group=2 --config=C2_probing --round=1 --out-dir=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_102830-pillar-c-v3-pr2-localize-a6/upgrade_rate_1.0/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks
+[pr2-b] wait pod IDLE (max 14400s) …
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 90
+OWNER_BUSY
+1459316 /root/miniconda3/envs/llm_test/bin/python3.10 /root/miniconda3/envs/llm_test/bin/torchrun --nnodes=1 --nproc_per_node=16 --node_rank=0 --master_addr=10.119.7.40 --master_port=30200 /tmp/tbp_npu.py --iters=1800 --warmup=50 --seed=42 --mode=host_bound --model=gpt2 --seq=1024 --batch=8 --flush-every=5 --ckpt-every=100 --io-payload= --io-read-kb=0 --run-id=20260728_102830-pillar-c-v3-pr2-localize-a6-upgrade_rate_1.0 --group=2 --config=C2_probing --round=1 --out-dir=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_102830-pillar-c-v3-pr2-localize-a6/upgrade_rate_1.0/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks

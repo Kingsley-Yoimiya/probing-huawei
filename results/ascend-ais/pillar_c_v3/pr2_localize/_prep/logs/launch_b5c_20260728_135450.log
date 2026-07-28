@@ -1,0 +1,26 @@
+[b5c] jsync ext/torch.py + hold_exec…
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[b5c] jsync torch.py -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/pydeps/probing/ext/torch.py
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[b5c] jsync torch_probe.py -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/pydeps/probing/profiling/torch_probe.py
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[b5c] jsync hold_exec_run_case.sh -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/hold_exec_run_case.sh
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+[b5c] bundle ext/torch.py lines=178 sync_grep=4
+[b5c] OUT_C2=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_135450-pillar-c-v3-pr2-e3-b5c/upgrade_rate_1.0/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+IDLE
+[b5c] fire short C2_probing ITERS=100 rate=0 ARM_DIR=upgrade_rate_1.0…
+[b5c] wait L>=25 on /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_135450-pillar-c-v3-pr2-e3-b5c/upgrade_rate_1.0/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl…
+[b5c] L=30 ready (18s)
+[b5c] find victim rank 7 pid…
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+[b5c] VICTIM_PID=4063268
+[b5c] check probing.ext.torch __file__…
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+sending ctrl commands via unix socket...
+SystemExit: 1

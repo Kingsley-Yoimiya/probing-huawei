@@ -1,0 +1,12 @@
+[b5c] jsync…
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[b5c] jsync torch.py
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[b5c] jsync torch_probe.py
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+[b5c] bundle 178L sync=4 OUT=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_140229-pillar-c-v3-pr2-e3-b5c/upgrade_rate_1.0/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+IDLE

@@ -1,0 +1,3 @@
+  warmup ok (20s)
+  wait measure step 100…
+  measure step 100 reached (5s)

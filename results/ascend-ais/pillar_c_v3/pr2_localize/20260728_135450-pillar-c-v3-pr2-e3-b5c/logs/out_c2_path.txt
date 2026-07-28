@@ -1,0 +1,1 @@
+/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_135450-pillar-c-v3-pr2-e3-b5c/upgrade_rate_1.0/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing

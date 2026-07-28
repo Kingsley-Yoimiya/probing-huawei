@@ -1,0 +1,18 @@
+[pr2-b2] self-check…
+OK: grep -q PILLAR_C_SET_WINDOW_STEPS /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q SET_UPGRADE ts= /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q SET_DOWNGRADE ts= /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q rate=0 /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q HANG_DETECTED /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: window math upgrade_l=121 + window=12 => downgrade_at=133
+OK: sim steps reach downgrade_at=133 (would SET_DOWNGRADE)
+OK: stall=900s >= hang_max=900s triggers HANG_DETECTED path
+[test_pillar_c_set_window] PASS
+[pr2-b2] jsync scripts → bundle…
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[pr2-b2] jsync hold_exec_run_case.sh -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/hold_exec_run_case.sh rc=0
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[pr2-b2] jsync pillar_c_localize_culprit.py -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/pillar_c_localize_culprit.py rc=0
+[pr2-b2] wait pod IDLE…

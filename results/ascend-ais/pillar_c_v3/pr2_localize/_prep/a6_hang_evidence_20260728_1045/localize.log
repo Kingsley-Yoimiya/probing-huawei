@@ -1,0 +1,17 @@
+LOCALIZE_SQL: query='SELECT COALESCE(max(step_duration_sec), 0) AS metric FROM python.torch_step_timing WHERE local_step >= 101 AND local_step <= 121' mode=step_ms trigger_step=121 window=20 culprit_rank=7 culprit_pid=1459716 fallback=False reason=sql_max_metric ts=1785205749
+LOCALIZE_RANK pid=1459716 local_rank=7 ok=True metric=0.2610756792128086 attach=True
+LOCALIZE_RANK pid=1459712 local_rank=3 ok=True metric=0.2630381938070059 attach=True
+LOCALIZE_RANK pid=1459709 local_rank=0 ok=True metric=0.2609638199210167 attach=True
+LOCALIZE_RANK pid=1459721 local_rank=12 ok=True metric=0.26076244935393333 attach=True
+LOCALIZE_RANK pid=1459713 local_rank=4 ok=True metric=0.26317487470805645 attach=True
+LOCALIZE_RANK pid=1459711 local_rank=2 ok=True metric=0.26182082667946815 attach=True
+LOCALIZE_RANK pid=1459718 local_rank=9 ok=True metric=0.2611494902521372 attach=True
+LOCALIZE_RANK pid=1459717 local_rank=8 ok=True metric=0.2612201850861311 attach=True
+LOCALIZE_RANK pid=1459723 local_rank=14 ok=True metric=0.2614582534879446 attach=True
+LOCALIZE_RANK pid=1459720 local_rank=11 ok=True metric=0.26319724321365356 attach=True
+LOCALIZE_RANK pid=1459714 local_rank=5 ok=True metric=0.2610827907919884 attach=True
+LOCALIZE_RANK pid=1459715 local_rank=6 ok=True metric=0.26393266022205353 attach=True
+LOCALIZE_RANK pid=1459719 local_rank=10 ok=True metric=0.26148836500942707 attach=True
+LOCALIZE_RANK pid=1459722 local_rank=13 ok=True metric=0.2617312856018543 attach=True
+LOCALIZE_RANK pid=1459728 local_rank=15 ok=True metric=0.2654966879636049 attach=True
+LOCALIZE_RANK pid=1459710 local_rank=1 ok=False metric=None attach=True raw_head='timeout'

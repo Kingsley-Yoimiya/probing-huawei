@@ -1,0 +1,82 @@
+[fs-ascend] FS_HUAWEI_ROOT=/Users/yinjinrun/Codespace/myportal/project/probing-huawei
+[fs-ascend] FS_SHARED_SCRIPTS=/Users/yinjinrun/Codespace/myportal/project/probing-test/scripts/fail-slow
+[fs-ascend] LOCAL_RESULT_ROOT_BASE=/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais
+[fs-ascend] POD_RESULTS=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais  AFS_HOME=/afs-a3-weight-share/yinjinrun.p-huawei
+[fs-ascend] KUBECONFIG=/Users/yinjinrun/.kube/config-vc-a3-241ceshi-songyiyang.yaml
+[fs-ascend] JUMP=ais-cf3e61a5 KUBECTL=/root/.cache/volcano/kubectl/kubectl
+[fs-ascend] FS_RUN_MODE=hold-exec HOLD=yysong PREFIX=yjr-as
+[fs-ascend] note: myportal NOT required; override LOCAL_RESULT_ROOT_BASE / FS_SHARED_SCRIPTS as needed
+[hold-exec] RUN_ID=20260727_200200-yjr-as-b-pr1-health-smoke-r3c POD=yysong-worker-0 CASE=P3-SW-A configs=C2_probing
+[hold-exec] sync train → /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/train_bench_probe_npu.py
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[hold-exec] jsync train_bench_probe_npu.py -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/train_bench_probe_npu.py rc=0
+[hold-exec] sync sidecar → /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/sidecar_inject_npu.py
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[hold-exec] jsync sidecar_inject_npu.py -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/sidecar_inject_npu.py rc=0
+[hold-exec] sync 8c sidecar → /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/sidecar_inject_8c.py
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[hold-exec] jsync sidecar_inject_8c.py -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/sidecar_inject_8c.py rc=0
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[hold-exec] jsync dump_probing_sql.sh -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/dump_probing_sql.sh rc=0
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+[hold-exec] MASTER_IP=10.119.7.40
+[hold-exec] yysong-worker-0 IDLE
+========== P3-SW-A / C2_probing (gid=2 port=30200) ==========
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 137
+[hold-exec] prep outdir /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c_v3/pr1_baseline/20260727_200200-yjr-as-b-pr1-health-smoke-r3c/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[hold-exec] jsync run_2.sh -> /tmp/run_2.sh rc=0
+[hold-exec] firing C2_probing…
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+FIRE_OK
+  warmup ok (20s)
+  waiting 100s for SQL dump (no inject)…
+  dumping Probing SQL / host_psi…
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+  SQL dump attempted → /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c_v3/pr1_baseline/20260727_200200-yjr-as-b-pr1-health-smoke-r3c/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/probing/
+  waiting done… t=60s jsonl=16
+  measure window complete + training gone → accept partial (step_300)
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+[hold-exec] pull /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c_v3/pr1_baseline/20260727_200200-yjr-as-b-pr1-health-smoke-r3c → /Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr1_baseline/20260727_200200-yjr-as-b-pr1-health-smoke-r3c
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+[hold-exec] jsonl_files=16
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 137
+# Acceptance (loud): P3-SW-A
+
+- window: measure step [100, 300] rank0 `step_ms` median
+- dose: `loud`
+- threshold C1/C0 ≥ **1.3** (cli:--min-ratio=1.3)
+- recipes: `/Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/dose_recipes.yaml`
+- injection.log: `no_log`
+- verdict: **DATA_MISSING**
+
+| config | median step_ms | vs C0 |
+|---|---:|---:|
+| C2_probing | 118.99 | 1.00 |
+
+C1/C0 = n/a
+
+[hold-exec] accept_rc=1
+[hold-exec] DONE rc=0 LOCAL=/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr1_baseline/20260727_200200-yjr-as-b-pr1-health-smoke-r3c

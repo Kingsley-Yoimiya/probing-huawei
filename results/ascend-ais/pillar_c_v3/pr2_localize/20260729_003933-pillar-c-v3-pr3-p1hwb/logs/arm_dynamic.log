@@ -1,0 +1,675 @@
+[fs-ascend] FS_HUAWEI_ROOT=/Users/yinjinrun/Codespace/myportal/project/probing-huawei
+[fs-ascend] FS_SHARED_SCRIPTS=/Users/yinjinrun/Codespace/myportal/project/probing-test/scripts/fail-slow
+[fs-ascend] LOCAL_RESULT_ROOT_BASE=/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize
+[fs-ascend] POD_RESULTS=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais  AFS_HOME=/afs-a3-weight-share/yinjinrun.p-huawei
+[fs-ascend] KUBECONFIG=/Users/yinjinrun/.kube/config-vc-a3-241ceshi-songyiyang.yaml
+[fs-ascend] JUMP=ais-cf3e61a5 KUBECTL=/root/.cache/volcano/kubectl/kubectl
+[fs-ascend] FS_RUN_MODE=hold-exec HOLD=yysong PREFIX=yjr-as
+[fs-ascend] note: myportal NOT required; override LOCAL_RESULT_ROOT_BASE / FS_SHARED_SCRIPTS as needed
+[pillar-c] ARM=e3a_upgrade DIR=upgrade_rate_1.0 RUN=20260729_003933-pillar-c-v3-pr3-p1hwb-upgrade_rate_1.0 POD=grj-megatron-32card-0716-worker-0 CASE=P1-HW-B inject=1b out=pillar_c
+[pillar-c] knobs: SAMPLE_MS=500 TORCH=on,rate=0 SET_UP=1 SET_AT=100 ATTACH_AT=n/a COLD_MAX=inf
+[pillar-c] dose: inline_1b_ramp mb=512 copies=6->48 ramp=1
+[fs-ascend] FS_HUAWEI_ROOT=/Users/yinjinrun/Codespace/myportal/project/probing-huawei
+[fs-ascend] FS_SHARED_SCRIPTS=/Users/yinjinrun/Codespace/myportal/project/probing-test/scripts/fail-slow
+[fs-ascend] LOCAL_RESULT_ROOT_BASE=/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize
+[fs-ascend] POD_RESULTS=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais  AFS_HOME=/afs-a3-weight-share/yinjinrun.p-huawei
+[fs-ascend] KUBECONFIG=/Users/yinjinrun/.kube/config-vc-a3-241ceshi-songyiyang.yaml
+[fs-ascend] JUMP=ais-cf3e61a5 KUBECTL=/root/.cache/volcano/kubectl/kubectl
+[fs-ascend] FS_RUN_MODE=hold-exec HOLD=yysong PREFIX=yjr-as
+[fs-ascend] note: myportal NOT required; override LOCAL_RESULT_ROOT_BASE / FS_SHARED_SCRIPTS as needed
+[hold-exec] RUN_ID=20260729_003933-pillar-c-v3-pr3-p1hwb-upgrade_rate_1.0 POD=grj-megatron-32card-0716-worker-0 CASE=P1-HW-B configs=C2_probing
+[hold-exec] sync train → /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/train_bench_probe_npu.py
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+[hold-exec] SKIP_HEAVY_JSYNC=1 — reuse bundle scripts (train/sidecar/dump/localize/hold_exec; no tar)
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+[hold-exec] MASTER_IP=10.119.0.186
+[hold-exec] checking pod idle…
+[hold-exec] grj-megatron-32card-0716-worker-0 IDLE
+========== P1-HW-B / C2_probing (gid=2 port=30200) ==========
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+command terminated with exit code 137
+[hold-exec] prep outdir /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260729_003933-pillar-c-v3-pr3-p1hwb/upgrade_rate_1.0/P1-HW-B/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[hold-exec] jsync run_2.sh -> /tmp/run_2.sh rc=0
+[hold-exec] firing C2_probing…
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+FIRE_OK
+  warmup ok (20s)
+  wait measure step 100…
+  measure step 100 reached (10s)
+  inline hbm active (victim=7 mb=512 copies=6 max=48 ramp=1)
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+  Pillar-C SET↑ wait L>=100 (jsonl lines; NOT step marker)…
+  L=191 >= 100 (0s) → attach/SET
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[hold-exec] jsync pillar_c_localize_culprit.py -> /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260729_003933-pillar-c-v3-pr3-p1hwb/upgrade_rate_1.0/P1-HW-B/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/_pillar_c_localize.py rc=0
+  Pillar-C SET upgrade probing.torch.profiling=on,rate=1.0 scope=localize (localize→culprit SET)…
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+  Pillar-C B3: pid=3680244 source=set_ok_worker; window_s=15 window_steps=0; time-or-steps → SET_DOWNGRADE (hang_max=480s)…
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+command terminated with exit code 1
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+command terminated with exit code 1
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+command terminated with exit code 1
+  elapsed=26s >= window_s=15 (L=704) → SET_DOWNGRADE reason=time
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+command terminated with exit code 1
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+command terminated with exit code 1
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+command terminated with exit code 1
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+command terminated with exit code 1
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+command terminated with exit code 1
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+command terminated with exit code 1
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+  waiting 90s into inject window for SQL dump…
+  dumping Probing SQL / host_psi…
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+  SQL dump attempted → /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260729_003933-pillar-c-v3-pr3-p1hwb/upgrade_rate_1.0/P1-HW-B/by_pod/grj-megatron-32card-0716-worker-0/round_1/C2_probing/probing/
+  measure step 300 → stop injectors
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+  done (0s)
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+[hold-exec] jsync prune_extra_pids.py -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/prune_extra_pids.py rc=0
+[hold-exec] pull /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260729_003933-pillar-c-v3-pr3-p1hwb/upgrade_rate_1.0 → /Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize/pillar_c/20260729_003933-pillar-c-v3-pr3-p1hwb/upgrade_rate_1.0
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+[hold-exec] jsonl_files=16
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Error processing line 1 of /usr/local/lib/python3.8/site-packages/probing.pth:
+
+  Traceback (most recent call last):
+    File "/usr/local/lib/python3.8/site.py", line 169, in addpackage
+      exec(line)
+    File "<string>", line 1, in <module>
+    File "/usr/local/lib/python3.8/site-packages/probing_hook.py", line 3, in <module>
+      from probing.site_hook import run_site_hook
+    File "/usr/local/lib/python3.8/site-packages/probing/__init__.py", line 34, in <module>
+      import probing.config as config
+    File "/usr/local/lib/python3.8/site-packages/probing/config.py", line 3, in <module>
+      import probing._core as _core
+  ImportError: /usr/local/lib/python3.8/site-packages/probing/_core.abi3.so: undefined symbol: _PyInterpreterState_GetEvalFrameFunc
+
+Remainder of file ignored
+command terminated with exit code 137
+[hold-exec] DONE rc=0 LOCAL=/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize/pillar_c/20260729_003933-pillar-c-v3-pr3-p1hwb/upgrade_rate_1.0

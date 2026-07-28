@@ -1,0 +1,26 @@
+[b2-r2] fire 20260728_112615-pillar-c-v3-pr2-e3-b2-upgrade_rate_1.0 skip_heavy_jsync=1
+[fs-ascend] FS_HUAWEI_ROOT=/Users/yinjinrun/Codespace/myportal/project/probing-huawei
+[fs-ascend] FS_SHARED_SCRIPTS=/Users/yinjinrun/Codespace/myportal/project/probing-test/scripts/fail-slow
+[fs-ascend] LOCAL_RESULT_ROOT_BASE=/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize
+[fs-ascend] POD_RESULTS=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais  AFS_HOME=/afs-a3-weight-share/yinjinrun.p-huawei
+[fs-ascend] KUBECONFIG=/Users/yinjinrun/.kube/config-vc-a3-241ceshi-songyiyang.yaml
+[fs-ascend] JUMP=ais-cf3e61a5 KUBECTL=/root/.cache/volcano/kubectl/kubectl
+[fs-ascend] FS_RUN_MODE=hold-exec HOLD=yysong PREFIX=yjr-as
+[fs-ascend] note: myportal NOT required; override LOCAL_RESULT_ROOT_BASE / FS_SHARED_SCRIPTS as needed
+[pillar-c] ARM=e3a_upgrade DIR=upgrade_rate_1.0 RUN=20260728_112615-pillar-c-v3-pr2-e3-b2-upgrade_rate_1.0 POD=yysong-worker-0 CASE=P3-SW-A inject=8a out=pillar_c
+[pillar-c] knobs: SAMPLE_MS=500 TORCH=on,rate=0 SET_UP=1 SET_AT=100 ATTACH_AT=n/a COLD_MAX=inf
+[pillar-c] dose: inline_8a every=1 stall_s=0.25
+[fs-ascend] FS_HUAWEI_ROOT=/Users/yinjinrun/Codespace/myportal/project/probing-huawei
+[fs-ascend] FS_SHARED_SCRIPTS=/Users/yinjinrun/Codespace/myportal/project/probing-test/scripts/fail-slow
+[fs-ascend] LOCAL_RESULT_ROOT_BASE=/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize
+[fs-ascend] POD_RESULTS=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais  AFS_HOME=/afs-a3-weight-share/yinjinrun.p-huawei
+[fs-ascend] KUBECONFIG=/Users/yinjinrun/.kube/config-vc-a3-241ceshi-songyiyang.yaml
+[fs-ascend] JUMP=ais-cf3e61a5 KUBECTL=/root/.cache/volcano/kubectl/kubectl
+[fs-ascend] FS_RUN_MODE=hold-exec HOLD=yysong PREFIX=yjr-as
+[fs-ascend] note: myportal NOT required; override LOCAL_RESULT_ROOT_BASE / FS_SHARED_SCRIPTS as needed
+[hold-exec] RUN_ID=20260728_112615-pillar-c-v3-pr2-e3-b2-upgrade_rate_1.0 POD=yysong-worker-0 CASE=P3-SW-A configs=C2_probing
+[hold-exec] sync train → /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/train_bench_probe_npu.py
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+[hold-exec] SKIP_HEAVY_JSYNC=1 — reuse bundle train/sidecar (no tar)
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.

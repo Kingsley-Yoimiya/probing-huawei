@@ -1,0 +1,22 @@
+[pr2-b5d] self-check test_pillar_c_set_window…
+OK: grep -q PILLAR_C_SET_WINDOW_S /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q PILLAR_C_SET_WINDOW_STEPS /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q read_set_upgrade_field /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q jexec_poll /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q SET_UPGRADE ts= /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q SET_DOWNGRADE ts= /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q reason=time /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q reason=steps /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q B3_PID_FALLBACK /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: no B3 skip on empty pid
+OK: grep -q HANG_DETECTED /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: awk parses SET_OK_WORKER pid=2496910
+OK: time trigger elapsed=31s >= window_s=30s
+OK: victim fallback path present
+[test_pillar_c_set_window] PASS
+[pr2-b5d] ext/torch.py C0 hot-sync self-check…
+ext/torch.py C0 OK (178 lines)
+[pr2-b5d] jsync scripts + torch_probe + ext/torch → bundle…
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[pr2-b5d] jsync hold_exec_run_case.sh -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/hold_exec_run_case.sh rc=0

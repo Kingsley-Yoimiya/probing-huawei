@@ -1,0 +1,4 @@
+# PR-2 B2 R5 发射
+- parent: `20260728_113719-pillar-c-v3-pr2-e3-b2`
+- HOLD_EXEC_SKIP_HEAVY_JSYNC=1
+- 2026-07-28T11:37:19+08:00

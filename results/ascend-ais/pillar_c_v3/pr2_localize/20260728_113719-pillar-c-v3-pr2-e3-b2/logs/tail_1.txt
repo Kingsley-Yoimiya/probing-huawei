@@ -1,0 +1,8 @@
+  L=122 >= 100 (0s) → attach/SET
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[hold-exec] jsync pillar_c_localize_culprit.py -> /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_113719-pillar-c-v3-pr2-e3-b2/upgrade_rate_1.0/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/_pillar_c_localize.py rc=0
+  Pillar-C SET upgrade probing.torch.profiling=on,rate=1.0 scope=localize (localize→culprit SET)…
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory

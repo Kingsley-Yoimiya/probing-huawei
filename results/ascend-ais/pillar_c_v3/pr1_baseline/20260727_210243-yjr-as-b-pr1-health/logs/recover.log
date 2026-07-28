@@ -1,0 +1,43 @@
+[2026-07-27T21:24:11+08:00] sleep 2498s until dump (target epoch 1785161149)
+[2026-07-27T21:24:57+08:00] sleep 2452s until dump (target epoch 1785161149)
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+[2026-07-27T22:05:52+08:00] training alive → SQL dump
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+[2026-07-27T22:06:01+08:00] dump attempted
+[2026-07-27T22:06:01+08:00] waiting node_0.done (max 7200s)
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 1
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 1
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 1
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 1
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 1
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 1
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 1
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 1
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 1
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 1
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+[2026-07-27T22:12:14+08:00] poll t=300s rank0_lines=23384
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 1
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 1
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 1
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 1
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+[2026-07-27T22:14:40+08:00] training DONE (420s wait)
+[2026-07-27T22:14:40+08:00] pull results from pod OUT tree
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+./P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: Truncated tar archive: Unknown error: -1
+tar: Error exit delayed from previous errors.

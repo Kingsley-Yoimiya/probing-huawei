@@ -1,0 +1,61 @@
+{
+  "case": "P1-HW-B",
+  "status": "OK",
+  "retain_unit": "secs",
+  "w_star_secs": 60,
+  "primary_evidence": "gpu.utilization_used_bytes:rise_mb=10788.0:dev=12:n_devs=16:n_rows=214:time_key=ts",
+  "anchor_ts_us": 1785257010644215,
+  "n_gpu_samples_total": 214,
+  "windows": [
+    {
+      "W": "60s",
+      "retain_secs": 60,
+      "enough": true,
+      "evidence": "gpu.utilization_used_bytes:rise_mb=10788.0:dev=12:n_devs=16:n_rows=214:time_key=ts",
+      "primary": "gpu.utilization_used_bytes",
+      "n_gpu_rows": 214
+    },
+    {
+      "W": "300s",
+      "retain_secs": 300,
+      "enough": true,
+      "evidence": "gpu.utilization_used_bytes:rise_mb=10788.0:dev=12:n_devs=16:n_rows=214:time_key=ts",
+      "primary": "gpu.utilization_used_bytes",
+      "n_gpu_rows": 214
+    },
+    {
+      "W": "900s",
+      "retain_secs": 900,
+      "enough": true,
+      "evidence": "gpu.utilization_used_bytes:rise_mb=10788.0:dev=12:n_devs=16:n_rows=214:time_key=ts",
+      "primary": "gpu.utilization_used_bytes",
+      "n_gpu_rows": 214
+    },
+    {
+      "W": "1800s",
+      "retain_secs": 1800,
+      "enough": true,
+      "evidence": "gpu.utilization_used_bytes:rise_mb=10788.0:dev=12:n_devs=16:n_rows=214:time_key=ts",
+      "primary": "gpu.utilization_used_bytes",
+      "n_gpu_rows": 214
+    },
+    {
+      "W": "3600s",
+      "retain_secs": 3600,
+      "enough": true,
+      "evidence": "gpu.utilization_used_bytes:rise_mb=10788.0:dev=12:n_devs=16:n_rows=214:time_key=ts",
+      "primary": "gpu.utilization_used_bytes",
+      "n_gpu_rows": 214
+    },
+    {
+      "W": "all",
+      "retain_secs": null,
+      "enough": true,
+      "evidence": "gpu.utilization_used_bytes:rise_mb=10788.0:dev=12:n_devs=16:n_rows=214:time_key=ts",
+      "primary": "gpu.utilization_used_bytes",
+      "n_gpu_rows": 214
+    }
+  ],
+  "dump_root": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize/20260729_003933-pillar-c-v3-pr3-p1hwb/dynamic/probing_data",
+  "victim_pid": "3680251"
+}

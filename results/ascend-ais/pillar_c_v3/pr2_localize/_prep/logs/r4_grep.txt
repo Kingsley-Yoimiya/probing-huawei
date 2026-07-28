@@ -1,0 +1,1 @@
+[hold-exec] SKIP_HEAVY_JSYNC=1 — reuse bundle scripts (train/sidecar/dump/localize/hold_exec; no tar)

@@ -1,0 +1,5 @@
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+-rw-r--r-- 1 root root 70057 Jul 28 11:38 /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_113719-pillar-c-v3-pr2-e3-b2/upgrade_rate_1.0/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0007.jsonl
+-rw-r--r-- 1 root root    18 Jul 28 11:38 /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_113719-pillar-c-v3-pr2-e3-b2/upgrade_rate_1.0/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/step_100.marker
+137 /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_113719-pillar-c-v3-pr2-e3-b2/upgrade_rate_1.0/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0007.jsonl
+2026-07-28 11:38:58.290643475 +0800

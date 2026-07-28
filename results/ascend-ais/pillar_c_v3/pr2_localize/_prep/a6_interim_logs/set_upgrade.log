@@ -1,0 +1,27 @@
+SET_BEGIN ts=2026-07-28T10:28:53+08:00 trigger=L_ge_100 set_rate=1.0 scope=localize victim=7
+SET_L=121
+SET_TARGET=probing.torch.profiling=on,rate=1.0
+SET_T0_MS=1785205733572
+ATTACH_CFG wait_s=45 retry_s=2 probe_timeout_s=8 attach_retries=3 set_block_timeout_s=120
+ATTACH_READY majority ok_n=16 t=0s lr= 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+PILLAR_C_ATTACH_PREVALIDATED=1
+LOCALIZE_ELAPSED_MS=8722
+CULPRIT_RANK=7
+CULPRIT_PID=1459716
+LOCALIZE_FALLBACK=0
+LOCALIZE_FALLBACK=0 culprit_rank=7 culprit_pid=1459716
+CANDS_LOCALIZE= 1459716
+ATTACH_OK pid=1459716 retries=0
+ATTACH_T_MS=1785205749413
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785205749577
+SET_OK_WORKER pid=1459716
+SET_LATENCY_MS=16005
+SET_END ts=2026-07-28T10:29:09+08:00

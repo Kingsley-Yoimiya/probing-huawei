@@ -1,0 +1,238 @@
+{
+  "P1-SW-C": {
+    "case": "P1-SW-C",
+    "status": "OK",
+    "retain_unit": "steps",
+    "w_star_steps": 200,
+    "primary_evidence": "torch_trace.duration_spike:step=161:dur_s=0.5289:med=0.1011:module=DistributedDataParallel",
+    "anchor_step": 282,
+    "step_min": 0,
+    "step_max": 1042,
+    "n_unique_steps": 107,
+    "n_torch_trace_rows": 9647,
+    "torch_trace_meta": {
+      "path": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize/20260728_211312-pillar-c-v3-pr2-exp-c-p1swc/dynamic/probing_data/3564144/python.torch_trace",
+      "ver": 3,
+      "ncols": 19,
+      "nchunks": 8,
+      "chunk_size": 2500000,
+      "write_chunk": 0,
+      "creator_pid": 3564144,
+      "chunks_recycled": 0,
+      "rows_overwritten": 0,
+      "ts_col": 1,
+      "n_rows": 9647,
+      "col_names": [
+        "timestamp",
+        "micro_step",
+        "local_step",
+        "global_step",
+        "micro_batches",
+        "seq",
+        "module",
+        "stage",
+        "allocated",
+        "max_allocated",
+        "cached",
+        "max_cached",
+        "time_offset",
+        "duration",
+        "allocated_delta",
+        "max_allocated_delta",
+        "rank",
+        "world_size",
+        "role"
+      ]
+    },
+    "windows": [
+      {
+        "W": "25",
+        "retain_steps": 25,
+        "enough": false,
+        "evidence": "no_spike:top_step=261:dur_s=0.1996:med=0.1027:n_steps=4",
+        "primary": "torch_trace.duration_spike",
+        "n_tt_rows": 364,
+        "n_tt_steps": 4,
+        "anchor_step": 282
+      },
+      {
+        "W": "50",
+        "retain_steps": 50,
+        "enough": false,
+        "evidence": "no_spike:top_step=261:dur_s=0.1996:med=0.1027:n_steps=6",
+        "primary": "torch_trace.duration_spike",
+        "n_tt_rows": 546,
+        "n_tt_steps": 6,
+        "anchor_step": 282
+      },
+      {
+        "W": "100",
+        "retain_steps": 100,
+        "enough": false,
+        "evidence": "no_spike:top_step=261:dur_s=0.1996:med=0.1000:n_steps=10",
+        "primary": "torch_trace.duration_spike",
+        "n_tt_rows": 910,
+        "n_tt_steps": 10,
+        "anchor_step": 282
+      },
+      {
+        "W": "200",
+        "retain_steps": 200,
+        "enough": true,
+        "evidence": "torch_trace.duration_spike:step=161:dur_s=0.5289:med=0.1011:module=DistributedDataParallel",
+        "primary": "torch_trace.duration_spike",
+        "n_tt_rows": 1820,
+        "n_tt_steps": 20,
+        "anchor_step": 282
+      },
+      {
+        "W": "500",
+        "retain_steps": 500,
+        "enough": true,
+        "evidence": "torch_trace.duration_spike:step=161:dur_s=0.5289:med=0.0991:module=DistributedDataParallel",
+        "primary": "torch_trace.duration_spike",
+        "n_tt_rows": 2731,
+        "n_tt_steps": 30,
+        "anchor_step": 282
+      },
+      {
+        "W": "all",
+        "retain_steps": null,
+        "enough": true,
+        "evidence": "torch_trace.duration_spike:step=161:dur_s=0.5289:med=0.0991:module=DistributedDataParallel",
+        "primary": "torch_trace.duration_spike",
+        "n_tt_rows": 2731,
+        "n_tt_steps": 30,
+        "anchor_step": 282
+      }
+    ],
+    "dump_root": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize/20260728_211312-pillar-c-v3-pr2-exp-c-p1swc/dynamic/probing_data",
+    "victim_pid": "3564144"
+  },
+  "P3-SW-A": {
+    "case": "P3-SW-A",
+    "status": "OK",
+    "retain_unit": "secs",
+    "w_star_secs": 60,
+    "primary_evidence": "cpu.utilization_rss:rise_kb=443928:max_kb=2684492:n=119:span_s=59.2",
+    "anchor_ts_us": 1785243124274636,
+    "n_rss_samples_total": 536,
+    "rss_kb_min_total": 142268,
+    "rss_kb_max_total": 2954056,
+    "rss_kb_rise_total": 2811788,
+    "rss_span_s_total": 268.607634,
+    "windows": [
+      {
+        "W": "60s",
+        "retain_secs": 60,
+        "enough": true,
+        "evidence": "cpu.utilization_rss:rise_kb=443928:max_kb=2684492:n=119:span_s=59.2",
+        "primary": "cpu.utilization_rss",
+        "n_rss_rows": 119
+      },
+      {
+        "W": "300s",
+        "retain_secs": 300,
+        "enough": true,
+        "evidence": "cpu.utilization_rss:rise_kb=2542224:max_kb=2684492:n=220:span_s=109.9",
+        "primary": "cpu.utilization_rss",
+        "n_rss_rows": 220
+      },
+      {
+        "W": "900s",
+        "retain_secs": 900,
+        "enough": true,
+        "evidence": "cpu.utilization_rss:rise_kb=2542224:max_kb=2684492:n=220:span_s=109.9",
+        "primary": "cpu.utilization_rss",
+        "n_rss_rows": 220
+      },
+      {
+        "W": "1800s",
+        "retain_secs": 1800,
+        "enough": true,
+        "evidence": "cpu.utilization_rss:rise_kb=2542224:max_kb=2684492:n=220:span_s=109.9",
+        "primary": "cpu.utilization_rss",
+        "n_rss_rows": 220
+      },
+      {
+        "W": "3600s",
+        "retain_secs": 3600,
+        "enough": true,
+        "evidence": "cpu.utilization_rss:rise_kb=2542224:max_kb=2684492:n=220:span_s=109.9",
+        "primary": "cpu.utilization_rss",
+        "n_rss_rows": 220
+      },
+      {
+        "W": "all",
+        "retain_secs": null,
+        "enough": true,
+        "evidence": "cpu.utilization_rss:rise_kb=2542224:max_kb=2684492:n=220:span_s=109.9",
+        "primary": "cpu.utilization_rss",
+        "n_rss_rows": 220
+      }
+    ],
+    "dump_root": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize/20260728_204936-pillar-c-v3-pr2-e3-b8/dynamic/probing_data",
+    "victim_pid": "3469322"
+  },
+  "P1-HW-B": {
+    "case": "P1-HW-B",
+    "status": "OK",
+    "retain_unit": "secs",
+    "w_star_secs": 60,
+    "primary_evidence": "gpu.utilization_used_bytes:rise_mb=10788.0:dev=12:n_devs=16:n_rows=214:time_key=ts",
+    "anchor_ts_us": 1785257010644215,
+    "n_gpu_samples_total": 214,
+    "windows": [
+      {
+        "W": "60s",
+        "retain_secs": 60,
+        "enough": true,
+        "evidence": "gpu.utilization_used_bytes:rise_mb=10788.0:dev=12:n_devs=16:n_rows=214:time_key=ts",
+        "primary": "gpu.utilization_used_bytes",
+        "n_gpu_rows": 214
+      },
+      {
+        "W": "300s",
+        "retain_secs": 300,
+        "enough": true,
+        "evidence": "gpu.utilization_used_bytes:rise_mb=10788.0:dev=12:n_devs=16:n_rows=214:time_key=ts",
+        "primary": "gpu.utilization_used_bytes",
+        "n_gpu_rows": 214
+      },
+      {
+        "W": "900s",
+        "retain_secs": 900,
+        "enough": true,
+        "evidence": "gpu.utilization_used_bytes:rise_mb=10788.0:dev=12:n_devs=16:n_rows=214:time_key=ts",
+        "primary": "gpu.utilization_used_bytes",
+        "n_gpu_rows": 214
+      },
+      {
+        "W": "1800s",
+        "retain_secs": 1800,
+        "enough": true,
+        "evidence": "gpu.utilization_used_bytes:rise_mb=10788.0:dev=12:n_devs=16:n_rows=214:time_key=ts",
+        "primary": "gpu.utilization_used_bytes",
+        "n_gpu_rows": 214
+      },
+      {
+        "W": "3600s",
+        "retain_secs": 3600,
+        "enough": true,
+        "evidence": "gpu.utilization_used_bytes:rise_mb=10788.0:dev=12:n_devs=16:n_rows=214:time_key=ts",
+        "primary": "gpu.utilization_used_bytes",
+        "n_gpu_rows": 214
+      },
+      {
+        "W": "all",
+        "retain_secs": null,
+        "enough": true,
+        "evidence": "gpu.utilization_used_bytes:rise_mb=10788.0:dev=12:n_devs=16:n_rows=214:time_key=ts",
+        "primary": "gpu.utilization_used_bytes",
+        "n_gpu_rows": 214
+      }
+    ],
+    "dump_root": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize/20260729_003933-pillar-c-v3-pr3-p1hwb/dynamic/probing_data",
+    "victim_pid": "3680251"
+  }
+}

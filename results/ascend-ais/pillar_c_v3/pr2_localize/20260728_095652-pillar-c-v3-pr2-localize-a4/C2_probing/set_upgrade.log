@@ -1,0 +1,272 @@
+SET_BEGIN ts=2026-07-28T09:58:46+08:00 trigger=L_ge_100 set_rate=1.0 scope=localize victim=7
+SET_L=130
+SET_TARGET=probing.torch.profiling=on,rate=1.0
+SET_T0_MS=1785203926356
+ATTACH_CFG wait_s=45 retry_s=2 probe_timeout_s=8 attach_retries=3 set_block_timeout_s=120
+ATTACH_READY majority ok_n=16 t=0s lr= 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+PILLAR_C_ATTACH_PREVALIDATED=1
+LOCALIZE_ELAPSED_MS=1646
+CULPRIT_RANK=None
+CULPRIT_PID=None
+LOCALIZE_FALLBACK=1
+LOCALIZE_FALLBACK=1 culprit_rank=None culprit_pid=None
+LOCALIZE_FALLBACK_ALL_RANKS
+CANDS_FALLBACK=1052767 1052768 1052769 1052770 1052771 1052772 1052773 1052774 1052775 1052776 1052777 1052778 1052779 1052780 1052781 1052786 1057235 1057236 1057238 1057240 1057241 1057245 1057247 1057248 1057251 1057252 1057255 1057257 1057259 1057261 1057263 1057274 1057285 1057287 1057288 1057294 1057308 1057309 1057312 1057317 1057321 1057332 1057340 1057347 1057351 1057353 1057359 1057361
+ATTACH_OK pid=1052767 retries=0
+ATTACH_T_MS=1785203933920
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203934066
+SET_OK_WORKER pid=1052767
+SET_LATENCY_MS=7710
+ATTACH_OK pid=1052768 retries=0
+ATTACH_T_MS=1785203934218
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203934363
+SET_OK_WORKER pid=1052768
+SET_LATENCY_MS=8007
+ATTACH_OK pid=1052769 retries=0
+ATTACH_T_MS=1785203934513
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203934657
+SET_OK_WORKER pid=1052769
+SET_LATENCY_MS=8301
+ATTACH_OK pid=1052770 retries=0
+ATTACH_T_MS=1785203934808
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203934951
+SET_OK_WORKER pid=1052770
+SET_LATENCY_MS=8595
+ATTACH_OK pid=1052771 retries=0
+ATTACH_T_MS=1785203935086
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203935225
+SET_OK_WORKER pid=1052771
+SET_LATENCY_MS=8869
+ATTACH_OK pid=1052772 retries=0
+ATTACH_T_MS=1785203935381
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203935530
+SET_OK_WORKER pid=1052772
+SET_LATENCY_MS=9174
+ATTACH_OK pid=1052773 retries=0
+ATTACH_T_MS=1785203935660
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203935807
+SET_OK_WORKER pid=1052773
+SET_LATENCY_MS=9451
+ATTACH_OK pid=1052774 retries=0
+ATTACH_T_MS=1785203935903
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203936093
+SET_OK_WORKER pid=1052774
+SET_LATENCY_MS=9737
+ATTACH_OK pid=1052775 retries=0
+ATTACH_T_MS=1785203936249
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203936397
+SET_OK_WORKER pid=1052775
+SET_LATENCY_MS=10041
+ATTACH_OK pid=1052776 retries=0
+ATTACH_T_MS=1785203936544
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203936693
+SET_OK_WORKER pid=1052776
+SET_LATENCY_MS=10337
+ATTACH_OK pid=1052777 retries=0
+ATTACH_T_MS=1785203936840
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203936991
+SET_OK_WORKER pid=1052777
+SET_LATENCY_MS=10635
+ATTACH_OK pid=1052778 retries=0
+ATTACH_T_MS=1785203937148
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203937303
+SET_OK_WORKER pid=1052778
+SET_LATENCY_MS=10947
+ATTACH_OK pid=1052779 retries=0
+ATTACH_T_MS=1785203937444
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203937594
+SET_OK_WORKER pid=1052779
+SET_LATENCY_MS=11238
+ATTACH_OK pid=1052780 retries=0
+ATTACH_T_MS=1785203937736
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203937883
+SET_OK_WORKER pid=1052780
+SET_LATENCY_MS=11527
+ATTACH_OK pid=1052781 retries=0
+ATTACH_T_MS=1785203937982
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203938129
+SET_OK_WORKER pid=1052781
+SET_LATENCY_MS=11773
+ATTACH_OK pid=1052786 retries=0
+ATTACH_T_MS=1785203938276
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785203938427
+SET_OK_WORKER pid=1052786
+SET_LATENCY_MS=12071
+ATTACH_FAIL pid=1057235 retries=3
+ATTACH_FAIL pid=1057236 retries=3
+ATTACH_FAIL pid=1057238 retries=3
+ATTACH_FAIL pid=1057240 retries=3
+ATTACH_FAIL pid=1057241 retries=3
+ATTACH_FAIL pid=1057245 retries=3
+ATTACH_FAIL pid=1057247 retries=3
+ATTACH_FAIL pid=1057248 retries=3
+ATTACH_FAIL pid=1057251 retries=3
+ATTACH_FAIL pid=1057252 retries=3
+ATTACH_FAIL pid=1057255 retries=3
+ATTACH_FAIL pid=1057257 retries=3
+ATTACH_FAIL pid=1057259 retries=3
+ATTACH_FAIL pid=1057261 retries=3
+ATTACH_FAIL pid=1057263 retries=3
+ATTACH_FAIL pid=1057274 reason=pid_churned
+ATTACH_FAIL pid=1057274 retries=2
+ATTACH_FAIL pid=1057285 reason=pid_churned
+ATTACH_FAIL pid=1057285 retries=0
+ATTACH_FAIL pid=1057287 reason=pid_churned
+ATTACH_FAIL pid=1057287 retries=0
+ATTACH_FAIL pid=1057288 reason=pid_churned
+ATTACH_FAIL pid=1057288 retries=0
+ATTACH_FAIL pid=1057294 reason=pid_churned
+ATTACH_FAIL pid=1057294 retries=0
+ATTACH_FAIL pid=1057308 reason=pid_churned
+ATTACH_FAIL pid=1057308 retries=0
+ATTACH_FAIL pid=1057309 reason=pid_churned
+ATTACH_FAIL pid=1057309 retries=0
+ATTACH_FAIL pid=1057312 reason=pid_churned
+ATTACH_FAIL pid=1057312 retries=0
+ATTACH_FAIL pid=1057317 reason=pid_churned
+ATTACH_FAIL pid=1057317 retries=0
+ATTACH_FAIL pid=1057321 reason=pid_churned
+ATTACH_FAIL pid=1057321 retries=0
+ATTACH_FAIL pid=1057332 reason=pid_churned
+ATTACH_FAIL pid=1057332 retries=0
+ATTACH_FAIL pid=1057340 reason=pid_churned
+ATTACH_FAIL pid=1057340 retries=0
+ATTACH_FAIL pid=1057347 reason=pid_churned
+ATTACH_FAIL pid=1057347 retries=0
+ATTACH_FAIL pid=1057351 reason=pid_churned
+ATTACH_FAIL pid=1057351 retries=0
+ATTACH_FAIL pid=1057353 reason=pid_churned
+ATTACH_FAIL pid=1057353 retries=0
+ATTACH_FAIL pid=1057359 reason=pid_churned
+ATTACH_FAIL pid=1057359 retries=0
+ATTACH_FAIL pid=1057361 reason=pid_churned
+ATTACH_FAIL pid=1057361 retries=0
+SET_END ts=2026-07-28T10:00:35+08:00

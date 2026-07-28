@@ -1,0 +1,71 @@
+[pr2-b3] self-check…
+OK: grep -q PILLAR_C_SET_WINDOW_S /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q PILLAR_C_SET_WINDOW_STEPS /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q jexec_poll /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q SET_UPGRADE ts= /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q SET_DOWNGRADE ts= /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q reason=time /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q reason=steps /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q rate=0 /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q HANG_DETECTED /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: grep -q B3_HANG_STOP /Users/yinjinrun/Codespace/myportal/project/probing-huawei/scripts/fail-slow/hold_exec_run_case.sh
+OK: time math elapsed=45s >= window_s=45s (would SET_DOWNGRADE reason=time)
+OK: step window math upgrade_l=121 + window=12 => downgrade_at=133
+OK: neither trigger yet at t=30s L=121
+OK: time wins at t=46s (step still at L=121)
+OK: stall=900s >= hang_max=900s triggers HANG_DETECTED path
+[test_pillar_c_set_window] PASS
+[pr2-b3] jsync scripts → bundle…
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[pr2-b3] jsync hold_exec_run_case.sh -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/hold_exec_run_case.sh rc=0
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[pr2-b3] jsync pillar_c_localize_culprit.py -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/pillar_c_localize_culprit.py rc=0
+[pr2-b3] wait pod IDLE…
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+IDLE
+[pr2-b3] fire dynamic arm 20260728_120900-pillar-c-v3-pr2-e3-b3-r2-upgrade_rate_1.0…
+[fs-ascend] FS_HUAWEI_ROOT=/Users/yinjinrun/Codespace/myportal/project/probing-huawei
+[fs-ascend] FS_SHARED_SCRIPTS=/Users/yinjinrun/Codespace/myportal/project/probing-test/scripts/fail-slow
+[fs-ascend] LOCAL_RESULT_ROOT_BASE=/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize
+[fs-ascend] POD_RESULTS=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais  AFS_HOME=/afs-a3-weight-share/yinjinrun.p-huawei
+[fs-ascend] KUBECONFIG=/Users/yinjinrun/.kube/config-vc-a3-241ceshi-songyiyang.yaml
+[fs-ascend] JUMP=ais-cf3e61a5 KUBECTL=/root/.cache/volcano/kubectl/kubectl
+[fs-ascend] FS_RUN_MODE=hold-exec HOLD=yysong PREFIX=yjr-as
+[fs-ascend] note: myportal NOT required; override LOCAL_RESULT_ROOT_BASE / FS_SHARED_SCRIPTS as needed
+[pillar-c] ARM=e3a_upgrade DIR=upgrade_rate_1.0 RUN=20260728_120900-pillar-c-v3-pr2-e3-b3-r2-upgrade_rate_1.0 POD=yysong-worker-0 CASE=P3-SW-A inject=8a out=pillar_c
+[pillar-c] knobs: SAMPLE_MS=500 TORCH=on,rate=0 SET_UP=1 SET_AT=100 ATTACH_AT=n/a COLD_MAX=inf
+[pillar-c] dose: inline_8a every=1 stall_s=0.25
+[fs-ascend] FS_HUAWEI_ROOT=/Users/yinjinrun/Codespace/myportal/project/probing-huawei
+[fs-ascend] FS_SHARED_SCRIPTS=/Users/yinjinrun/Codespace/myportal/project/probing-test/scripts/fail-slow
+[fs-ascend] LOCAL_RESULT_ROOT_BASE=/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize
+[fs-ascend] POD_RESULTS=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais  AFS_HOME=/afs-a3-weight-share/yinjinrun.p-huawei
+[fs-ascend] KUBECONFIG=/Users/yinjinrun/.kube/config-vc-a3-241ceshi-songyiyang.yaml
+[fs-ascend] JUMP=ais-cf3e61a5 KUBECTL=/root/.cache/volcano/kubectl/kubectl
+[fs-ascend] FS_RUN_MODE=hold-exec HOLD=yysong PREFIX=yjr-as
+[fs-ascend] note: myportal NOT required; override LOCAL_RESULT_ROOT_BASE / FS_SHARED_SCRIPTS as needed
+[hold-exec] RUN_ID=20260728_120900-pillar-c-v3-pr2-e3-b3-r2-upgrade_rate_1.0 POD=yysong-worker-0 CASE=P3-SW-A configs=C2_probing
+[hold-exec] sync train → /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/train_bench_probe_npu.py
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+[hold-exec] SKIP_HEAVY_JSYNC=1 — reuse bundle scripts (train/sidecar/dump/localize/hold_exec; no tar)
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+[hold-exec] MASTER_IP=10.119.7.40
+[hold-exec] checking pod idle…
+[hold-exec] yysong-worker-0 IDLE
+========== P3-SW-A / C2_probing (gid=2 port=30200) ==========
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+command terminated with exit code 137
+[hold-exec] prep outdir /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_120900-pillar-c-v3-pr2-e3-b3-r2/upgrade_rate_1.0/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[hold-exec] jsync run_2.sh -> /tmp/run_2.sh rc=0
+[hold-exec] firing C2_probing…
+Warning: Permanently added '[127.0.0.1]:2223' (ED25519) to the list of known hosts.
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+FIRE_OK

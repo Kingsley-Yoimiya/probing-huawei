@@ -1,0 +1,150 @@
+Activating probing in 'followed' mode (current process only)
+W0728 09:15:02.482000 358251 site-packages/torch/distributed/run.py:766] 
+W0728 09:15:02.482000 358251 site-packages/torch/distributed/run.py:766] *****************************************
+W0728 09:15:02.482000 358251 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0728 09:15:02.482000 358251 site-packages/torch/distributed/run.py:766] *****************************************
+Activating probing in 'followed' mode (current process only)
+Activating probing in 'followed' mode (current process only)
+Activating probing in 'followed' mode (current process only)
+Activating probing in 'followed' mode (current process only)
+Activating probing in 'followed' mode (current process only)
+Activating probing in 'followed' mode (current process only)
+Activating probing in 'followed' mode (current process only)
+Activating probing in 'followed' mode (current process only)
+Activating probing in 'followed' mode (current process only)
+Activating probing in 'followed' mode (current process only)
+Activating probing in 'followed' mode (current process only)
+Activating probing in 'followed' mode (current process only)
+Activating probing in 'followed' mode (current process only)
+Activating probing in 'followed' mode (current process only)
+Activating probing in 'followed' mode (current process only)
+Activating probing in 'followed' mode (current process only)
+[rank0]:[W728 09:15:11.670175271 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank1]:[W728 09:15:11.818646355 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank4]:[W728 09:15:11.112952498 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank5]:[W728 09:15:12.475737743 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank3]:[W728 09:15:12.896170010 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank6]:[W728 09:15:12.064442749 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank2]:[W728 09:15:12.171355662 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank7]:[W728 09:15:13.450593091 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank9]:[W728 09:15:13.751941198 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank12]:[W728 09:15:13.792056551 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank8]:[W728 09:15:13.846266312 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank11]:[W728 09:15:13.277259866 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank13]:[W728 09:15:14.343386962 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank15]:[W728 09:15:14.391499955 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank10]:[W728 09:15:14.052361416 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+[rank14]:[W728 09:15:14.201642786 compiler_depend.ts:338] Warning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (function operator())
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+/root/miniconda3/envs/llm_test/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4631: UserWarning: No device id is provided via `init_process_group` or `barrier `. Using the current device set by the user. 
+  warnings.warn(  # warn only once
+[2026-07-28T01:16:08Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+[2026-07-28T01:16:08Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+[2026-07-28T01:16:08Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+[2026-07-28T01:16:09Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+[2026-07-28T01:16:09Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+[2026-07-28T01:16:09Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+[2026-07-28T01:16:09Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+[2026-07-28T01:16:09Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+[2026-07-28T01:16:09Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+[2026-07-28T01:16:09Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+[2026-07-28T01:16:09Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+[2026-07-28T01:16:09Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+[2026-07-28T01:16:09Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+[2026-07-28T01:16:09Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+[2026-07-28T01:16:09Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+[2026-07-28T01:16:09Z ERROR probing_server::engine] Error executing SELECT query 'SELECT COALESCE(max(step_ms), 0) AS metric
+    FROM python.torch_step_timing
+    WHERE local_step >= 120 AND local_step <= 140': Schema error: No field named step_ms. Valid fields are python.torch_step_timing.timestamp, python.torch_step_timing.micro_step, python.torch_step_timing.local_step, python.torch_step_timing.global_step, python.torch_step_timing.micro_batches, python.torch_step_timing.rank, python.torch_step_timing.world_size, python.torch_step_timing.role, python.torch_step_timing.step_duration_sec, python.torch_step_timing.is_shadow, python.torch_step_timing.sampled, python.torch_step_timing.shadow_normal, python.torch_step_timing.shadow_baseline, python.torch_step_timing.sample_rate, python.torch_step_timing.sample_mode.
+DONE world=16 out=/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_091413-pillar-c-v3-pr2-localize-a2/upgrade_rate_1.0/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl

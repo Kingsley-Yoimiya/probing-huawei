@@ -1,0 +1,65 @@
+{
+  "case": "P3-SW-A",
+  "status": "OK",
+  "retain_unit": "secs",
+  "w_star_secs": 60,
+  "primary_evidence": "cpu.utilization_rss:rise_kb=443928:max_kb=2684492:n=119:span_s=59.2",
+  "anchor_ts_us": 1785243124274636,
+  "n_rss_samples_total": 536,
+  "rss_kb_min_total": 142268,
+  "rss_kb_max_total": 2954056,
+  "rss_kb_rise_total": 2811788,
+  "rss_span_s_total": 268.607634,
+  "windows": [
+    {
+      "W": "60s",
+      "retain_secs": 60,
+      "enough": true,
+      "evidence": "cpu.utilization_rss:rise_kb=443928:max_kb=2684492:n=119:span_s=59.2",
+      "primary": "cpu.utilization_rss",
+      "n_rss_rows": 119
+    },
+    {
+      "W": "300s",
+      "retain_secs": 300,
+      "enough": true,
+      "evidence": "cpu.utilization_rss:rise_kb=2542224:max_kb=2684492:n=220:span_s=109.9",
+      "primary": "cpu.utilization_rss",
+      "n_rss_rows": 220
+    },
+    {
+      "W": "900s",
+      "retain_secs": 900,
+      "enough": true,
+      "evidence": "cpu.utilization_rss:rise_kb=2542224:max_kb=2684492:n=220:span_s=109.9",
+      "primary": "cpu.utilization_rss",
+      "n_rss_rows": 220
+    },
+    {
+      "W": "1800s",
+      "retain_secs": 1800,
+      "enough": true,
+      "evidence": "cpu.utilization_rss:rise_kb=2542224:max_kb=2684492:n=220:span_s=109.9",
+      "primary": "cpu.utilization_rss",
+      "n_rss_rows": 220
+    },
+    {
+      "W": "3600s",
+      "retain_secs": 3600,
+      "enough": true,
+      "evidence": "cpu.utilization_rss:rise_kb=2542224:max_kb=2684492:n=220:span_s=109.9",
+      "primary": "cpu.utilization_rss",
+      "n_rss_rows": 220
+    },
+    {
+      "W": "all",
+      "retain_secs": null,
+      "enough": true,
+      "evidence": "cpu.utilization_rss:rise_kb=2542224:max_kb=2684492:n=220:span_s=109.9",
+      "primary": "cpu.utilization_rss",
+      "n_rss_rows": 220
+    }
+  ],
+  "dump_root": "/Users/yinjinrun/Codespace/myportal/project/probing-huawei/results/ascend-ais/pillar_c_v3/pr2_localize/20260728_204936-pillar-c-v3-pr2-e3-b8/dynamic/probing_data",
+  "victim_pid": "3469322"
+}

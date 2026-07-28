@@ -1,0 +1,23 @@
+SET_BEGIN ts=2026-07-28T08:45:32+08:00 trigger=L_ge_100 set_rate=1.0 scope=localize victim=7
+SET_L=138
+SET_TARGET=probing.torch.profiling=on,rate=1.0
+SET_T0_MS=1785199532820
+CULPRIT_RANK=0
+CULPRIT_PID=53091
+LOCALIZE_FALLBACK=0
+LOCALIZE_FALLBACK=0 culprit_rank=0 culprit_pid=53091
+CANDS_LOCALIZE= 53091
+ATTACH_OK pid=53091
+ATTACH_T_MS=1785199536572
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785199536721
+SET_OK_WORKER pid=53091
+SET_LATENCY_MS=3901
+SET_END ts=2026-07-28T08:45:36+08:00

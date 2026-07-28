@@ -1,0 +1,3 @@
+[babysit] start 2026-07-28T11:50:44+08:00 stall_max=900s downgrade_at=145
+[babysit] pre_stall=708s from mtime
+done 2026-07-28T11:55:04+08:00

@@ -1,0 +1,251 @@
+SET_BEGIN ts=2026-07-28T09:16:08+08:00 trigger=L_ge_100 set_rate=1.0 scope=localize victim=7
+SET_L=140
+SET_TARGET=probing.torch.profiling=on,rate=1.0
+SET_T0_MS=1785201368037
+CULPRIT_RANK=None
+CULPRIT_PID=None
+LOCALIZE_FALLBACK=1
+LOCALIZE_FALLBACK=1 culprit_rank=None culprit_pid=None
+LOCALIZE_FALLBACK_ALL_RANKS
+CANDS_FALLBACK=358648 358649 358650 358651 358652 358653 358654 358655 358656 358657 358658 358659 358660 358661 358662 358663 363565 363567 363571 363573 363575 363577 363578 363579 363580 363585 363587 363588 363591 363592 363595 363597 363599 363623 363626 363649 363650 363652 363654 363656 363657 363667 363668 363669 363674 363676 363689 363690
+ATTACH_OK pid=358648
+ATTACH_T_MS=1785201372349
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201372490
+SET_OK_WORKER pid=358648
+SET_LATENCY_MS=4453
+ATTACH_OK pid=358649
+ATTACH_T_MS=1785201372654
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201372796
+SET_OK_WORKER pid=358649
+SET_LATENCY_MS=4759
+ATTACH_OK pid=358650
+ATTACH_T_MS=1785201372977
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201373123
+SET_OK_WORKER pid=358650
+SET_LATENCY_MS=5086
+ATTACH_OK pid=358651
+ATTACH_T_MS=1785201373296
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201373448
+SET_OK_WORKER pid=358651
+SET_LATENCY_MS=5411
+ATTACH_OK pid=358652
+ATTACH_T_MS=1785201373620
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201373758
+SET_OK_WORKER pid=358652
+SET_LATENCY_MS=5721
+ATTACH_OK pid=358653
+ATTACH_T_MS=1785201373969
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201374112
+SET_OK_WORKER pid=358653
+SET_LATENCY_MS=6075
+ATTACH_OK pid=358654
+ATTACH_T_MS=1785201374288
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201374430
+SET_OK_WORKER pid=358654
+SET_LATENCY_MS=6393
+ATTACH_OK pid=358655
+ATTACH_T_MS=1785201374560
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201374709
+SET_OK_WORKER pid=358655
+SET_LATENCY_MS=6672
+ATTACH_OK pid=358656
+ATTACH_T_MS=1785201374858
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201375001
+SET_OK_WORKER pid=358656
+SET_LATENCY_MS=6964
+ATTACH_OK pid=358657
+ATTACH_T_MS=1785201375199
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201375334
+SET_OK_WORKER pid=358657
+SET_LATENCY_MS=7297
+ATTACH_OK pid=358658
+ATTACH_T_MS=1785201375513
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201375660
+SET_OK_WORKER pid=358658
+SET_LATENCY_MS=7623
+ATTACH_OK pid=358659
+ATTACH_T_MS=1785201375875
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201376021
+SET_OK_WORKER pid=358659
+SET_LATENCY_MS=7984
+ATTACH_OK pid=358660
+ATTACH_T_MS=1785201376190
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201376330
+SET_OK_WORKER pid=358660
+SET_LATENCY_MS=8293
+ATTACH_OK pid=358661
+ATTACH_T_MS=1785201376504
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201376658
+SET_OK_WORKER pid=358661
+SET_LATENCY_MS=8621
+ATTACH_OK pid=358662
+ATTACH_T_MS=1785201376852
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201376995
+SET_OK_WORKER pid=358662
+SET_LATENCY_MS=8958
+ATTACH_OK pid=358663
+ATTACH_T_MS=1785201377162
+sending ctrl commands via unix socket...
+
+sending ctrl commands via unix socket...
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ value                                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ on,rate=1.0                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+SET_T1_MS=1785201377310
+SET_OK_WORKER pid=358663
+SET_LATENCY_MS=9273
+ATTACH_FAIL pid=363565
+ATTACH_FAIL pid=363567
+ATTACH_FAIL pid=363571
+ATTACH_FAIL pid=363573
+ATTACH_FAIL pid=363575
+ATTACH_FAIL pid=363577
+ATTACH_FAIL pid=363578
+ATTACH_FAIL pid=363579
+ATTACH_FAIL pid=363580
+ATTACH_FAIL pid=363585
+ATTACH_FAIL pid=363587
+ATTACH_FAIL pid=363588
+ATTACH_FAIL pid=363591
+ATTACH_FAIL pid=363592
+ATTACH_FAIL pid=363595
+ATTACH_FAIL pid=363597
+ATTACH_FAIL pid=363599
+ATTACH_FAIL pid=363623
+ATTACH_FAIL pid=363626
+ATTACH_FAIL pid=363649
+ATTACH_FAIL pid=363650
+ATTACH_FAIL pid=363652
+ATTACH_FAIL pid=363654
+ATTACH_FAIL pid=363656
+ATTACH_FAIL pid=363657
+ATTACH_FAIL pid=363667
+ATTACH_FAIL pid=363668
+ATTACH_FAIL pid=363669
+ATTACH_FAIL pid=363674
+ATTACH_FAIL pid=363676
+ATTACH_FAIL pid=363689
+ATTACH_FAIL pid=363690
+SET_END ts=2026-07-28T09:16:19+08:00

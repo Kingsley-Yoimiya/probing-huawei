@@ -1,0 +1,83 @@
+[b5c] jsync ext/torch.py + hold_exec…
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[b5c] jsync torch.py -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/pydeps/probing/ext/torch.py
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[b5c] jsync torch_probe.py -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/pydeps/probing/profiling/torch_probe.py
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+[b5c] jsync hold_exec_run_case.sh -> /afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle/hold_exec_run_case.sh
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+[b5c] bundle ext/torch.py lines=178 sync_grep=4
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+IDLE
+[b5c] fire short C2_probing ITERS=100 rate=0…
+[b5c] wait L>=25 for attach…
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
+/root/.bashrc: line 14: /usr/local/Ascend/driver/bin/setenv.bash: No such file or directory
+bash: line 1: /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c/20260728_134925-pillar-c-v3-pr2-e3-b5c/smoke/P3-SW-A/by_pod/yysong-worker-0/round_1/C2_probing/ranks/rank_0000.jsonl: No such file or directory
