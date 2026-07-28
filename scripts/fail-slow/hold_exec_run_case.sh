@@ -278,6 +278,10 @@ YAML
 
 echo "[hold-exec] RUN_ID=$RUN_ID POD=$POD CASE=$CASE_ID configs=$ABC_CONFIGS"
 
+SKIP_HEAVY_JSYNC="${HOLD_EXEC_SKIP_HEAVY_JSYNC:-0}"
+
+JEXEC_POLL_TIMEOUT_S="${JEXEC_POLL_TIMEOUT_S:-25}"
+
 jexec() {
   local cmd="$1"
   if [[ "${JUMP_HOST}" == "localhost" || "${JUMP_HOST}" == "127.0.0.1" ]]; then
@@ -288,6 +292,75 @@ jexec() {
     ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 "${JUMP_HOST}" \
       "export KUBECONFIG='${JUMP_KUBECONFIG}'; K='${JUMP_KUBECTL}'; \$K -n '${NS}' exec '${POD}' -- bash -lc $(printf '%q' "$cmd")"
   fi
+}
+
+# 轮询用：Mac 侧超时；保留 exit code（供 test -f 等判断）
+_jexec_poll_run() {
+  local t="$1"; shift
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$t" "$@"
+  elif command -v gtimeout >/dev/null 2>&1; then
+    gtimeout "$t" "$@"
+  else
+    python3 - "$t" "$@" <<'PY'
+import subprocess, sys
+t = float(sys.argv[1])
+rc = subprocess.call(sys.argv[2:], timeout=t)
+sys.exit(rc)
+PY
+  fi
+}
+
+jexec_poll() {
+  local cmd="$1"
+  local t="${2:-${JEXEC_POLL_TIMEOUT_S}}"
+  if [[ "${JUMP_HOST}" == "localhost" || "${JUMP_HOST}" == "127.0.0.1" ]]; then
+    export KUBECONFIG="${JUMP_KUBECONFIG:-${KUBECONFIG}}"
+    K="${JUMP_KUBECTL:-kubectl}"
+    _jexec_poll_run "$t" "$K" -n "${NS}" exec "${POD}" -- bash -lc "$cmd"
+  else
+    _jexec_poll_run "$t" ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 "${JUMP_HOST}" \
+      "export KUBECONFIG='${JUMP_KUBECONFIG}'; K='${JUMP_KUBECTL}'; \$K -n '${NS}' exec '${POD}' -- bash -lc $(printf '%q' "$cmd")"
+  fi
+}
+
+# B3：从 set_upgrade.log 读字段；阻塞 jexec + awk；空读重试；可选本机副本
+read_set_upgrade_field() {
+  local remote_log="$1" field="$2" local_copy="${3:-}" attempt v=""
+  for attempt in 1 2 3 4 5; do
+    case "$field" in
+      set_l)
+        v=$(jexec "awk -F= '/^SET_L=/{print \$2; exit}' '${remote_log}' 2>/dev/null" 2>/dev/null | tr -d '[:space:]')
+        ;;
+      set_ok_pid)
+        v=$(jexec "awk '/^SET_OK_WORKER/{for(i=1;i<=NF;i++) if(\$i~/^pid=/){sub(/^pid=/,\"\",\$i); print \$i; exit}}' '${remote_log}' 2>/dev/null" 2>/dev/null | tr -d '[:space:]')
+        ;;
+      culprit_rank)
+        v=$(jexec "awk -F= '/^CULPRIT_RANK=/{print \$2; exit}' '${remote_log}' 2>/dev/null" 2>/dev/null | tr -d '[:space:]')
+        ;;
+      culprit_pid)
+        v=$(jexec "awk -F= '/^CULPRIT_PID=/{print \$2; exit}' '${remote_log}' 2>/dev/null" 2>/dev/null | tr -d '[:space:]')
+        ;;
+    esac
+    if [[ -n "$v" ]] && [[ "$v" =~ ^[0-9]+$ ]]; then
+      echo "$v"
+      return 0
+    fi
+    if [[ -n "$local_copy" && -f "$local_copy" ]]; then
+      case "$field" in
+        set_l) v=$(awk -F= '/^SET_L=/{print $2; exit}' "$local_copy" 2>/dev/null | tr -d '[:space:]') ;;
+        set_ok_pid) v=$(awk '/^SET_OK_WORKER/{for(i=1;i<=NF;i++) if($i~/^pid=/){sub(/^pid=/,"",$i); print $i; exit}}' "$local_copy" 2>/dev/null | tr -d '[:space:]') ;;
+        culprit_rank) v=$(awk -F= '/^CULPRIT_RANK=/{print $2; exit}' "$local_copy" 2>/dev/null | tr -d '[:space:]') ;;
+        culprit_pid) v=$(awk -F= '/^CULPRIT_PID=/{print $2; exit}' "$local_copy" 2>/dev/null | tr -d '[:space:]') ;;
+      esac
+      if [[ -n "$v" ]] && [[ "$v" =~ ^[0-9]+$ ]]; then
+        echo "$v"
+        return 0
+      fi
+    fi
+    sleep 2
+  done
+  return 1
 }
 
 jsync_file() {
@@ -325,22 +398,34 @@ pod_ip() {
 }
 
 echo "[hold-exec] sync train → ${POD_BUNDLE}/train_bench_probe_npu.py"
-jexec "mkdir -p '${POD_BUNDLE}' '${POD_OUT}' '${POD_PYDEPS}'"
-jsync_file "$TRAIN_PY_LOCAL" "${POD_BUNDLE}/train_bench_probe_npu.py"
-if [[ -f "$SIDECAR_PY_LOCAL" ]]; then
-  echo "[hold-exec] sync sidecar → ${POD_BUNDLE}/sidecar_inject_npu.py"
-  jsync_file "$SIDECAR_PY_LOCAL" "${POD_BUNDLE}/sidecar_inject_npu.py"
+jexec "mkdir -p '${POD_BUNDLE}' '${POD_OUT}' '${POD_PYDEPS}'; exit 0" || true
+if [[ "${SKIP_HEAVY_JSYNC}" != "1" ]]; then
+  jsync_file "$TRAIN_PY_LOCAL" "${POD_BUNDLE}/train_bench_probe_npu.py"
+  if [[ -f "$SIDECAR_PY_LOCAL" ]]; then
+    echo "[hold-exec] sync sidecar → ${POD_BUNDLE}/sidecar_inject_npu.py"
+    jsync_file "$SIDECAR_PY_LOCAL" "${POD_BUNDLE}/sidecar_inject_npu.py"
+  fi
+  if [[ -f "$SIDECAR_8C_PY_LOCAL" ]]; then
+    echo "[hold-exec] sync 8c sidecar → ${POD_BUNDLE}/sidecar_inject_8c.py"
+    jsync_file "$SIDECAR_8C_PY_LOCAL" "${POD_BUNDLE}/sidecar_inject_8c.py"
+  fi
+  if [[ -f "$DUMP_SQL_LOCAL" ]]; then
+    jsync_file "$DUMP_SQL_LOCAL" "${POD_BUNDLE}/dump_probing_sql.sh"
+  fi
+  LOCALIZE_PY_LOCAL="${LOCALIZE_PY_LOCAL:-${ROOT}/scripts/fail-slow/pillar_c_localize_culprit.py}"
+  if [[ -f "$LOCALIZE_PY_LOCAL" ]]; then
+    echo "[hold-exec] sync localize → ${POD_BUNDLE}/pillar_c_localize_culprit.py"
+    jsync_file "$LOCALIZE_PY_LOCAL" "${POD_BUNDLE}/pillar_c_localize_culprit.py"
+  fi
+else
+  echo "[hold-exec] SKIP_HEAVY_JSYNC=1 — reuse bundle scripts (train/sidecar/dump/localize/hold_exec; no tar)"
 fi
-if [[ -f "$SIDECAR_8C_PY_LOCAL" ]]; then
-  echo "[hold-exec] sync 8c sidecar → ${POD_BUNDLE}/sidecar_inject_8c.py"
-  jsync_file "$SIDECAR_8C_PY_LOCAL" "${POD_BUNDLE}/sidecar_inject_8c.py"
-fi
-if [[ -f "$DUMP_SQL_LOCAL" ]]; then
-  jsync_file "$DUMP_SQL_LOCAL" "${POD_BUNDLE}/dump_probing_sql.sh"
-fi
+LOCALIZE_PY_LOCAL="${LOCALIZE_PY_LOCAL:-${ROOT}/scripts/fail-slow/pillar_c_localize_culprit.py}"
 MASTER_IP="$(pod_ip)"
 echo "[hold-exec] MASTER_IP=$MASTER_IP"
 [[ -n "$MASTER_IP" ]] || { echo "FATAL: no pod IP"; exit 2; }
+
+echo "[hold-exec] checking pod idle…"
 
 clean_pod() {
   jexec "pkill -9 -f '[t]rain_bench_probe_npu' 2>/dev/null || true; pkill -9 -f '/tmp/[t]bp_npu.py' 2>/dev/null || true; pkill -9 -f '[t]orchrun' 2>/dev/null || true; pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 -f '[s]idecar_inject_8c' 2>/dev/null || true; pkill -9 -x stress-ng 2>/dev/null || true; pkill -9 -f '[s]tress-ng' 2>/dev/null || true; pkill -9 -f 'fio.*io_stress' 2>/dev/null || true; sleep 2; exit 0" || true
@@ -388,6 +473,12 @@ fire_config() {
     # Param-Calib / P-FIX：cpu.utilization 环容量（MiB）；未设则用 wheel 默认
     if [[ -n "${PROBING_CPU_RING_MB:-}" ]]; then
       denv="${denv} export PROBING_CPU_RING_MB=${PROBING_CPU_RING_MB};"
+    fi
+    if [[ -n "${PROBING_SPAN_BACKENDS:-}" ]]; then
+      denv="${denv} export PROBING_SPAN_BACKENDS='${PROBING_SPAN_BACKENDS}';"
+    fi
+    if [[ -n "${PROBING_TORCH_MIN_STEP_INTERVAL:-}" ]]; then
+      denv="${denv} export PROBING_TORCH_MIN_STEP_INTERVAL=${PROBING_TORCH_MIN_STEP_INTERVAL};"
     fi
     # Pillar-C S1：晚 attach（训练步内 site_hook；非 ptrace — Ascend 无 libprobing.so）
     if [[ -n "${PROBING_ATTACH_AT_STEP:-}" ]]; then
@@ -465,6 +556,7 @@ export PATH=${PYBIN}:\${PATH}
 export PYTHONPATH=${POD_PYDEPS}:\${PYTHONPATH:-}
 export GLOO_SOCKET_IFNAME=\${GLOO_SOCKET_IFNAME:-eth0}
 export HCCL_CONNECT_TIMEOUT=\${HCCL_CONNECT_TIMEOUT:-1800}
+export HCCL_EXEC_TIMEOUT=\${HCCL_EXEC_TIMEOUT:-600}
 export HOST_BOUND_MATMUL=${HOST_BOUND_MATMUL}
 export CKPT_DIR=${CKPT_DIR_EFFECTIVE}
 ${denv}
@@ -485,7 +577,7 @@ LAUNCH
   chmod +x "${WORK}/run_${gid}.sh"
   jsync_file "${WORK}/run_${gid}.sh" "/tmp/run_${gid}.sh"
   echo "[hold-exec] firing ${cfg}…"
-  jexec "setsid nohup bash /tmp/run_${gid}.sh </dev/null >/dev/null 2>&1 & echo FIRE_OK; exit 0"
+  jexec "setsid nohup bash /tmp/run_${gid}.sh </dev/null >/dev/null 2>&1 & echo FIRE_OK; exit 0" || true
 
   local e=0
   while [ "$e" -lt 360 ]; do
@@ -505,6 +597,20 @@ LAUNCH
   if [ "$e" -ge 360 ]; then
     echo "  warmup timeout"; jexec "tail -n 120 '${out}/node_0.log'" || true
     return 1
+  fi
+
+  # C2 健康臂（INJECT_KIND=none）：dump 不得绑在注入门闩内（PR-1 baseline 教训）
+  if [[ "$cfg" == "C2_probing" ]] && [[ "${DUMP_PROBING_SQL}" == "1" ]] \
+     && [[ "$INJECT_KIND" == "none" || -z "$INJECT_KIND" ]]; then
+    echo "  waiting ${DUMP_WAIT_S}s for SQL dump (no inject)…"
+    sleep "${DUMP_WAIT_S}"
+    if jexec "pgrep -f 'tbp_npu|train_bench_probe_npu' >/dev/null" 2>/dev/null; then
+      echo "  dumping Probing SQL / host_psi…"
+      jexec "export OUT_DIR='${out}' CASE='${CASE_ID}' CODE_DIR='${POD_BUNDLE}' VICTIM_LOCAL_RANK='${SIDECAR_LOCAL_RANK}' PYTHONPATH='${POD_PYDEPS}:\${PYTHONPATH:-}' PATH='/usr/bin:/bin:${POD_PYDEPS}/bin:${PYBIN}:\${PATH:-}'; /bin/bash '${POD_BUNDLE}/dump_probing_sql.sh' >'${out}/probing_dump.log' 2>&1; exit 0" || true
+      echo "  SQL dump attempted → ${out}/probing/"
+    else
+      echo "  SQL dump skipped: training not running"
+    fi
   fi
 
   if [[ "$cfg" == C1_* || "$cfg" == C2_* ]] && [[ "$INJECT_KIND" == stress_cpu || "$INJECT_KIND" == stress_io || "$INJECT_KIND" == stress_vm || "$INJECT_KIND" == cube || "$INJECT_KIND" == inline_cube || "$INJECT_KIND" == inline_hbm || "$INJECT_KIND" == hbm || "$INJECT_KIND" == "1b" || "$INJECT_KIND" == "hbm_ramp" || "$INJECT_KIND" == 8a || "$INJECT_KIND" == inline_8a || "$INJECT_KIND" == 8b || "$INJECT_KIND" == inline_8b || "$INJECT_KIND" == 8c || "$INJECT_KIND" == sidecar_8c || "$INJECT_KIND" == 2a || "$INJECT_KIND" == inline_2a || "$INJECT_KIND" == 2b || "$INJECT_KIND" == inline_2b || "$INJECT_KIND" == rare_shape || "$INJECT_KIND" == 2c || "$INJECT_KIND" == inline_2c || "$INJECT_KIND" == compile_spike || "$INJECT_KIND" == hccl_algo || "$INJECT_KIND" == mccl_algo || "$INJECT_KIND" == topo_5c || "$INJECT_KIND" == 5c || "$INJECT_KIND" == topo ]]; then
@@ -661,12 +767,15 @@ LAUNCH
       else
         echo "  Pillar-C SET↑ at inject start…"
       fi
-      # ③-A 等：升到的 rate 可配（默认 1.0）；真相键仍 probing.torch.profiling=
-      # PILLAR_C_SET_SCOPE=victim → 只升 SIDECAR_LOCAL_RANK（避多 rank attach 死锁）
+      # ③-A 等：升到的 rate 可配（默认 1.0）；真相键 probing.torch.profiling=
+      # PR-2：scope=localize（默认）→ 编排层 SQL 定位 culprit，仅对 culprit SET；
+      #   SQL 空/超时 → fallback 全 rank（对照臂）。legacy: victim|all。
       local set_rate="${PILLAR_C_SET_RATE:-1.0}"
-      local set_scope="${PILLAR_C_SET_SCOPE:-all}"
+      local set_scope="${PILLAR_C_SET_SCOPE:-localize}"
       local set_victim="${SIDECAR_LOCAL_RANK:-7}"
-      echo "  Pillar-C SET upgrade torch.profiling → on,rate=${set_rate} scope=${set_scope} (SHOW TABLES→worker)…"
+      local localize_py="${LOCALIZE_PY_LOCAL}"
+      jsync_file "$localize_py" "${out}/_pillar_c_localize.py"
+      echo "  Pillar-C SET upgrade probing.torch.profiling=on,rate=${set_rate} scope=${set_scope} (localize→culprit SET)…"
       # 必须带 /usr/bin:/bin：jexec 非 login 时 PATH 可能空，否则 date/ps/awk 全挂 → SET_FAIL_ALL
       # timeout 包住 probing，避免单 pid 读回卡死整臂
       jexec "export PATH='/usr/bin:/bin:${POD_PYDEPS}/bin:${PYBIN}:\${PATH:-}' PYTHONPATH='${POD_PYDEPS}:\${PYTHONPATH:-}'
@@ -676,25 +785,110 @@ L=\$(wc -l <'${out}/ranks/rank_0000.jsonl' 2>/dev/null || echo 0); echo SET_L=\$
 echo SET_TARGET=probing.torch.profiling=on,rate=${set_rate} >>'${out}/set_upgrade.log'
 T_MARK=\$(python3 -c 'import time;print(int(time.time()*1000))')
 echo SET_T0_MS=\$T_MARK >>'${out}/set_upgrade.log'
-cands=
-if [[ '${set_scope}' == 'victim' ]]; then
+ATTACH_WAIT_S=\"\${PILLAR_C_ATTACH_READY_WAIT_S:-45}\"
+ATTACH_RETRY_S=\"\${PILLAR_C_ATTACH_RETRY_INTERVAL_S:-2}\"
+PROBE_TIMEOUT_S=\"\${PILLAR_C_LOCALIZE_TIMEOUT_S:-8}\"
+ATTACH_RETRIES=\"\${PILLAR_C_ATTACH_RETRIES:-3}\"
+SET_BLOCK_TIMEOUT_S=\"\${PILLAR_C_SET_BLOCK_TIMEOUT_S:-120}\"
+echo ATTACH_CFG wait_s=\$ATTACH_WAIT_S retry_s=\$ATTACH_RETRY_S probe_timeout_s=\$PROBE_TIMEOUT_S attach_retries=\$ATTACH_RETRIES set_block_timeout_s=\$SET_BLOCK_TIMEOUT_S >>'${out}/set_upgrade.log'
+# SET/localize 前：等至少 victim rank 或半数 worker probing attach 就绪（8a stall 瞬时不可 attach）
+_attach_ready=0
+_aw=0
+while [ \"\$_aw\" -lt \"\$ATTACH_WAIT_S\" ]; do
+  _victim_pid=
+  _ok_n=0
+  _seen_lr=
   for pid in \$(ps -eo pid,args | awk '/\\/tmp\\/tbp_npu\\.py|train_bench_probe_npu/ && \$0 !~ /awk|bash|torchrun/ {print \$1}'); do
+    if ! test -d \"/proc/\$pid\"; then continue; fi
     lr=\$(tr '\\0' '\\n' < /proc/\$pid/environ 2>/dev/null | awk -F= '\$1==\"LOCAL_RANK\"{print \$2; exit}')
-    if [[ \"\$lr\" == '${set_victim}' ]]; then cands=\"\$cands \$pid\"; fi
+  if [[ \"\$lr\" == '${set_victim}' ]]; then _victim_pid=\$pid; fi
+    if timeout \"\$PROBE_TIMEOUT_S\" probing -t \"\$pid\" query 'SHOW TABLES' >/tmp/probe_pre_\$pid.txt 2>&1; then
+      _ok_n=\$((_ok_n+1))
+      _seen_lr=\"\$_seen_lr \$lr\"
+    fi
   done
+  if [[ -n \"\$_victim_pid\" ]] && timeout \"\$PROBE_TIMEOUT_S\" probing -t \"\$_victim_pid\" query 'SHOW TABLES' >/tmp/probe_pre_victim.txt 2>&1; then
+    echo ATTACH_READY victim_pid=\$_victim_pid t=\${_aw}s ok_n=\$_ok_n >>'${out}/set_upgrade.log'
+    _attach_ready=1
+    break
+  fi
+  if [ \"\$_ok_n\" -ge 8 ]; then
+    echo ATTACH_READY majority ok_n=\$_ok_n t=\${_aw}s lr=\$_seen_lr >>'${out}/set_upgrade.log'
+    _attach_ready=1
+    break
+  fi
+  sleep \"\$ATTACH_RETRY_S\"
+  _aw=\$((_aw + ATTACH_RETRY_S))
+done
+if [[ \"\$_attach_ready\" != '1' ]]; then
+  echo ATTACH_READY_TIMEOUT t=\${_aw}s ok_n=\$_ok_n victim_pid=\${_victim_pid:-none} >>'${out}/set_upgrade.log'
+else
+  echo PILLAR_C_ATTACH_PREVALIDATED=1 >>'${out}/set_upgrade.log'
+fi
+cands=
+LOCALIZE_FALLBACK=0
+CULPRIT_RANK=
+CULPRIT_PID=
+if [[ '${set_scope}' == 'localize' ]]; then
+  export OUT='${out}' CASE_ID='${CASE_ID}' TRIGGER_STEP=\"\$L\" SIDECAR_LOCAL_RANK='${set_victim}'
+  export PILLAR_C_LOCALIZE_MODE=\"\${PILLAR_C_LOCALIZE_MODE:-auto}\"
+  export PILLAR_C_LOCALIZE_WINDOW=\"\${PILLAR_C_LOCALIZE_WINDOW:-20}\"
+  export PILLAR_C_LOCALIZE_TIMEOUT_S=\"\${PILLAR_C_LOCALIZE_TIMEOUT_S:-8}\"
+  export PILLAR_C_LOCALIZE_RETRIES=\"\${PILLAR_C_LOCALIZE_RETRIES:-\$([[ \"\$_attach_ready\" == '1' ]] && echo 1 || echo 2)}\"
+  export PILLAR_C_LOCALIZE_RETRY_PAUSE_S=\"\${PILLAR_C_LOCALIZE_RETRY_PAUSE_S:-2}\"
+  export PILLAR_C_LOCALIZE_TOTAL_BUDGET_S=\"\${PILLAR_C_LOCALIZE_TOTAL_BUDGET_S:-\$([[ \"\$_attach_ready\" == '1' ]] && echo 60 || echo 90)}\"
+  export PILLAR_C_LOCALIZE_PARALLEL=\"\${PILLAR_C_LOCALIZE_PARALLEL:-16}\"
+  export PILLAR_C_ATTACH_PREVALIDATED=\"\${PILLAR_C_ATTACH_PREVALIDATED:-\$([[ \"\$_attach_ready\" == '1' ]] && echo 1 || echo 0)}\"
+  export PILLAR_C_LOCALIZE_ATTACH_WAIT_S=\"\${PILLAR_C_LOCALIZE_ATTACH_WAIT_S:-4}\"
+  export PILLAR_C_LOCALIZE_SECONDARY=\"\${PILLAR_C_LOCALIZE_SECONDARY:-1}\"
+  loc_out=\$(timeout \"\$SET_BLOCK_TIMEOUT_S\" python3 '${out}/_pillar_c_localize.py' 2>>'${out}/set_upgrade.log' || echo 'LOCALIZE_TIMEOUT')
+  echo \"\$loc_out\" >>'${out}/set_upgrade.log'
+  CULPRIT_RANK=\$(echo \"\$loc_out\" | awk -F= '/^CULPRIT_RANK=/{print \$2; exit}')
+  CULPRIT_PID=\$(echo \"\$loc_out\" | awk -F= '/^CULPRIT_PID=/{print \$2; exit}')
+  LOCALIZE_FALLBACK=\$(echo \"\$loc_out\" | awk -F= '/^LOCALIZE_FALLBACK=/{print \$2; exit}')
+  LOCALIZE_FALLBACK=\${LOCALIZE_FALLBACK:-1}
+  echo LOCALIZE_FALLBACK=\$LOCALIZE_FALLBACK culprit_rank=\$CULPRIT_RANK culprit_pid=\$CULPRIT_PID >>'${out}/set_upgrade.log'
+  if [[ \"\$LOCALIZE_FALLBACK\" == '0' && -n \"\$CULPRIT_PID\" ]]; then
+    cands=\" \$CULPRIT_PID\"
+    echo CANDS_LOCALIZE=\$cands >>'${out}/set_upgrade.log'
+  else
+    echo LOCALIZE_FALLBACK_ALL_RANKS >>'${out}/set_upgrade.log'
+    cands=\$(SIDECAR_LOCAL_RANK='${set_victim}' python3 '${out}/_pillar_c_localize.py' --list-worker-pids 2>/dev/null | tr '\\n' ' ')
+    echo CANDS_FALLBACK=\$cands >>'${out}/set_upgrade.log'
+  fi
+elif [[ '${set_scope}' == 'victim' ]]; then
+  cands=\$(SIDECAR_LOCAL_RANK='${set_victim}' python3 '${out}/_pillar_c_localize.py' --list-worker-pids --local-rank=${set_victim} 2>/dev/null | tr '\\n' ' ')
   echo CANDS_VICTIM=\$cands >>'${out}/set_upgrade.log'
 else
-  cands=\$(ps -eo pid,args | awk '/\\/tmp\\/tbp_npu\\.py|train_bench_probe_npu/ && \$0 !~ /awk|bash|torchrun/ {print \$1}')
-  echo CANDS=\$cands >>'${out}/set_upgrade.log'
+  cands=\$(python3 '${out}/_pillar_c_localize.py' --list-worker-pids 2>/dev/null | tr '\\n' ' ')
+  echo CANDS_ALL=\$cands >>'${out}/set_upgrade.log'
 fi
+# PR-2 B6: snapshot main worker pids to worker_pids.txt so ``pull_results``
+# can prune non-worker pid dirs before tar-pull.
+python3 '${out}/_pillar_c_localize.py' --list-worker-pids 2>/dev/null | awk 'NF' >'${out}/worker_pids.txt' || true
+echo WORKER_PIDS_SNAPSHOT count=\$(wc -l <'${out}/worker_pids.txt' 2>/dev/null | tr -d ' ') >>'${out}/set_upgrade.log'
 OK=
 for pid in \$cands; do
-  if timeout 20 probing -t \$pid query 'SHOW TABLES' >/tmp/probe_ping_\$pid.txt 2>&1; then
-    echo ATTACH_OK pid=\$pid >>'${out}/set_upgrade.log'
+  _attached=0
+  _ar=0
+  while [ \"\$_ar\" -lt \"\$ATTACH_RETRIES\" ]; do
+    if ! test -d \"/proc/\$pid\"; then
+      echo ATTACH_FAIL pid=\$pid reason=pid_churned >>'${out}/set_upgrade.log'
+      break
+    fi
+    if timeout \"\$PROBE_TIMEOUT_S\" probing -t \$pid query 'SHOW TABLES' >/tmp/probe_ping_\$pid.txt 2>&1; then
+      _attached=1
+      break
+    fi
+    _ar=\$((_ar+1))
+    sleep \"\$ATTACH_RETRY_S\"
+  done
+  if [[ \"\$_attached\" == '1' ]]; then
+    echo ATTACH_OK pid=\$pid retries=\$_ar >>'${out}/set_upgrade.log'
     T_ATT=\$(python3 -c 'import time;print(int(time.time()*1000))')
     echo ATTACH_T_MS=\$T_ATT >>'${out}/set_upgrade.log'
     # C0 真相键：probing.torch.profiling（勿写 torch.profiling=；后者不触发 live sync）
-    if ! timeout 20 probing -t \$pid config 'probing.torch.profiling=on,rate=${set_rate}' >>'${out}/set_upgrade.log' 2>&1; then
+    if ! timeout \"\$PROBE_TIMEOUT_S\" probing -t \$pid config 'probing.torch.profiling=on,rate=${set_rate}' >>'${out}/set_upgrade.log' 2>&1; then
       echo SET_CMD_FAIL pid=\$pid >>'${out}/set_upgrade.log'
       continue
     fi
@@ -709,17 +903,149 @@ for pid in \$cands; do
     T_SET=\$(python3 -c 'import time;print(int(time.time()*1000))')
     echo SET_T1_MS=\$T_SET >>'${out}/set_upgrade.log'
     echo SET_OK_WORKER pid=\$pid >>'${out}/set_upgrade.log'
+    echo SET_UPGRADE ts=\$(date -Iseconds) step=\$L pid=\$pid rate=${set_rate} >>'${out}/set_upgrade.log'
     python3 -c \"t0=int('\$T_MARK'); t1=int('\$T_SET'); print(f'SET_LATENCY_MS={t1-t0}')\" >>'${out}/set_upgrade.log' 2>/dev/null || echo SET_LATENCY_MS=? >>'${out}/set_upgrade.log'
     OK=\$pid
-    # scope=all 时继续下一 rank；victim 通常只有 1 个
+    # localize/victim：通常 1 pid；fallback/all：多 rank 均 SET（对照臂）
   else
-    echo ATTACH_FAIL pid=\$pid >>'${out}/set_upgrade.log'
+    echo ATTACH_FAIL pid=\$pid retries=\$_ar >>'${out}/set_upgrade.log'
   fi
 done
 if [[ -z \"\$OK\" ]]; then echo SET_FAIL_ALL >>'${out}/set_upgrade.log'; fi
 echo SET_END ts=\$(date -Iseconds) >>'${out}/set_upgrade.log'
 exit 0" || true
-      # ③-B：SET 后在线轮询 TT（环会覆写，必须在线记；勿离线 MEMT 猜首步）
+      # B3：时基优先升详窗（可兼步数）；先到者触发 SET_DOWNGRADE rate=0（同 culprit pid）
+      local set_win_s="${PILLAR_C_SET_WINDOW_S:-45}"
+      local set_win_steps="${PILLAR_C_SET_WINDOW_STEPS:-0}"
+      if { [[ "${set_win_s}" =~ ^[0-9]+$ ]] && [[ "${set_win_s}" -gt 0 ]]; } \
+         || { [[ "${set_win_steps}" =~ ^[0-9]+$ ]] && [[ "${set_win_steps}" -gt 0 ]]; }; then
+        local hang_max_s="${PILLAR_C_SET_HANG_MAX_S:-900}"
+        local set_l_val set_pid_val culprit_rank_val set_pid_source
+        local local_set_log="${LOCAL_RESULT_ROOT}/_work/set_upgrade_snapshot.log"
+        mkdir -p "$(dirname "$local_set_log")"
+        jexec "cat '${out}/set_upgrade.log' 2>/dev/null" >"$local_set_log" 2>/dev/null || true
+        set_l_val=$(read_set_upgrade_field "${out}/set_upgrade.log" set_l "$local_set_log" || echo 0)
+        set_pid_val=$(read_set_upgrade_field "${out}/set_upgrade.log" set_ok_pid "$local_set_log" || true)
+        set_pid_source=set_ok_worker
+        if [[ -z "${set_pid_val}" ]]; then
+          set_pid_val=$(read_set_upgrade_field "${out}/set_upgrade.log" culprit_pid "$local_set_log" || true)
+          [[ -n "${set_pid_val}" ]] && set_pid_source=culprit_pid
+        fi
+        culprit_rank_val=$(read_set_upgrade_field "${out}/set_upgrade.log" culprit_rank "$local_set_log" || true)
+        culprit_rank_val=${culprit_rank_val:-${set_victim}}
+        set_l_val=${set_l_val:-0}
+        if [[ -z "${set_pid_val}" ]]; then
+          echo "  B3 WARN: SET_OK pid empty after retries → FALLBACK victim rank ${set_victim} (still time-downgrade)"
+          jexec "echo B3_PID_FALLBACK victim_rank=${set_victim} reason=set_ok_empty >>'${out}/set_upgrade.log'; exit 0" 2>/dev/null || true
+          set_pid_val=$(jexec "SIDECAR_LOCAL_RANK='${set_victim}' python3 '${out}/_pillar_c_localize.py' --list-worker-pids --local-rank=${set_victim} 2>/dev/null | head -1" 2>/dev/null | tr -d '[:space:]')
+          set_pid_source=victim_fallback
+        fi
+        if [[ -z "${set_pid_val}" ]] || ! [[ "${set_pid_val}" =~ ^[0-9]+$ ]]; then
+          echo "  B3 FATAL: no pid for downgrade even after victim fallback"
+          jexec "echo B3_DOWNGRADE_NO_PID ts=\$(date -Iseconds) >>'${out}/set_upgrade.log'; exit 0" 2>/dev/null || true
+        else
+        local downgrade_at=0
+        if [[ "${set_win_steps}" =~ ^[0-9]+$ ]] && [[ "${set_win_steps}" -gt 0 ]]; then
+          downgrade_at=$((set_l_val + set_win_steps))
+        fi
+        local rank_jsonl
+        rank_jsonl=$(printf 'rank_%04d.jsonl' "${culprit_rank_val}")
+          echo "  Pillar-C B3: pid=${set_pid_val} source=${set_pid_source}; window_s=${set_win_s} window_steps=${set_win_steps}; time-or-steps → SET_DOWNGRADE (hang_max=${hang_max_s}s)…"
+          local upgrade_ts
+          upgrade_ts=$(date +%s)
+          e=0
+          local last_l=-1 stall_acc=0 downgrade_done=0 hang_detected=0 downgrade_reason=""
+          while [ "$e" -lt 3600 ]; do
+            local cur_l elapsed_s
+            cur_l=$(jexec_poll "wc -l <'${out}/ranks/${rank_jsonl}' 2>/dev/null || wc -l <'${out}/ranks/rank_0000.jsonl' 2>/dev/null || echo 0")
+            cur_l=$(echo "${cur_l:-0}" | tr -d '[:space:]')
+            elapsed_s=$(( $(date +%s) - upgrade_ts ))
+            if jexec_poll "test -f '${out}/node_0.done' -o -f '${out}/node_0.fail'" 15; then
+              echo "  B3 window end: training exited (L=${cur_l} elapsed=${elapsed_s}s)"
+              break
+            fi
+            if [[ "${set_win_s}" =~ ^[0-9]+$ ]] && [[ "${set_win_s}" -gt 0 ]] && [ "$elapsed_s" -ge "$set_win_s" ]; then
+              echo "  elapsed=${elapsed_s}s >= window_s=${set_win_s} (L=${cur_l}) → SET_DOWNGRADE reason=time"
+              downgrade_done=1
+              downgrade_reason=time
+              break
+            fi
+            if [[ "${set_win_steps}" =~ ^[0-9]+$ ]] && [[ "${set_win_steps}" -gt 0 ]] \
+               && [[ "$cur_l" =~ ^[0-9]+$ ]] && [ "$cur_l" -ge "$downgrade_at" ]; then
+              echo "  L=${cur_l} >= ${downgrade_at} (${e}s) → SET_DOWNGRADE reason=steps"
+              downgrade_done=1
+              downgrade_reason=steps
+              break
+            fi
+            if [[ "$cur_l" == "$last_l" ]]; then
+              stall_acc=$((stall_acc + 5))
+            else
+              stall_acc=0
+              last_l="$cur_l"
+            fi
+            # 降回后若仍 stall → HANG_DETECTED（在降回执行后再判；此处仅升详窗内 stall）
+            if [ "$stall_acc" -ge "$hang_max_s" ]; then
+              echo "  HANG_DETECTED: jsonl L stalled at ${cur_l} for ${stall_acc}s (>=${hang_max_s}s)"
+              hang_detected=1
+              jexec_poll "echo HANG_DETECTED ts=\$(date -Iseconds) step=${cur_l} stall_s=${stall_acc} >>'${out}/set_upgrade.log'; exit 0" 15
+              break
+            fi
+            sleep 5
+            e=$((e + 5))
+            if [ $((e % 60)) -eq 0 ]; then
+              echo "  B3 wait… t=${e}s elapsed=${elapsed_s}s L=${cur_l} stall=${stall_acc}s downgrade_at=${downgrade_at:-n/a}"
+            fi
+          done
+          if [[ "$downgrade_done" == "1" ]]; then
+            jexec "export PATH='/usr/bin:/bin:${POD_PYDEPS}/bin:${PYBIN}:\${PATH:-}' PYTHONPATH='${POD_PYDEPS}:\${PYTHONPATH:-}'
+PROBE_TIMEOUT_S=\"\${PILLAR_C_LOCALIZE_TIMEOUT_S:-8}\"
+PID='${set_pid_val}'
+DL=\$(wc -l <'${out}/ranks/${rank_jsonl}' 2>/dev/null || wc -l <'${out}/ranks/rank_0000.jsonl' 2>/dev/null || echo 0)
+ELAPSED=\$(( \$(date +%s) - ${upgrade_ts} ))
+TS_DG=\$(date -Iseconds)
+echo SET_DOWNGRADE ts=\$TS_DG step=\$DL pid=\$PID rate=0 reason=${downgrade_reason} window_s=${set_win_s} window_steps=${set_win_steps} elapsed_s=\$ELAPSED upgrade_step=${set_l_val} >>'${out}/set_upgrade.log'
+if test -d /proc/\$PID; then
+  if timeout \"\$PROBE_TIMEOUT_S\" probing -t \$PID config 'probing.torch.profiling=on,rate=0' >>'${out}/set_upgrade.log' 2>&1; then
+    echo SET_DOWNGRADE_OK pid=\$PID reason=${downgrade_reason} >>'${out}/set_upgrade.log'
+  else
+    echo SET_DOWNGRADE_FAIL pid=\$PID reason=${downgrade_reason} >>'${out}/set_upgrade.log'
+  fi
+else
+  echo SET_DOWNGRADE_SKIP pid_churned pid=\$PID reason=${downgrade_reason} >>'${out}/set_upgrade.log'
+fi
+exit 0" || true
+            # 降回后：若 step 仍 stall → HANG_DETECTED 停训
+            local post_last_l=-1 post_stall=0 post_e=0
+            while [ "$post_e" -lt "$hang_max_s" ]; do
+              local post_l
+              post_l=$(jexec_poll "wc -l <'${out}/ranks/${rank_jsonl}' 2>/dev/null || wc -l <'${out}/ranks/rank_0000.jsonl' 2>/dev/null || echo 0")
+              post_l=$(echo "${post_l:-0}" | tr -d '[:space:]')
+              if jexec_poll "test -f '${out}/node_0.done' -o -f '${out}/node_0.fail'" 15; then
+                break
+              fi
+              if [[ "$post_l" == "$post_last_l" ]]; then
+                post_stall=$((post_stall + 5))
+              else
+                post_stall=0
+                post_last_l="$post_l"
+              fi
+              if [ "$post_stall" -ge "$hang_max_s" ]; then
+                echo "  HANG_DETECTED post-downgrade: L stalled at ${post_l} for ${post_stall}s"
+                hang_detected=1
+                jexec_poll "echo HANG_DETECTED ts=\$(date -Iseconds) step=${post_l} stall_s=${post_stall} phase=post_downgrade >>'${out}/set_upgrade.log'; exit 0" 15
+                break
+              fi
+              sleep 5
+              post_e=$((post_e + 5))
+            done
+          fi
+          if [[ "$hang_detected" == "1" ]]; then
+            echo "  B3 BLOCKED: stall — stop training, preserve evidence"
+            jexec_poll "pkill -TERM -f '[t]bp_npu' 2>/dev/null || true; pkill -TERM -f '[t]orchrun' 2>/dev/null || true; sleep 3; pkill -9 -f '[t]bp_npu' 2>/dev/null || true; pkill -9 -f '[t]orchrun' 2>/dev/null || true; echo B3_HANG_STOP ts=\$(date -Iseconds) >>'${out}/set_upgrade.log'; exit 0" 60
+          fi
+        fi
+      fi
+      # ③-B：SET 后在线轮询 TT
       if [[ "${PILLAR_C_LATENCY_PROBE:-0}" == "1" ]]; then
         local w_star="${PILLAR_C_W_STAR:-100}"
         local tt_floor="${PILLAR_C_TT_FLOOR:-800}"
@@ -792,6 +1118,13 @@ print(f'hot_memt={hots} hot_bytes={hot_b} cold_segs={segs} cold_bytes={cold_b} r
   fi
 
   e=0
+  # B8：driver 兜底 — 若 PILLAR_C_NO_PROGRESS_KILL_S 秒内所有 rank_*.jsonl 的 mtime + 行数都不变，
+  # append NO_JSONL_PROGRESS_<S>S 到 node_0.log + kill torchrun + touch node_0.done。
+  # 0 或 negative 关闭；默认 90 秒。
+  local no_progress_kill_s="${PILLAR_C_NO_PROGRESS_KILL_S:-90}"
+  local last_progress_sig=""
+  local no_progress_stall=0
+  local kill_triggered=0
   while [ "$e" -lt 3600 ]; do
     if jexec "test -f '${out}/node_0.done'" 2>/dev/null; then
       echo "  done (${e}s)"
@@ -817,11 +1150,31 @@ print(f'hot_memt={hots} hot_bytes={hot_b} cold_segs={segs} cold_bytes={cold_b} r
       jexec "pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 -f '[s]idecar_inject_8c' 2>/dev/null || true; pkill -9 stress-ng 2>/dev/null || true; exit 0" || true
       return 1
     fi
+
+    # B8：no-jsonl-progress 兜底 kill
+    if [[ "${no_progress_kill_s}" -gt 0 ]] && [[ "${kill_triggered}" -eq 0 ]]; then
+      local sig
+      sig=$(jexec "cd '${out}/ranks' 2>/dev/null && for f in rank_*.jsonl; do [ -f \"\$f\" ] || continue; s=\$(stat -c '%Y %s' \"\$f\" 2>/dev/null); l=\$(wc -l <\"\$f\" 2>/dev/null); echo \"\$f \$s \$l\"; done | sort" 2>/dev/null | tr -d '\r')
+      if [[ -n "${sig}" ]]; then
+        if [[ "${sig}" == "${last_progress_sig}" ]]; then
+          no_progress_stall=$((no_progress_stall + 10))
+          if [[ ${no_progress_stall} -ge ${no_progress_kill_s} ]]; then
+            echo "  NO_JSONL_PROGRESS_${no_progress_kill_s}S → kill torchrun (driver bailout)"
+            jexec "echo NO_JSONL_PROGRESS_${no_progress_kill_s}S ts=\$(date -Iseconds) >>'${out}/node_0.log'; pkill -9 -f 'torchrun' 2>/dev/null || true; pkill -9 -f '[t]bp_npu|[t]rain_bench_probe' 2>/dev/null || true; pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 -f '[s]idecar_inject_8c' 2>/dev/null || true; pkill -9 stress-ng 2>/dev/null || true; touch '${out}/node_0.done'; exit 0" || true
+            kill_triggered=1
+          fi
+        else
+          no_progress_stall=0
+          last_progress_sig="${sig}"
+        fi
+      fi
+    fi
+
     sleep 10; e=$((e + 10))
     if [ $((e % 60)) -eq 0 ]; then
       local njson
       njson=$(jexec "ls '${out}/ranks'/rank_*.jsonl 2>/dev/null | wc -l" 2>/dev/null | tr -d '[:space:]' || echo 0)
-      echo "  waiting done… t=${e}s jsonl=${njson:-0}"
+      echo "  waiting done… t=${e}s jsonl=${njson:-0} no_progress_stall=${no_progress_stall}s"
     fi
   done
   echo "  TIMEOUT"; jexec "tail -n 150 '${out}/node_0.log'" || true
@@ -829,6 +1182,25 @@ print(f'hot_memt={hots} hot_bytes={hot_b} cold_segs={segs} cold_bytes={cold_b} r
 }
 
 pull_results() {
+  # PR-2 B6: prune non-worker pid subdirs from probing_data/ before tar-pull.
+  # Cuts ``extra_pid`` (18 short-lived pids in B5d) + ``main_empty`` overhead
+  # when combined with Python-side lazy rings.  Manifest built during fire loop.
+  if [[ -n "${PROBING_DATA_DIR:-}" ]] && [[ "${PILLAR_C_PRUNE_EXTRA_PIDS:-1}" == "1" ]]; then
+    local prune_py="${ROOT}/scripts/fail-slow/prune_extra_pids.py"
+    local prune_out="${LOCAL_RESULT_ROOT}/_work/prune_extra_pids.log"
+    mkdir -p "$(dirname "$prune_out")"
+    if [[ -f "$prune_py" ]]; then
+      # push script to pod (idempotent) then run it there against POD_OUT.
+      jsync_file "$prune_py" "${POD_BUNDLE}/prune_extra_pids.py" 2>>"$prune_out" || true
+      local pod_manifest="${POD_OUT}/worker_pids.txt"
+      local pod_culprit_env=""
+      # Feed culprit pids from set_upgrade.log (SET_OK_WORKER pid=<n>).
+      pod_culprit_env="CULPRIT_PIDS=\$(awk '/^SET_OK_WORKER pid=/{print \$2}' '${POD_OUT}/set_upgrade.log' 2>/dev/null | sed 's/pid=//' | tr '\n' ',')"
+      echo "[hold-exec] prune extra_pid dumps under ${POD_OUT}/probing_data" >>"$prune_out"
+      jexec "${pod_culprit_env}; export PROBING_DATA_DIR='${POD_OUT}/probing_data' WORKER_PIDS_FILE='${pod_manifest}' PRUNE_DRY_RUN='${PILLAR_C_PRUNE_DRY_RUN:-0}' PATH='/usr/bin:/bin:${POD_PYDEPS}/bin:${PYBIN}:\${PATH:-}' PYTHONPATH='${POD_PYDEPS}:\${PYTHONPATH:-}'; python3 '${POD_BUNDLE}/prune_extra_pids.py' 2>&1 || true" \
+        >>"$prune_out" 2>&1 || true
+    fi
+  fi
   echo "[hold-exec] pull ${POD_OUT} → ${LOCAL_RESULT_ROOT}"
   if [[ "${JUMP_HOST}" == "localhost" || "${JUMP_HOST}" == "127.0.0.1" ]]; then
     export KUBECONFIG="${JUMP_KUBECONFIG:-${KUBECONFIG}}"

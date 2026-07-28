@@ -10,7 +10,7 @@ source "${ROOT}/scripts/fail-slow/env.sh"
 ARM="${ARM:?need ARM=full_fidelity|probing_collapse|naive_downsample|e2_rate|e3a_upgrade|e4_naive|s1_mid_attach}"
 CASE_ID="${CASE_ID:-P3-SW-A}"
 DOSE="${DOSE:-loud}"
-POD="${POD:-${FS_HOLD_PODS_C:-grj-megatron-32card-0716-worker-0}}"
+POD="${POD:-${FS_HOLD_PODS_C:-yysong-worker-0}}"
 NPROC="${NPROC:-16}"
 NNODES="${NNODES:-1}"
 PARENT_RUN_ID="${PARENT_RUN_ID:?need PARENT_RUN_ID}"
@@ -123,9 +123,9 @@ case "$ARM" in
     export PILLAR_C_SET_UPGRADE=1
     export PILLAR_C_SET_AT_STEP="${PILLAR_C_SET_AT_STEP:-100}"
     export PILLAR_C_SET_RATE="${PILLAR_C_SET_RATE:-1.0}"
-    # ③-A 默认只升 victim，避免多 rank attach 串行卡死训
+    # ③-A 默认 localize（SQL 定 culprit）；param calib 可显式 PILLAR_C_SET_SCOPE=victim
     if [[ "$ARM" == "e3a_upgrade" ]]; then
-      export PILLAR_C_SET_SCOPE="${PILLAR_C_SET_SCOPE:-victim}"
+      export PILLAR_C_SET_SCOPE="${PILLAR_C_SET_SCOPE:-localize}"
     else
       export PILLAR_C_SET_SCOPE="${PILLAR_C_SET_SCOPE:-all}"
     fi
@@ -245,6 +245,9 @@ probing_cold_max_total_mb: "${PROBING_COLD_MAX_TOTAL_MB:-}"
 pillar_c_set_upgrade: ${PILLAR_C_SET_UPGRADE:-0}
 pillar_c_set_at_step: ${PILLAR_C_SET_AT_STEP:-}
 pillar_c_set_rate: "${PILLAR_C_SET_RATE:-1.0}"
+pillar_c_set_window_s: ${PILLAR_C_SET_WINDOW_S:-45}
+pillar_c_set_window_steps: ${PILLAR_C_SET_WINDOW_STEPS:-0}
+pillar_c_set_hang_max_s: ${PILLAR_C_SET_HANG_MAX_S:-900}
 probing_attach_at_step: ${PROBING_ATTACH_AT_STEP:-}
 probing_data_dir: ${PROBING_DATA_DIR}
 inject_kind: ${INJECT_KIND}
@@ -285,6 +288,11 @@ env_args=(
   "PILLAR_C_SET_AT_STEP=${PILLAR_C_SET_AT_STEP:-}"
   "PILLAR_C_SET_RATE=${PILLAR_C_SET_RATE:-1.0}"
   "PILLAR_C_SET_SCOPE=${PILLAR_C_SET_SCOPE:-all}"
+  "PILLAR_C_SET_WINDOW_S=${PILLAR_C_SET_WINDOW_S:-45}"
+  "PILLAR_C_SET_WINDOW_STEPS=${PILLAR_C_SET_WINDOW_STEPS:-0}"
+  "PILLAR_C_SET_HANG_MAX_S=${PILLAR_C_SET_HANG_MAX_S:-900}"
+  "JEXEC_POLL_TIMEOUT_S=${JEXEC_POLL_TIMEOUT_S:-25}"
+  "HOLD_EXEC_SKIP_HEAVY_JSYNC=${HOLD_EXEC_SKIP_HEAVY_JSYNC:-0}"
   "PILLAR_C_LATENCY_PROBE=${PILLAR_C_LATENCY_PROBE:-0}"
   "PILLAR_C_W_STAR=${PILLAR_C_W_STAR:-100}"
   "PILLAR_C_TT_FLOOR=${PILLAR_C_TT_FLOOR:-800}"

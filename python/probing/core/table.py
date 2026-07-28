@@ -43,7 +43,11 @@ def _column_docs_from_class(cls) -> dict[str, str]:
     return docs
 
 
-def table(name_or_class: Optional[Union[str, Type[Any]]] = None):
+def table(
+    name_or_class: Optional[Union[str, Type[Any]]] = None,
+    *,
+    lazy: bool = False,
+):
     """A decorator that converts a dataclass into a persistable table.
 
     This decorator adds database-like functionality to dataclasses. When applied to a dataclass,
@@ -58,6 +62,14 @@ def table(name_or_class: Optional[Union[str, Type[Any]]] = None):
     name : Optional[str], default=None
         The name of the table to create or access. If None, the decorated class name will be used.
         When provided, the name will be converted to lowercase.
+    lazy : bool, default=False
+        When True, the underlying ``ExternalTable`` (and its mmap ring) is
+        **not** created at import time — it's created on the first ``save()``.
+        Pillar C v3 PR-2 B6 uses this for ``python.torch_step_timing`` and
+        ``python.comm_collective`` so that ranks that never call ``save()``
+        (e.g. non-culprit workers with resident rate=0) never allocate the
+        20 MiB per-table ring on AFS. Ranks that do call ``save()`` (after
+        SET upgrade) create the ring transparently on first row.
 
     Returns
     -------
@@ -179,7 +191,8 @@ def table(name_or_class: Optional[Union[str, Type[Any]]] = None):
         setattr(cls, "take", take)
         setattr(cls, "drop", drop)
         setattr(cls, "save", save)
-        init_table()
+        if not lazy:
+            init_table()
 
         return cls
 

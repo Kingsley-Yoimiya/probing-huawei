@@ -68,12 +68,14 @@ export JUMP_KUBECTL="${JUMP_KUBECTL:-/root/.cache/volcano/kubectl/kubectl}"
 # --- 运行模式：在 yysong（SYY 借权）壳内 exec ---
 export FS_RUN_MODE="${FS_RUN_MODE:-hold-exec}"
 export FS_HOLD_JOBS="${FS_HOLD_JOBS:-yysong}"
-# 默认主池 yysong；今晚 Dose/C 可覆盖为 grj（见 docs/fail-slow/agents/RESOURCE.md）
-export FS_HOLD_PODS_CASE="${FS_HOLD_PODS_CASE:-grj-megatron-32card-0716-master-0}"
-export FS_HOLD_PODS_C="${FS_HOLD_PODS_C:-grj-megatron-32card-0716-worker-0}"
-export FS_HOLD_PODS_GH="${FS_HOLD_PODS_GH:-yysong-worker-2}"
+# 主池 = yysong（我们管的 64）；grj 仅空闲借用时显式覆盖（见 RESOURCE.md）
+export FS_HOLD_PODS_CASE="${FS_HOLD_PODS_CASE:-yysong-master-0}"
+export FS_HOLD_PODS_C="${FS_HOLD_PODS_C:-yysong-worker-0}"
+export FS_HOLD_PODS_GH="${FS_HOLD_PODS_GH:-yysong-worker-1}"
 export FS_HOLD_PODS_XPU="${FS_HOLD_PODS_XPU:-yysong-worker-2}"
-# grj 无 /data/yinjinrun.p-huawei；bundle/结果走 AFS（yysong 仍可被 hold_exec 默认覆盖）
+# 默认走 AFS weight-share（yysong/grj 通用）。yysong 若确认 /data 真盘可写，可显式
+#   export POD_RESULTS=${DATA_HOME}/results/ascend-ais
+# grj 借用时务必保持 AFS；可读 shared bundle，禁止写 geruijun / 宋盘。
 export POD_BUNDLE="${POD_BUNDLE:-/afs-a3-241ceshi-shared/yinjinrun.p-huawei/probe-bundle}"
 export POD_RESULTS="${POD_RESULTS:-/afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais}"
 

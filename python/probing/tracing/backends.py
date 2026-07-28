@@ -6,7 +6,7 @@ include OpenTelemetry export and third-party entry points.
 Environment
 -----------
 ``PROBING_SPAN_BACKENDS``
-    Comma-separated backend names. Default: ``memtable``.
+    Comma-separated backend names. Default: ``none`` (no ``python.trace_event``).
     Built-in: ``memtable``, ``logger`` (terminal), ``otel`` (requires ``opentelemetry-sdk``),
     ``none`` (stack only). ``configure([])`` also disables persistence until ``reset()``.
 
@@ -120,7 +120,7 @@ def parse_backend_names(raw: Optional[str] = None) -> List[str]:
     value = (
         raw
         if raw is not None
-        else os.environ.get("PROBING_SPAN_BACKENDS", MEMTABLE_BACKEND)
+        else os.environ.get("PROBING_SPAN_BACKENDS", NONE_BACKEND)
     )
     names = [part.strip().lower() for part in value.split(",") if part.strip()]
     names = [n for n in names if n != NONE_BACKEND]

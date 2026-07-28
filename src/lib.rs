@@ -5,7 +5,7 @@ use anyhow::Result;
 use pyo3::prelude::*;
 
 use probing_core::{install_panic_hook, register_python_main_thread};
-use probing_python::extensions::python::{register_table_docs, ExternalTable};
+use probing_python::extensions::python::{register_table_docs, ExternalTable, PyExternalTableConfig};
 use probing_python::features::config;
 use probing_python::features::python_api::{cli_main, query_json};
 use probing_python::features::tracing;
@@ -217,6 +217,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Register all classes
     m.add_class::<ExternalTable>()?;
+    m.add_class::<PyExternalTableConfig>()?;
     m.add_function(wrap_pyfunction!(register_table_docs, m)?)?;
     m.add_function(wrap_pyfunction!(start_local, m)?)?;
     m.add_class::<TCPStore>()?;

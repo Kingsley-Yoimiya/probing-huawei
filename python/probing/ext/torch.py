@@ -103,9 +103,25 @@ def optimizer_step_post_hook(optimizer, *args, **kwargs):
         return
     if not config.enabled:
         # Soft-disable: stop sampling without tearing down hooks mid-train.
+        if tracer is not None:
+            tracer.rate = 0.0
+            tracer.layer_rate = config.layer_rate
+            tracer.config.rate = 0.0
+            tracer.config.layer_rate = config.layer_rate
+            tracer._planned_cycle = None
         _sync_live_tracers(TorchProbeConfig(enabled=False, rate=0.0))
         log.info("Torch profiling hot-disabled via config (%r)", cur)
         return
+    if tracer is not None:
+        # Prefer the live optimizer tracer (Ascend-safe); gc sweep in
+        # ``_sync_live_tracers`` can miss workers on NPU.
+        tracer.config.backward = config.backward
+        tracer.config.trace_spans = config.trace_spans
+        tracer.rate = config.rate
+        tracer.layer_rate = config.layer_rate
+        tracer.config.rate = config.rate
+        tracer.config.layer_rate = config.layer_rate
+        tracer._planned_cycle = None
     _sync_live_tracers(config)
     log.info(
         "Torch profiling hot-updated: rate=%s layer_rate=%s backward=%s (spec=%r)",

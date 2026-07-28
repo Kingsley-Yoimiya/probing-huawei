@@ -110,7 +110,9 @@ def collective_trace_config() -> CollectiveTraceConfig:
         probing.config.get_str("probing.torch.collective.trace_event")
     )
     if trace_event is None:
-        trace_event = True
+        from probing.tracing.backends import persistence_enabled
+
+        trace_event = persistence_enabled()
     return CollectiveTraceConfig(
         enabled=collective_tracing_enabled(),
         mode=mode,

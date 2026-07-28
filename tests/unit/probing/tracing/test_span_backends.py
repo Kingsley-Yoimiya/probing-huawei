@@ -32,10 +32,11 @@ def _trace_rows(n: int = 50) -> list[dict]:
     return [dict(zip(fields, data)) for _ts, data in TraceEvent.take(n)]
 
 
-def test_default_backend_is_memtable():
-    from probing.tracing import list_backends
+def test_default_backend_is_none():
+    from probing.tracing import list_backends, reset_backends
 
-    assert list_backends() == ["memtable"]
+    reset_backends()
+    assert list_backends() == []
 
 
 def test_custom_backend_receives_span_lifecycle(monkeypatch):

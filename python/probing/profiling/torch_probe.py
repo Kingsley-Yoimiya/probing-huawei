@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import os
 import time
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -41,6 +42,9 @@ def _is_float(token: str) -> bool:
 
 # Default step-level sampling probability (``PROBING_TORCH_PROFILING=on``).
 DEFAULT_SAMPLE_RATE = 0.05
+# When ``rate=0``, module hooks never sample unless
+# ``PROBING_TORCH_SPARSE_ANCHOR=1`` (then anchor every N steps below).
+DEFAULT_MIN_STEP_INTERVAL = 500
 # Default shadow cadence: 4 probed steps, then 1 torch-baseline step (hooks bypassed).
 DEFAULT_SHADOW_NORMAL = 4
 DEFAULT_SHADOW_BASELINE = 1
@@ -53,6 +57,45 @@ _DEFER_MAX_LAG = 16
 # kernels it brackets are complete and ``elapsed_time`` is a free cached read
 # rather than a blocking commit against the live stream.
 _DEFER_MIN_SETTLE = 3
+
+
+def _min_step_interval() -> int:
+    """Steps between sparse anchors when ``rate=0`` (Pillar C PR-1)."""
+    raw = os.environ.get("PROBING_TORCH_MIN_STEP_INTERVAL", "").strip()
+    if raw:
+        try:
+            n = int(raw)
+            if n > 0:
+                return n
+        except ValueError:
+            pass
+    return DEFAULT_MIN_STEP_INTERVAL
+
+
+def _env_flag(name: str, default: bool = True) -> bool:
+    """Parse a boolean env var. ``default`` used when unset or empty."""
+    raw = os.environ.get(name, "")
+    if raw is None:
+        return default
+    v = str(raw).strip().lower()
+    if not v:
+        return default
+    if v in FALSE_VALUES or v in ("0", "off", "no"):
+        return False
+    if v in TRUE_VALUES or v in ("1", "on", "yes"):
+        return True
+    return default
+
+
+def _step_timing_lazy_enabled() -> bool:
+    """PR-2 B6: skip ``python.torch_step_timing`` writes on non-culprit ranks.
+
+    **Default off** — the encoder-side localize SQL (case P3-SW-A step_ms
+    mode) needs the wall-clock rows from every rank to pick the culprit.
+    Set ``PROBING_TORCH_STEP_TIMING_LAZY=1`` to override once we have a
+    localize path that doesn't need per-rank ``step_duration_sec``.
+    """
+    return _env_flag("PROBING_TORCH_STEP_TIMING_LAZY", default=False)
 
 
 def shadow_step_in_cycle(
@@ -122,7 +165,7 @@ def torch_backend():
     return _backend
 
 
-@table
+@table(lazy=True)
 @dataclass
 class TorchTrace:
     micro_step: Optional[int] = None
@@ -146,7 +189,7 @@ class TorchTrace:
     role: str = ""
 
 
-@table
+@table(lazy=True)
 @dataclass
 class TorchStepTiming:
     """Per-step wall-clock timing for TorchProbe overhead monitoring."""
@@ -167,13 +210,28 @@ class TorchStepTiming:
     sample_mode: str = "random"
 
 
-@table
 @dataclass
 class Variables:
     micro_step: Optional[int] = None
     func: Optional[str] = None
     name: Optional[str] = None
     value: Optional[str] = None
+
+    _table = None
+
+    @classmethod
+    def _ensure_table(cls):
+        if cls._table is None:
+            cls._table = probing.ExternalTable(
+                "variables",
+                ["micro_step", "func", "name", "value"],
+            )
+        return cls._table
+
+    def save(self):
+        self._ensure_table().append(
+            [self.micro_step, self.func, self.name, self.value]
+        )
 
 
 @dataclass
@@ -739,11 +797,10 @@ class Sampler:
     def _sample_period(self) -> int:
         """Steps between samples: ``round(1/rate)`` (>=1).
 
-        ``rate <= 0`` means never sample (caller must short-circuit before
-        dividing); treated as an infinite period only as a defensive fallback.
+        ``rate <= 0`` never samples (v2 C0-b / Pillar C E3 resident arm).
         """
         if self.rate <= 0:
-            return 10**9
+            return 0
         if self.rate >= 1.0:
             return 1
         return max(1, round(1.0 / self.rate))
@@ -760,7 +817,10 @@ class Sampler:
         step and the host RNG is never touched. Cached per cycle so it stays
         stable across gradient-accumulation micro-steps.
 
-        ``rate <= 0``: enabled but never sample ``torch_trace`` (Pillar-C E1/E2).
+        ``rate <= 0``: never sample module hooks (``torch_trace`` stays empty;
+        ``torch_step_timing`` wall rows still recorded).  Sparse anchors via
+        ``PROBING_TORCH_MIN_STEP_INTERVAL`` are opt-in only when
+        ``PROBING_TORCH_SPARSE_ANCHOR=1``.
         """
         if not self.finalized or not self._auto_plan:
             return
@@ -771,10 +831,19 @@ class Sampler:
         self._sampled_mods_this_step = set()
 
         if self.rate <= 0:
+            sparse_on = os.environ.get("PROBING_TORCH_SPARSE_ANCHOR", "").strip().lower() in (
+                *TRUE_VALUES,
+                "1",
+            )
+            if not sparse_on:
+                self.sampled_step = False
+                return
+            period = _min_step_interval()
+        else:
+            period = self._sample_period()
+        if period <= 0:
             self.sampled_step = False
             return
-
-        period = self._sample_period()
         self.sampled_step = (cycle % period) == 0
 
     def should_sample(self, mod, stage: Optional[str] = None) -> bool:
@@ -1029,6 +1098,16 @@ class TorchProbe(BaseTracer, Timer, Sampler, PythonTracer, VariableTracer):
     def _record_step_timing(self, *, is_shadow: bool) -> None:
         """Persist wall-clock step duration for probed vs shadow comparison."""
         if self._step_wall_started_at is None:
+            return
+        # PR-2 B6: at rate=0 (resident phase, no SET yet) non-culprit ranks
+        # never need per-step wall rows — skip to avoid allocating the 20 MiB
+        # ``python.torch_step_timing`` ring. Shadow steps and culprit ranks
+        # (rate>0 after SET) still record as before.
+        if (
+            _step_timing_lazy_enabled()
+            and self.rate <= 0
+            and not is_shadow
+        ):
             return
         duration = time.perf_counter() - self._step_wall_started_at
         record = TorchStepTiming(

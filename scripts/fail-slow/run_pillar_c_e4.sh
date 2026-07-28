@@ -12,7 +12,7 @@ source "${ROOT}/scripts/fail-slow/env.sh"
 
 CASE_ID="${CASE_ID:-P3-SW-A}"
 DOSE="${DOSE:-loud}"
-POD="${POD:-${FS_HOLD_PODS_C:-grj-megatron-32card-0716-worker-0}}"
+POD="${POD:-${FS_HOLD_PODS_C:-yysong-worker-0}}"
 NPROC="${NPROC:-16}"
 OUT_FAMILY="${OUT_FAMILY:-pillar_c_v2}"
 RESIDENT_RATE="${RESIDENT_RATE:-0}"

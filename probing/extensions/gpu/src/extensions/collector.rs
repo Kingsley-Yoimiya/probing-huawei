@@ -19,9 +19,13 @@ use super::backend::cuda::read_utilization_by_index;
 #[cfg(all(not(target_os = "macos"), not(windows)))]
 use super::backend::read_npu_utilization_by_index;
 
-const CHUNK_SIZE: u32 = 4096;
-const NUM_CHUNKS: u32 = 8;
+use probing_memtable::ring_config;
+
 const DEFAULT_SAMPLE_INTERVAL_MS: u64 = 1000;
+
+fn gpu_util_ring_layout() -> (u32, u32) {
+    ring_config::table_mmap_chunk_layout("gpu.utilization")
+}
 
 /// Autostart interval from env, or `None` when GPU sampling should stay off.
 ///
@@ -254,11 +258,12 @@ impl GpuCollector {
     fn shared_table(&self) -> probing_memtable::MemtableResult<Arc<Mutex<ExposedTable>>> {
         let mut guard = lock_gpu_collector(&self.table);
         if guard.is_none() {
+            let (chunk_size, num_chunks) = gpu_util_ring_layout();
             *guard = Some(Arc::new(Mutex::new(ExposedTable::create(
                 "gpu.utilization",
                 &utilization_schema(),
-                CHUNK_SIZE,
-                NUM_CHUNKS,
+                chunk_size,
+                num_chunks,
             )?)));
         }
         guard.as_ref().cloned().ok_or_else(|| {

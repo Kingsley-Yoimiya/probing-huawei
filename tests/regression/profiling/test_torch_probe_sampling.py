@@ -768,6 +768,31 @@ def test_sampling_does_not_touch_global_rng():
     assert _random.getstate() == before
 
 
+def test_rate_zero_never_samples_by_default(monkeypatch):
+    """rate=0: no torch_trace rows (v2 C0-b / Pillar C E3 resident arm)."""
+    monkeypatch.delenv("PROBING_TORCH_SPARSE_ANCHOR", raising=False)
+    monkeypatch.delenv("PROBING_TORCH_MIN_STEP_INTERVAL", raising=False)
+    seq = _plan_sequence(0.0, 1500)
+    assert not any(seq)
+
+
+def test_rate_zero_sparse_anchor_cadence(monkeypatch):
+    """PROBING_TORCH_SPARSE_ANCHOR=1: rate=0 samples every N steps (default 500)."""
+    monkeypatch.setenv("PROBING_TORCH_SPARSE_ANCHOR", "1")
+    monkeypatch.delenv("PROBING_TORCH_MIN_STEP_INTERVAL", raising=False)
+    seq = _plan_sequence(0.0, 1500)
+    sampled = [c for c, s in enumerate(seq) if s]
+    assert sampled[:4] == [0, 500, 1000]
+
+
+def test_rate_zero_sparse_interval_env(monkeypatch):
+    monkeypatch.setenv("PROBING_TORCH_SPARSE_ANCHOR", "1")
+    monkeypatch.setenv("PROBING_TORCH_MIN_STEP_INTERVAL", "100")
+    seq = _plan_sequence(0.0, 500)
+    sampled = [c for c, s in enumerate(seq) if s]
+    assert sampled[:5] == [0, 100, 200, 300, 400]
+
+
 def test_random_mode_short_circuits_non_sampled_steps():
     """P1: ``random`` mode also skips hook dispatch on non-sampled steps."""
     tracer = TorchProbe(config=TorchProbeConfig(enabled=True, mode="random", rate=0.3))

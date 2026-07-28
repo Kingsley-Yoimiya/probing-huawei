@@ -15,47 +15,46 @@ use thiserror::Error;
 use super::sample::{ProcessSample, ThreadSample};
 use super::sampler::host_sampler;
 
-/// Default hot-ring capacity for `cpu.utilization` / `cpu.tasks`.
-///
-/// Legacy was 8×4KiB=32KiB (~1s @ SAMPLE_MS=50) — too small to cover Pillar-C
-/// inject window [100,300] (~110s wall) + dump margin, causing E1-off
-/// `rss_ring_misaligned_to_inject_window`. 8×1MiB=8MiB holds ~270s @ 50ms
-/// (~30KiB/s) or ~45min @ 500ms.
-const DEFAULT_CHUNK_SIZE: u32 = 1024 * 1024;
-const DEFAULT_NUM_CHUNKS: u32 = 8;
-const MIN_CHUNK_SIZE: u32 = 4096;
-const MAX_CHUNK_SIZE: u32 = 16 * 1024 * 1024;
-const MIN_NUM_CHUNKS: u32 = 4;
-const MAX_NUM_CHUNKS: u32 = 64;
+use probing_memtable::ring_config;
+
 const DEFAULT_SAMPLE_INTERVAL_MS: u64 = 1000;
 
 /// `(chunk_size_bytes, num_chunks)` for CPU mmap rings.
 ///
 /// Env overrides (optional):
-/// - `PROBING_CPU_RING_MB` — total capacity in MiB (split across 8 chunks)
+/// - `PROBING_EXTTBL_CPU_UTILIZATION_MB` / `PROBING_EXTTBL_CPU_TASKS_MB`
+/// - `PROBING_CPU_RING_MB` — legacy alias (applies to both tables)
 /// - `PROBING_CPU_CHUNK_BYTES` / `PROBING_CPU_NUM_CHUNKS` — explicit layout
-fn cpu_mmap_ring_config() -> (u32, u32) {
+fn cpu_mmap_ring_config(table: &str) -> (u32, u32) {
     if let Some(mb) = std::env::var("PROBING_CPU_RING_MB")
         .ok()
         .and_then(|s| s.trim().parse::<u32>().ok())
         .filter(|&v| v > 0)
     {
-        let total = (mb as u64).saturating_mul(1024 * 1024);
-        let num = DEFAULT_NUM_CHUNKS;
-        let chunk = ((total / num as u64) as u32).clamp(MIN_CHUNK_SIZE, MAX_CHUNK_SIZE);
+        let num = 8u32;
+        let chunk = ((mb as u64 * 1024 * 1024) / num as u64) as u32;
+        return (chunk.clamp(4096, 16 * 1024 * 1024), num);
+    }
+    if std::env::var("PROBING_CPU_CHUNK_BYTES").is_ok()
+        || std::env::var("PROBING_CPU_NUM_CHUNKS").is_ok()
+    {
+        const MIN_CHUNK_SIZE: u32 = 4096;
+        const MAX_CHUNK_SIZE: u32 = 16 * 1024 * 1024;
+        const MIN_NUM_CHUNKS: u32 = 4;
+        const MAX_NUM_CHUNKS: u32 = 64;
+        let chunk = std::env::var("PROBING_CPU_CHUNK_BYTES")
+            .ok()
+            .and_then(|s| s.trim().parse::<u32>().ok())
+            .map(|v| v.clamp(MIN_CHUNK_SIZE, MAX_CHUNK_SIZE))
+            .unwrap_or(1024 * 1024);
+        let num = std::env::var("PROBING_CPU_NUM_CHUNKS")
+            .ok()
+            .and_then(|s| s.trim().parse::<u32>().ok())
+            .map(|v| v.clamp(MIN_NUM_CHUNKS, MAX_NUM_CHUNKS))
+            .unwrap_or(8);
         return (chunk, num);
     }
-    let chunk = std::env::var("PROBING_CPU_CHUNK_BYTES")
-        .ok()
-        .and_then(|s| s.trim().parse::<u32>().ok())
-        .map(|v| v.clamp(MIN_CHUNK_SIZE, MAX_CHUNK_SIZE))
-        .unwrap_or(DEFAULT_CHUNK_SIZE);
-    let num = std::env::var("PROBING_CPU_NUM_CHUNKS")
-        .ok()
-        .and_then(|s| s.trim().parse::<u32>().ok())
-        .map(|v| v.clamp(MIN_NUM_CHUNKS, MAX_NUM_CHUNKS))
-        .unwrap_or(DEFAULT_NUM_CHUNKS);
-    (chunk, num)
+    ring_config::table_mmap_chunk_layout(table)
 }
 
 /// Autostart interval from env, or `None` when CPU sampling is disabled.
@@ -307,23 +306,24 @@ struct CollectorTables {
 
 impl CollectorTables {
     fn open() -> probing_memtable::MemtableResult<Self> {
-        let (chunk_size, num_chunks) = cpu_mmap_ring_config();
+        let (util_chunk, util_chunks) = cpu_mmap_ring_config("cpu.utilization");
+        let (task_chunk, task_chunks) = cpu_mmap_ring_config("cpu.tasks");
         log::info!(
-            "cpu memtable ring: chunk_size={chunk_size} num_chunks={num_chunks} capacity_bytes={}",
-            chunk_size as u64 * num_chunks as u64
+            "cpu memtable ring: utilization chunk_size={util_chunk} num_chunks={util_chunks} capacity_bytes={}",
+            util_chunk as u64 * util_chunks as u64
         );
         Ok(Self {
             utilization: Mutex::new(ExposedTable::create(
                 "cpu.utilization",
                 &utilization_schema(),
-                chunk_size,
-                num_chunks,
+                util_chunk,
+                util_chunks,
             )?),
             tasks: Mutex::new(ExposedTable::create(
                 "cpu.tasks",
                 &tasks_schema(),
-                chunk_size,
-                num_chunks,
+                task_chunk,
+                task_chunks,
             )?),
         })
     }
@@ -512,19 +512,18 @@ mod tests {
         std::env::remove_var("PROBING_CPU_RING_MB");
         std::env::remove_var("PROBING_CPU_CHUNK_BYTES");
         std::env::remove_var("PROBING_CPU_NUM_CHUNKS");
-        let (chunk, num) = cpu_mmap_ring_config();
-        assert_eq!(chunk, DEFAULT_CHUNK_SIZE);
-        assert_eq!(num, DEFAULT_NUM_CHUNKS);
-        // ≥4MiB: covers inject wall+margin @ SAMPLE_MS=50 (~30KiB/s → ≥130s)
-        assert!(chunk as u64 * num as u64 >= 4 * 1024 * 1024);
+        let (chunk, num) = cpu_mmap_ring_config("cpu.utilization");
+        assert_eq!(num, 8);
+        // ≥8MiB per PR-1 default
+        assert!(chunk as u64 * num as u64 >= 8 * 1024 * 1024);
     }
 
     #[test]
     fn ring_mb_env_overrides_capacity() {
         let _guard = ENV_TEST_LOCK.lock().unwrap();
         std::env::set_var("PROBING_CPU_RING_MB", "4");
-        let (chunk, num) = cpu_mmap_ring_config();
-        assert_eq!(num, DEFAULT_NUM_CHUNKS);
+        let (chunk, num) = cpu_mmap_ring_config("cpu.utilization");
+        assert_eq!(num, 8);
         assert_eq!(chunk as u64 * num as u64, 4 * 1024 * 1024);
         std::env::remove_var("PROBING_CPU_RING_MB");
     }

@@ -9,7 +9,7 @@ source "${ROOT}/scripts/fail-slow/env.sh"
 
 CASE_ID="${CASE_ID:-P3-SW-A}"
 DOSE="${DOSE:-loud}"
-POD="${POD:-grj-megatron-32card-0716-worker-0}"
+POD="${POD:-yysong-worker-0}"
 NPROC="${NPROC:-16}"
 RATES="${RATES:-0.001 0.05 0.5 1.0}"
 RESIDENT_RATE="${RESIDENT_RATE:-0}"

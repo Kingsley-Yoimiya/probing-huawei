@@ -116,7 +116,13 @@ mod writer;
 pub use cache::{CachedCursor, CachedReader};
 pub use docs::infer_extern_column_dtype;
 pub use error::{MemtableError, Result as MemtableResult};
+pub mod ring_config;
 pub use layout::{ring_overwrite_stats, MAGIC_MEMT};
+pub use ring_config::{
+    per_table_default_mb, per_table_default_retain_secs, per_table_default_retain_steps,
+    table_mmap_chunk_layout, table_retain_secs, table_retain_steps, table_retention,
+    table_ring_capacity_bytes, TableRetention,
+};
 pub use memh::{
     init_buf as init_memh_buf, validate_memh, InsertError, InsertResult, MemhInitError,
     MemhValidateError, MemhView, MemhWriter, SharedMemhWriter, TypedValue, MAGIC_MEMH,

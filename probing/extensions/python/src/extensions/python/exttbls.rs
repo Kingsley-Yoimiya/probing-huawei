@@ -21,7 +21,7 @@ use probing_core::runtime::{BlockOnFallback, RuntimeError};
 use probing_core::sync::lock_mutex;
 use probing_memtable::discover::ExposedTable;
 use probing_memtable::docs;
-use probing_memtable::{infer_extern_column_dtype, DType, Schema as MtSchema, Value};
+use probing_memtable::{infer_extern_column_dtype, ring_config, DType, Schema as MtSchema, Value};
 use probing_proto::prelude::Ele;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyType};
@@ -131,14 +131,56 @@ pub struct PyExternalTableConfig {
     discard_threshold: usize,
     #[pyo3(get)]
     discard_strategy: String,
+    /// PR-3: retain-last-N-steps hint (`None` → capacity-only).
+    #[pyo3(get)]
+    retain_steps: Option<u32>,
+    /// PR-3: retain-last-N-seconds hint (`None` → capacity-only).
+    #[pyo3(get)]
+    retain_secs: Option<u32>,
 }
 
 impl Default for PyExternalTableConfig {
     fn default() -> Self {
+        Self::config_for_table("")
+    }
+}
+
+impl PyExternalTableConfig {
+    /// Per-table ring defaults + ``PROBING_EXTTBL_<TABLE>_MB`` /
+    /// ``..._RETAIN_STEPS`` / ``..._RETAIN_SECS`` overrides.
+    ///
+    /// Size (PR-1):
+    /// * ``cpu.utilization`` / ``cpu.tasks`` / ``gpu.utilization`` → 8 MiB
+    /// * ``gpu.hccs`` → 4 MiB
+    /// * other → 20 MiB
+    ///
+    /// Retention (PR-3, independent from size):
+    /// * ``python.torch_trace`` / ``python.comm_collective`` →
+    ///   `retain_steps = Some(500)`
+    /// * ``cpu.utilization`` / ``gpu.utilization`` →
+    ///   `retain_secs = Some(3600)`
+    /// * other → both `None`
+    pub fn config_for_table(name: &str) -> Self {
+        let qualified = if name.contains('.') {
+            name.to_string()
+        } else if name.is_empty() {
+            String::new()
+        } else {
+            format!("{EXTERN_TABLE_SCHEMA}.{name}")
+        };
+        let lookup = if qualified.is_empty() {
+            "python.torch_trace"
+        } else {
+            qualified.as_str()
+        };
+        let discard_threshold = ring_config::table_ring_capacity_bytes(lookup);
+        let retention = ring_config::table_retention(lookup);
         PyExternalTableConfig {
             chunk_size: 10000,
-            discard_threshold: 20_000_000,
+            discard_threshold,
             discard_strategy: "BaseMemorySize".to_string(),
+            retain_steps: retention.retain_steps,
+            retain_secs: retention.retain_secs,
         }
     }
 }
@@ -146,12 +188,26 @@ impl Default for PyExternalTableConfig {
 #[pymethods]
 impl PyExternalTableConfig {
     #[new]
-    fn new(chunk_size: usize, discard_threshold: usize, discard_strategy: String) -> Self {
+    #[pyo3(signature = (chunk_size, discard_threshold, discard_strategy, retain_steps=None, retain_secs=None))]
+    fn new(
+        chunk_size: usize,
+        discard_threshold: usize,
+        discard_strategy: String,
+        retain_steps: Option<u32>,
+        retain_secs: Option<u32>,
+    ) -> Self {
         PyExternalTableConfig {
             chunk_size,
             discard_threshold,
             discard_strategy,
+            retain_steps,
+            retain_secs,
         }
+    }
+
+    #[classmethod]
+    fn for_table(_cls: &Bound<'_, PyType>, name: &str) -> Self {
+        Self::config_for_table(name)
     }
 
     #[allow(clippy::wrong_self_convention)] // Python-facing method name, kept for API compat
@@ -165,6 +221,12 @@ impl PyExternalTableConfig {
         }
         if let Err(e) = dict.set_item("discard_strategy", &self.discard_strategy) {
             log::error!("PyExternalTableConfig::into_py discard_strategy: {e}");
+        }
+        if let Err(e) = dict.set_item("retain_steps", self.retain_steps) {
+            log::error!("PyExternalTableConfig::into_py retain_steps: {e}");
+        }
+        if let Err(e) = dict.set_item("retain_secs", self.retain_secs) {
+            log::error!("PyExternalTableConfig::into_py retain_secs: {e}");
         }
         dict.into()
     }
@@ -264,6 +326,27 @@ pub struct ExternBacking {
     table: Option<ExposedTable>,
     table_doc: Option<String>,
     column_docs: HashMap<String, String>,
+    // ── PR-3 retention state ─────────────────────────────────────────
+    /// Retain-last-N-steps window (chunks whose min_step is younger than
+    /// `latest_step - retain_steps` must not be recycled).
+    retain_steps: Option<u32>,
+    /// Retain-last-N-seconds window (chunks whose min_ts is younger than
+    /// `latest_ts - retain_secs*1e6` must not be recycled).
+    retain_secs: Option<u32>,
+    /// Column index of a monotonic training-step column, when the schema
+    /// has one named exactly `step`. Detected on first `ensure_table`.
+    step_col_idx: Option<usize>,
+    /// Per-chunk oldest step / µs-timestamp observed by the writer, sized
+    /// once the table is registered. `i64::MAX` = chunk empty.
+    per_chunk_min_step: Vec<i64>,
+    per_chunk_min_ts: Vec<i64>,
+    /// Counters exposed for PR-3 verify: how many times a chunk recycle
+    /// dropped rows younger than the retention window.
+    retention_violations_step: u64,
+    retention_violations_secs: u64,
+    /// One-shot cache of `write_chunk` before each push, so the writer
+    /// can detect ring advances after the fact.
+    prev_write_chunk: Option<usize>,
 }
 
 impl ExternBacking {
@@ -277,6 +360,11 @@ impl ExternBacking {
         if !column_docs.is_empty() || table_doc.is_some() {
             register_python_table_docs(name, table_doc.as_deref(), &column_docs);
         }
+        // PR-3 retention lookup uses the qualified name that mmap uses
+        // (e.g. `python.torch_trace`), so a bare "torch_trace" also hits
+        // the per-table defaults.
+        let qualified = mmap_basename(name);
+        let retention = ring_config::table_retention(&qualified);
         Self {
             name: name.to_string(),
             columns,
@@ -285,7 +373,27 @@ impl ExternBacking {
             table: None,
             table_doc,
             column_docs,
+            retain_steps: retention.retain_steps,
+            retain_secs: retention.retain_secs,
+            step_col_idx: None,
+            per_chunk_min_step: vec![i64::MAX; NUM_CHUNKS as usize],
+            per_chunk_min_ts: vec![i64::MAX; NUM_CHUNKS as usize],
+            retention_violations_step: 0,
+            retention_violations_secs: 0,
+            prev_write_chunk: None,
         }
+    }
+
+    /// Locate an integer column named exactly `step` (case-sensitive), used
+    /// as the retention key for step-indexed tables. Legacy `python.*`
+    /// schemas prepend `timestamp` so the caller offsets accordingly.
+    fn detect_step_col(name: &str, columns: &[String], dtypes: &[DType]) -> Option<usize> {
+        let ts_offset = if uses_timestamp_column(name) { 1 } else { 0 };
+        columns.iter().position(|c| c == "step").and_then(|i| {
+            let idx = i + ts_offset;
+            let dt = dtypes.get(i).copied()?;
+            matches!(dt, DType::I32 | DType::I64 | DType::U32 | DType::U64).then_some(idx)
+        })
     }
 
     fn ensure_registered(&mut self) -> Result<(), ExternTableError> {
@@ -307,6 +415,7 @@ impl ExternBacking {
         let chunk_bytes = ring_chunk_bytes(self.capacity_bytes);
         let filename = mmap_basename(&self.name);
         let table = ExposedTable::create(&filename, &schema, chunk_bytes, NUM_CHUNKS)?;
+        self.step_col_idx = Self::detect_step_col(&self.name, &self.columns, &self.dtypes);
         self.table = Some(table);
         Ok(())
     }
@@ -324,6 +433,9 @@ impl ExternBacking {
         }
         self.table = None;
         self.dtypes.clear();
+        self.per_chunk_min_step = vec![i64::MAX; NUM_CHUNKS as usize];
+        self.per_chunk_min_ts = vec![i64::MAX; NUM_CHUNKS as usize];
+        self.prev_write_chunk = None;
 
         let dtypes: Vec<DType> = first_row.iter().map(ele_dtype).collect();
         let schema = build_schema_with_docs(
@@ -336,6 +448,7 @@ impl ExternBacking {
         let chunk_bytes = ring_chunk_bytes(self.capacity_bytes);
         let filename = mmap_basename(&self.name);
         let table = ExposedTable::create(&filename, &schema, chunk_bytes, NUM_CHUNKS)?;
+        self.step_col_idx = Self::detect_step_col(&self.name, &self.columns, &dtypes);
         self.dtypes = dtypes;
         self.table = Some(table);
         Ok(())
@@ -358,14 +471,148 @@ impl ExternBacking {
         }
         row.extend(owned.iter().map(owned_to_value));
 
+        // Extract this row's step (if the table has one) before we lose
+        // ownership; used by both the pre-push tracker and the
+        // post-advance retention check.
+        let this_step = self.extract_step(&owned);
+
         // ExposedTable::push_row validates schema and auto-advances chunks.
         let Some(table) = self.table.as_mut() else {
             return Err(ExternTableError::NotInitialized);
         };
+        let write_chunk_before = table.view().write_chunk();
         if !table.push_row(&row) {
             return Err(ExternTableError::PushFailed);
         }
+        let write_chunk_after = table.view().write_chunk();
+
+        // Post-write bookkeeping: update per-chunk min_step for the chunk
+        // this row landed in, and (if the writer advanced) check whether
+        // the just-vacated chunk still held rows within the retention
+        // window — that's a truncation event we want to expose.
+        //
+        // MEMT auto-advances only when the current chunk is full, so
+        // `write_chunk_after != write_chunk_before` means the row that
+        // just landed spilled to the next slot. If that spill overwrote
+        // a chunk still within retention, warn once per event.
+        if let Some(step) = this_step {
+            let slot = write_chunk_after;
+            if self.per_chunk_min_step[slot] == i64::MAX
+                || step < self.per_chunk_min_step[slot]
+            {
+                self.per_chunk_min_step[slot] = step;
+            }
+        }
+        // timestamp always tracked (legacy python.* tables use i64 µs);
+        // qualified tables may not — we still store whatever the writer
+        // handed us (`timestamp` arg, monotonic-ish per-call).
+        {
+            let slot = write_chunk_after;
+            if self.per_chunk_min_ts[slot] == i64::MAX
+                || timestamp < self.per_chunk_min_ts[slot]
+            {
+                self.per_chunk_min_ts[slot] = timestamp;
+            }
+        }
+
+        if write_chunk_after != write_chunk_before {
+            self.check_retention_on_advance(
+                write_chunk_after,
+                this_step,
+                timestamp,
+            );
+            // The chunk we just moved *into* is being recycled; reset its
+            // tracked min_* to the row we just wrote (which is now the
+            // oldest row in that slot post-recycle).
+            self.per_chunk_min_step[write_chunk_after] = this_step.unwrap_or(i64::MAX);
+            self.per_chunk_min_ts[write_chunk_after] = timestamp;
+        }
+
+        self.prev_write_chunk = Some(write_chunk_after);
         Ok(())
+    }
+
+    /// Fetch the step from an owned row (post-dtype coercion). Only
+    /// numeric dtypes count; strings and floats-as-step are ignored.
+    fn extract_step(&self, owned: &[OwnedVal]) -> Option<i64> {
+        let idx = self.step_col_idx?;
+        // step_col_idx is expressed in mmap-column space (accounting for
+        // the leading `timestamp` for legacy python.* tables). owned[] is
+        // in user-column space, so subtract the timestamp offset back.
+        let user_idx = if uses_timestamp_column(&self.name) {
+            idx.checked_sub(1)?
+        } else {
+            idx
+        };
+        owned.get(user_idx).and_then(|v| match v {
+            OwnedVal::I32(x) => Some(*x as i64),
+            OwnedVal::I64(x) => Some(*x),
+            OwnedVal::U64(x) => Some(*x as i64),
+            OwnedVal::U8(x) => Some(*x as i64),
+            _ => None,
+        })
+    }
+
+    /// Called after a ring advance (`write_chunk` incremented). The chunk
+    /// at `slot_now` is the destination we're about to overwrite; if its
+    /// pre-recycle content was still within the retention window, we log
+    /// a `retention truncated` warning and bump the counter.
+    fn check_retention_on_advance(
+        &mut self,
+        slot_now: usize,
+        current_step: Option<i64>,
+        current_ts: i64,
+    ) {
+        if let (Some(retain_steps), Some(cur_step)) = (self.retain_steps, current_step) {
+            let vacated_min = self.per_chunk_min_step[slot_now];
+            let cutoff = cur_step.saturating_sub(retain_steps as i64);
+            // vacated_min == i64::MAX → empty chunk, no violation.
+            if vacated_min != i64::MAX && vacated_min >= cutoff {
+                self.retention_violations_step =
+                    self.retention_violations_step.saturating_add(1);
+                log::warn!(
+                    "retention truncated: table={} recycled chunk={} min_step={} cutoff={} (retain_steps={})",
+                    self.name, slot_now, vacated_min, cutoff, retain_steps
+                );
+            }
+        }
+        if let Some(retain_secs) = self.retain_secs {
+            let vacated_min = self.per_chunk_min_ts[slot_now];
+            let cutoff = current_ts.saturating_sub((retain_secs as i64).saturating_mul(1_000_000));
+            if vacated_min != i64::MAX && vacated_min >= cutoff {
+                self.retention_violations_secs =
+                    self.retention_violations_secs.saturating_add(1);
+                log::warn!(
+                    "retention truncated: table={} recycled chunk={} min_ts={} cutoff={} (retain_secs={})",
+                    self.name, slot_now, vacated_min, cutoff, retain_secs
+                );
+            }
+        }
+    }
+
+    /// Expose current retention counters and effective config to Python
+    /// (used by the smoke tests and by future SQL introspection).
+    pub fn retention_snapshot(&self) -> (Option<u32>, Option<u32>, u64, u64) {
+        (
+            self.retain_steps,
+            self.retain_secs,
+            self.retention_violations_step,
+            self.retention_violations_secs,
+        )
+    }
+
+    /// Override the retention window at runtime. Called by
+    /// `probing.core.config` when a `SET probing.exttbl.<t>.retain_*`
+    /// arrives; returns the previous value so the caller can log a diff.
+    pub fn set_retention(&mut self, steps: Option<u32>, secs: Option<u32>) -> (Option<u32>, Option<u32>) {
+        let prev = (self.retain_steps, self.retain_secs);
+        if steps.is_some() {
+            self.retain_steps = steps;
+        }
+        if secs.is_some() {
+            self.retain_secs = secs;
+        }
+        prev
     }
 
     fn read_row_values(&self, cursor: &mut probing_memtable::RowCursor<'_>) -> Vec<Ele> {
@@ -473,12 +720,17 @@ impl ExternalTable {
     fn create_backing(
         name: &str,
         columns: Vec<String>,
-        discard_threshold: usize,
+        discard_threshold: Option<usize>,
         discard_strategy: &str,
         table_doc: Option<String>,
         column_docs: HashMap<String, String>,
+        retain_steps: Option<u32>,
+        retain_secs: Option<u32>,
     ) -> Arc<Mutex<ExternBacking>> {
-        let capacity = ring_capacity_bytes(discard_threshold, discard_strategy);
+        let threshold = discard_threshold.unwrap_or_else(|| {
+            PyExternalTableConfig::config_for_table(name).discard_threshold
+        });
+        let capacity = ring_capacity_bytes(threshold, discard_strategy);
         let backing = Arc::new(Mutex::new(ExternBacking::new(
             name,
             columns,
@@ -486,6 +738,10 @@ impl ExternalTable {
             table_doc,
             column_docs,
         )));
+        // Explicit overrides win over env/default retention.
+        if retain_steps.is_some() || retain_secs.is_some() {
+            lock_backing(backing.as_ref()).set_retention(retain_steps, retain_secs);
+        }
         lock_backing(backing.as_ref())
             .ensure_registered()
             .unwrap_or_else(|e| {
@@ -498,15 +754,23 @@ impl ExternalTable {
 #[pymethods]
 impl ExternalTable {
     #[new]
-    #[pyo3(signature = (name, columns, chunk_size = 10000, discard_threshold = 20_000_000, discard_strategy = "BaseMemorySize".to_string(), table_doc = None, column_docs = None))]
+    #[pyo3(signature = (
+        name, columns, chunk_size = 10000, discard_threshold = None,
+        discard_strategy = "BaseMemorySize".to_string(),
+        table_doc = None, column_docs = None,
+        retain_steps = None, retain_secs = None,
+    ))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
         name: &str,
         columns: Vec<String>,
         chunk_size: usize,
-        discard_threshold: usize,
+        discard_threshold: Option<usize>,
         discard_strategy: String,
         table_doc: Option<String>,
         column_docs: Option<HashMap<String, String>>,
+        retain_steps: Option<u32>,
+        retain_secs: Option<u32>,
     ) -> Self {
         let _ = chunk_size; // ring chunking is byte-based; kept for API compat
         let name = name.to_string();
@@ -519,6 +783,8 @@ impl ExternalTable {
                 &discard_strategy,
                 table_doc,
                 column_docs.unwrap_or_default(),
+                retain_steps,
+                retain_secs,
             );
             lock_extern_tables().insert(name, backing.clone());
             ExternalTable(Some(backing), ncolumn)
@@ -542,23 +808,34 @@ impl ExternalTable {
     }
 
     #[classmethod]
-    #[pyo3(signature = (name, columns, chunk_size = 10000, discard_threshold = 20_000_000, discard_strategy = "BaseMemorySize".to_string(), table_doc = None, column_docs = None))]
+    #[pyo3(signature = (
+        name, columns, chunk_size = 10000, discard_threshold = None,
+        discard_strategy = "BaseMemorySize".to_string(),
+        table_doc = None, column_docs = None,
+        retain_steps = None, retain_secs = None,
+    ))]
     #[allow(clippy::too_many_arguments)]
     fn get_or_create(
         _cls: &Bound<'_, PyType>,
         name: &str,
         columns: Vec<String>,
         chunk_size: usize,
-        discard_threshold: usize,
+        discard_threshold: Option<usize>,
         discard_strategy: String,
         table_doc: Option<String>,
         column_docs: Option<HashMap<String, String>>,
+        retain_steps: Option<u32>,
+        retain_secs: Option<u32>,
     ) -> PyResult<ExternalTable> {
         let _ = chunk_size;
         let name = name.to_string();
         with_detached_native(move || {
             let mut binding = lock_extern_tables();
             if let Some(backing) = binding.get(&name) {
+                // Existing table: allow SET-style retention override.
+                if retain_steps.is_some() || retain_secs.is_some() {
+                    lock_backing(backing.as_ref()).set_retention(retain_steps, retain_secs);
+                }
                 let ncolumn = lock_backing(backing.as_ref()).columns.len();
                 Ok(ExternalTable(Some(backing.clone()), ncolumn))
             } else {
@@ -570,6 +847,8 @@ impl ExternalTable {
                     &discard_strategy,
                     table_doc,
                     column_docs.unwrap_or_default(),
+                    retain_steps,
+                    retain_secs,
                 );
                 binding.insert(name, backing.clone());
                 Ok(ExternalTable(Some(backing), ncolumn))
@@ -649,6 +928,36 @@ impl ExternalTable {
             Ok(result)
         })
     }
+
+    /// Return a dict `{retain_steps, retain_secs, violations_step,
+    /// violations_secs}` — used by PR-3 smoke tests to verify the
+    /// retention window is being observed.
+    fn retention(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let backing = require_backing(&self.0)?.clone();
+        // No Python↔native re-entry needed here; a plain locked read
+        // avoids the `with_detached_native` fallback-type bound.
+        let (steps, secs, vs, vt) = lock_backing(backing.as_ref()).retention_snapshot();
+        let dict = PyDict::new(py);
+        dict.set_item("retain_steps", steps)?;
+        dict.set_item("retain_secs", secs)?;
+        dict.set_item("violations_step", vs)?;
+        dict.set_item("violations_secs", vt)?;
+        Ok(dict.into())
+    }
+
+    /// Runtime override of the retention window. `None` on either arg
+    /// leaves that dimension unchanged. Returns the previous
+    /// `(retain_steps, retain_secs)` for logging.
+    #[pyo3(signature = (retain_steps=None, retain_secs=None))]
+    fn set_retention(
+        &mut self,
+        retain_steps: Option<u32>,
+        retain_secs: Option<u32>,
+    ) -> PyResult<(Option<u32>, Option<u32>)> {
+        let backing = require_backing(&self.0)?.clone();
+        let prev = lock_backing(backing.as_ref()).set_retention(retain_steps, retain_secs);
+        Ok(prev)
+    }
 }
 
 /// Register table/column documentation for SQL `DESCRIBE` (without creating a table).
@@ -685,6 +994,45 @@ mod register_docs_tests {
             row.columns.get("latency_ms"),
             Some(&"latency in ms".to_string())
         );
+    }
+}
+
+#[cfg(test)]
+mod for_table_tests {
+    use super::*;
+
+    #[test]
+    fn for_table_sets_tiered_defaults() {
+        let cpu = PyExternalTableConfig::config_for_table("cpu.utilization");
+        assert_eq!(cpu.discard_threshold, 8 * 1024 * 1024);
+        let hccs = PyExternalTableConfig::config_for_table("gpu.hccs");
+        assert_eq!(hccs.discard_threshold, 4 * 1024 * 1024);
+    }
+
+    /// PR-3: `for_table` also populates the retain window matching the
+    /// defaults in `ring_config`. torch_trace → 500 steps, cpu.util →
+    /// 3600 s. Ensures the config surface exposes what the write path
+    /// actually enforces.
+    #[test]
+    fn retain_steps_default_by_table() {
+        let tt = PyExternalTableConfig::config_for_table("python.torch_trace");
+        assert_eq!(tt.retain_steps, Some(500));
+        assert_eq!(tt.retain_secs, None);
+
+        let comm = PyExternalTableConfig::config_for_table("python.comm_collective");
+        assert_eq!(comm.retain_steps, Some(500));
+
+        let cpu = PyExternalTableConfig::config_for_table("cpu.utilization");
+        assert_eq!(cpu.retain_steps, None);
+        assert_eq!(cpu.retain_secs, Some(3600));
+
+        let gpu = PyExternalTableConfig::config_for_table("gpu.utilization");
+        assert_eq!(gpu.retain_secs, Some(3600));
+
+        // Unqualified names route through `python.<name>`, so bare
+        // `torch_trace` should still land the step default.
+        let short = PyExternalTableConfig::config_for_table("torch_trace");
+        assert_eq!(short.retain_steps, Some(500));
     }
 }
 
@@ -769,8 +1117,10 @@ if not hasattr(probing, "_made_{name}"):
             "table1",
             vec!["a".to_string(), "b".to_string()],
             10000,
-            20000000,
+            Some(20000000),
             "BaseMemorySize".to_string(),
+            None,
+            None,
             None,
             None,
         );
@@ -789,8 +1139,10 @@ if not hasattr(probing, "_made_{name}"):
                 "op".to_string(),
             ],
             10000,
-            20_000_000,
+            Some(20_000_000),
             "BaseMemorySize".to_string(),
+            None,
+            None,
             None,
             None,
         );
@@ -852,8 +1204,10 @@ probing.ExternalTable.drop("table_to_drop")
             "roundtrip",
             vec!["x".to_string(), "msg".to_string()],
             10000,
-            1_000_000,
+            Some(1_000_000),
             "BaseMemorySize".to_string(),
+            None,
+            None,
             None,
             None,
         );
@@ -881,8 +1235,10 @@ probing.ExternalTable.drop("table_to_drop")
             "nccl.proxy_ops",
             vec!["rank".to_string()],
             10000,
-            1_000_000,
+            Some(1_000_000),
             "BaseMemorySize".to_string(),
+            None,
+            None,
             None,
             None,
         );

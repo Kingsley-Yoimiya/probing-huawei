@@ -22,11 +22,10 @@ use super::backend::npu::hccs::{
     discover_hccs_targets, sample_hccs_bw, sample_hccs_chip, HccsChipSample,
 };
 
-const CHUNK_SIZE: u32 = 4096;
-const NUM_CHUNKS: u32 = 8;
+use probing_memtable::ring_config;
+
 const DEFAULT_SAMPLE_INTERVAL_MS: u64 = 1000;
 
-#[derive(Debug, Clone)]
 struct PrevCounters {
     at: Instant,
     tx_bytes: u64,
@@ -217,11 +216,13 @@ impl HccsCollector {
     fn shared_table(&self) -> probing_memtable::MemtableResult<Arc<Mutex<ExposedTable>>> {
         let mut guard = lock_collector(&self.table);
         if guard.is_none() {
+            let (chunk_size, num_chunks) =
+                ring_config::table_mmap_chunk_layout("gpu.hccs");
             *guard = Some(Arc::new(Mutex::new(ExposedTable::create(
                 "gpu.hccs",
                 &hccs_schema(),
-                CHUNK_SIZE,
-                NUM_CHUNKS,
+                chunk_size,
+                num_chunks,
             )?)));
         }
         guard.as_ref().cloned().ok_or_else(|| {
