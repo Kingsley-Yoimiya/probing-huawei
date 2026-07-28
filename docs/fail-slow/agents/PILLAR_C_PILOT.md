@@ -26,7 +26,7 @@
 ## 身份 / 落盘 / 资源（继承 env.sh，勿另立）
 
 - `source project/probing-huawei/scripts/fail-slow/env.sh`；进集群 **SYY**；落盘 **`yinjinrun.p-huawei`** → `$LOCAL_RESULT_ROOT_BASE`（默认 `results/ascend-ais/`）。
-- 跳板 kubectl=`/root/.cache/volcano/kubectl/kubectl`；hold-exec 默认 **`grj-megatron-32card-0716-worker-0`**（空闲借用）。
+- 跳板 kubectl=`/root/.cache/volcano/kubectl/kubectl`；hold-exec 默认 **`yysong-worker-0`**（主池）；备选 grj-w0（IDLE+让路）。
 - **本卡可单卡小跑**：门禁是短跑；勿抢 Dose 的 grj-master；**仍不碰 a3**；grj 对方训练再现则让路。
 - grj 环境：`POD_BUNDLE` / `POD_RESULTS` 见 RESOURCE.md（无 `/data/yinjinrun.p-huawei`）。
 - 结果落 `$LOCAL_RESULT_ROOT_BASE/_prep/pillar_c_gate/`。

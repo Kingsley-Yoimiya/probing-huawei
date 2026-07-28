@@ -12,7 +12,8 @@
 
 - 改「§2.1 全局固定」任一格 = 之前所有昇腾 run 不可比 → 先停、写清理由再改。
 - case **不写预写检测文档**；检测方案探索后冻结进脚本，速览只记本文件 §3。
-- 借 `songyiyang.p` **只用于进集群**；落盘、作业前缀、镜像 secret 一律 `yinjinrun.p-huawei`。**禁止**碰 `yysong-*` / `songyiyang` AFS / `/afs-a3-241ceshi-shared/yysong`。
+- 借 `songyiyang.p` **只用于进集群**；落盘、作业前缀、镜像 secret 一律 `yinjinrun.p-huawei`。  
+  **允许** hold-exec `yysong-*`（我们管的 64）。**禁止**写宋 AFS / `/afs-a3-241ceshi-shared/yysong`、删/改 `yysong` vcjob。
 
 ---
 
@@ -306,6 +307,7 @@ Loud 归档 [`agents/LOOP_LOUD.md`](agents/LOOP_LOUD.md)。
 
 | 日期 | 变更 |
 |---|---|
+| 2026-07-27 | **资源对齐回 yysong 主池**：`env.sh` / RESOURCE / CASE_RUNNER / LOOP / handbook / cluster-identity 默认从临时 grj 拨回 **yysong**（C=`yysong-worker-0`，Case=`yysong-master-0`）；grj 仅 IDLE 备选+让路；澄清「勿碰 yysong」=禁止写宋盘/删 vcjob，**允许** hold-exec；Pillar C v3 现役；派遣 **composer-2.5** |
 | 2026-07-27 | **Param-Calib 主队列收官**：批次1–4 全 DONE；20m loop 停；`LOOP_LAST_PARAM_CALIB` status=CLOSED；产物根 `results/ascend-ais/param_calib/` |
 | 2026-07-27 | **Param-Calib ③-C DONE（批次4收官）**：`3c_local_vs_global_upgrade.py`；scope=**local_suspect_only**；量比 local/global=**0.0625**（16×）；D4=D4 同级；复用 ③-A `014151` victim 臂+离线外推（避 SET_SCOPE=all 死锁 `012805`）；Dynolog 对照文献+20–44%/沐曦 P3-SW-A≈+53%；`param_calib/3C_local_vs_global_upgrade/`；**主队列可收官** |
 | 2026-07-27 | **Param-Calib ④-B DONE**：`4b_fanout_latency.py`；N∈{8,16,32,64}×FanoutScope；设计切换 **N≥17→Coordinator**（≤16 Node；延迟交叉@8）；N=64 coord≈21.5ms / peers 63→3；mode=`simulated_network+local_http_calib`（无伪造 64 卡 live）；`param_calib/4B_fanout_latency/`；本 Runner 未开批次4 |

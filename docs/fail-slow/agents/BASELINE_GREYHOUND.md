@@ -30,7 +30,7 @@
 ## 允许 / 禁止
 
 **允许**：HCCL 符号适配、stub→真 probe、Redis 部署在**自有**命名空间、改 `platform/ascend/greyhound/`。  
-**禁止**：把 Case 池当调试机；写死注入窗进 Greyhound 判定；碰 `yysong-*`；宣称「适配完成」但无 S2 证据。
+**禁止**：把 Case 池当调试机；写死注入窗进 Greyhound 判定；写宋盘 / 删 `yysong` vcjob；宣称「适配完成」但无 S2 证据。
 
 ## 派发提示词骨架
 

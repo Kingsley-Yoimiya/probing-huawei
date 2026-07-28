@@ -14,7 +14,7 @@
 
 1. GATE.md G1–G6 绿（已有）。
 2. **C0**：`MECH_FIX.md` 证明 SET→live tracer / `rate=0` / 窗语义可用；否则只做 E1-off，不上 E2–E4 终态。
-3. `source …/env.sh`；SYY；grj-w0 IDLE；`POD_BUNDLE`/`POD_RESULTS`；让路纪律。
+3. `source …/env.sh`；SYY；**yysong-w0** IDLE（主池）；备选才 grj-w0；`POD_BUNDLE`/`POD_RESULTS`；让路纪律。
 
 ## 四个实验（每个产出设计参数）
 
@@ -42,23 +42,23 @@ P3-SW-A/B、P1-SW-C、P1-HW-B、P1-EXT-A（阴性）。复用 B Loud 金标覆�
 
 ## 资源
 
-- 默认 `grj-megatron-32card-0716-worker-0`
-- 落盘 `…/results/ascend-ais/pillar_c_v2/<run_id>/`
-- 禁止写对方盘 / 删 grj vcjob；对方训练再现让路
+- 默认 **`yysong-worker-0`**（主池）；备选 `grj-megatron-32card-0716-worker-0`（IDLE + 让路）
+- 落盘 `…/results/ascend-ais/pillar_c_v3/<run_id>/`（v2 目录只读归档）
+- 禁止写宋盘 / 对方盘 / 删 yysong·grj vcjob；grj 对方训练再现让路
 
 ## 产出
 
 | 产物 | 路径 |
 |------|------|
-| 每 E 的 SUMMARY + 参数表 | `pillar_c_v2/<id>/` |
-| E3 头条 X% | `pillar_c_v2/E3_RATIO.md` |
-| 队列/ledger 回填 | `PILLAR_C_QUEUE.md` + ledger §4.2 |
-| 机制修复说明 | `_prep/pillar_c_gate/MECH_FIX.md` |
+| 每 PR / E 的 SUMMARY + 参数表 | `pillar_c_v3/<id>/` |
+| PR-1 验收 | `pillar_c_v3/pr1_verify/` |
+| 队列/ledger 回填 | 手册 + ledger 变更记录 |
+| 机制修复说明 | `_prep/pillar_c_gate/MECH_FIX.md`（若沿用） |
 
 ## 派发骨架
 
 ```text
-你是 Pillar-C Runner（E1–E4）。必读 EVAL-GAP-AND-PILLAR-C-PLAN.md §2–§3、PILLAR_C_QUEUE.md、本卡、GATE.md。
-先做/确认 C0（§2.0）；未绿只许 E1-off 离线截窗。主尺=总落盘；判分=采集归因证据；旧 cold 三臂作废。
-hold=grj-w0；POD_BUNDLE/POD_RESULTS 见 RESOURCE；产物 pillar_c_v2/。守让路与 AFS 前缀。
+你是 Pillar-C Runner（v3）。必读 PILLAR-C-V3-EXECUTION-HANDBOOK.md、RESOURCE.md、本卡。
+主池 hold=yysong-w0；备选 grj-w0（IDLE+让路）。POD_BUNDLE/POD_RESULTS 见 env.sh。
+产物 pillar_c_v3/。派遣 model=composer-2.5。守 AFS 前缀与禁止项。
 ```
