@@ -1,5 +1,0 @@
-### t1 2026-07-26T17:34:53+08:00
-resource=cpu MISSING
-resource=memory MISSING
-resource=io MISSING
-loadavg=76.90 56.62 48.49 46/24737 195926

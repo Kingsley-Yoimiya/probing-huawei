@@ -1,2 +1,0 @@
-DATA_ROOT /afs-a3-weight-share/yinjinrun.p-huawei/results/ascend-ais/pillar_c_v2/20260726_184311-pillar-c-s1-p3-sw-a-loud/mid_attach/probing_data
-hot_memt=0 hot_bytes=0 cold_segs=16 cold_bytes=1306432 rows_overwritten_sum=0
