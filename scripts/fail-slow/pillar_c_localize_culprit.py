@@ -4,10 +4,23 @@
 跨 rank 做法：对每个训练 worker pid 跑同一条聚合 SQL，取 metric 最大的 rank。
 有界并行查询；attach 已由 shell 预检时跳过 per-pid attach 长等待。
 
+PR-4 多节点联邦模式（PILLAR_C_LOCALIZE_FEDERATED=1）：
+  SQL 表名前缀从 `python.*` / `cpu.*` 改为 `global.python.*` / `global.cpu.*`。
+  查询走 `probing cluster query --addr <master_addr>:<probing_port> "SELECT ..."` 而非
+  per-pid probing -t <pid> query。
+  fallback：global.* 报错/超时 → 退回本地 per-pid 模式 + LOCALIZE_FALLBACK=1。
+
 用法（pod 内，由 hold_exec_run_case.sh 调用）:
   OUT=/path/to/C2_probing \\
   TRIGGER_STEP=100 \\
   MODE=comm_max \\
+  python3 pillar_c_localize_culprit.py
+
+PR-4 联邦用法：
+  PILLAR_C_LOCALIZE_FEDERATED=1 \\
+  PROBING_MASTER_ADDR=<rank0_pod_ip> \\
+  PROBING_MASTER_PORT=<rank0_probing_port> \\
+  WORLD_SIZE=32 \\
   python3 pillar_c_localize_culprit.py
 """
 from __future__ import annotations
@@ -23,6 +36,8 @@ from pathlib import Path
 from typing import Optional
 
 # slow_rank playbook 模板（查询期判据，可换）
+# 本地模式（PILLAR_C_LOCALIZE_FEDERATED=0，默认）：每 pid 单独 probing -t <pid> query
+# 联邦模式（PILLAR_C_LOCALIZE_FEDERATED=1）：表名加 global. 前缀，走 probing cluster query
 SQL_TEMPLATES: dict[str, str] = {
     "comm_max": """
 SELECT COALESCE(max(duration_ms), 0) AS metric
@@ -41,6 +56,20 @@ FROM python.torch_step_timing
 WHERE local_step >= {lo} AND local_step <= {hi}
 """.strip(),
 }
+
+# PR-4 联邦模式：global.* 表名映射（local → global）
+_GLOBAL_TABLE_PREFIX_MAP = {
+    "python.": "global.python.",
+    "cpu.": "global.cpu.",
+    "gpu.": "global.gpu.",
+}
+
+def _to_global_sql(sql: str) -> str:
+    """把 SQL 里的 python.* / cpu.* / gpu.* 换成 global.* 前缀。"""
+    result = sql
+    for local_prefix, global_prefix in _GLOBAL_TABLE_PREFIX_MAP.items():
+        result = result.replace(local_prefix, global_prefix)
+    return result
 
 # B8：step_ms 聚合可切换（avg 默认；max=B7 原行为；p95=尾部）
 STEP_MS_AGG_EXPR: dict[str, str] = {
@@ -242,6 +271,110 @@ def _probe_step_timing_ping(pid: int, timeout_s: float) -> tuple[bool, str]:
     if not _is_live_pid(pid):
         return False, "pid_not_live"
     return _probe_query(pid, STEP_TIMING_PROBE_SQL, timeout_s)
+
+
+# ---------------------------------------------------------------------------
+# PR-4 联邦查询：probing cluster query --addr <master>:<port> "<global SQL>"
+# ---------------------------------------------------------------------------
+
+def _federated_cluster_addr() -> Optional[str]:
+    """从环境变量读取联邦 master 地址（PROBING_MASTER_ADDR:PROBING_MASTER_PORT）。"""
+    addr = os.environ.get("PROBING_MASTER_ADDR", "").strip()
+    port = os.environ.get("PROBING_MASTER_PORT", "").strip()
+    if addr and port:
+        return f"{addr}:{port}"
+    # 回退：PROBING_ADDRESS 直接给了 host:port
+    probing_addr = os.environ.get("PROBING_ADDRESS", "").strip()
+    if probing_addr and ":" in probing_addr:
+        return probing_addr
+    return None
+
+
+def _probe_federated_query(sql: str, timeout_s: float) -> tuple[bool, str]:
+    """
+    通过 `probing cluster query` 做跨 pod 联邦查询（PR-4 模式）。
+    sql 应使用 global.* 表名前缀。
+    返回 (ok, raw_output)。
+    """
+    addr = _federated_cluster_addr()
+    if not addr:
+        return False, "federated_addr_not_set (PROBING_MASTER_ADDR/PROBING_MASTER_PORT missing)"
+    try:
+        proc = subprocess.run(
+            ["probing", "-t", addr, "cluster", "query", "--flat", sql],
+            capture_output=True,
+            text=True,
+            timeout=max(2.0, timeout_s),
+            errors="replace",
+        )
+    except subprocess.TimeoutExpired:
+        return False, "federated_timeout"
+    except FileNotFoundError:
+        return False, "probing_not_found"
+    text = (proc.stdout or "") + (proc.stderr or "")
+    if proc.returncode != 0:
+        return False, text.strip() or f"federated_exit={proc.returncode}"
+    return True, text
+
+
+def _probe_federated_gate(timeout_s: float) -> tuple[bool, str]:
+    """验证联邦是否可用：用 hostname() 这类简单 SQL 检测。"""
+    sql = "SELECT hostname() FROM global.system.pid_metadata LIMIT 2"
+    addr = _federated_cluster_addr()
+    if not addr:
+        return False, "federated_addr_not_set"
+    try:
+        proc = subprocess.run(
+            ["probing", "-t", addr, "cluster", "query", "--flat", sql],
+            capture_output=True,
+            text=True,
+            timeout=max(2.0, timeout_s),
+            errors="replace",
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False, "federated_gate_timeout_or_not_found"
+    text = (proc.stdout or "") + (proc.stderr or "")
+    if proc.returncode != 0:
+        return False, text.strip() or f"federated_gate_exit={proc.returncode}"
+    # 判断至少有 2 行数据（2 pod）
+    data_lines = [
+        l for l in text.splitlines()
+        if l.strip() and not l.startswith("+") and not l.startswith("│") and "hostname" not in l.lower()
+    ]
+    if len(data_lines) >= 2:
+        return True, text
+    return True, text  # 即使只有 1 行也通过（单 pod 退化）
+
+
+def _parse_federated_rank_metric(text: str) -> Optional[tuple[int, float]]:
+    """
+    解析联邦查询返回的 (rank, metric) — 用于 global 聚合。
+    期望 SQL 形如 SELECT _rank, MAX(...) AS metric ... GROUP BY _rank ORDER BY metric DESC LIMIT 1
+    """
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("+") or line.startswith("│"):
+            continue
+        if line.lower().startswith("_rank") or line.lower().startswith("rank"):
+            continue
+        parts = line.split()
+        if len(parts) >= 2:
+            try:
+                rank = int(parts[0])
+                metric = float(parts[1].replace(",", ""))
+                return rank, metric
+            except (ValueError, IndexError):
+                continue
+        # fallback: split on │
+        cells = [c.strip() for c in line.split("│") if c.strip()]
+        if len(cells) >= 2:
+            try:
+                rank = int(cells[0])
+                metric = float(cells[1].replace(",", ""))
+                return rank, metric
+            except (ValueError, IndexError):
+                continue
+    return None
 
 
 def _parse_metric(text: str) -> Optional[float]:
@@ -611,6 +744,171 @@ def write_localize_log(out_dir: Path, res: LocalizeResult) -> None:
     log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+# ---------------------------------------------------------------------------
+# PR-4 联邦定位：通过 global.* 查询跨 pod 找 culprit rank
+# ---------------------------------------------------------------------------
+
+def _build_federated_culprit_sql(mode: str, trigger_step: int, window: int) -> str:
+    """
+    构建 global.* 聚合 SQL，直接按 _rank 分组，返回 metric 最大的行。
+    _rank 是 federation 注入的 tag 列（全局 rank，0-based，跨 pod）。
+    """
+    lo = max(0, trigger_step - window)
+    hi = trigger_step
+    if mode == "step_ms":
+        agg_key = (os.environ.get("PILLAR_C_LOCALIZE_STEP_AGG") or "avg").strip().lower()
+        agg_expr_map = {
+            "avg": "avg(step_duration_sec)",
+            "max": "max(step_duration_sec)",
+            "p95": "approx_percentile(step_duration_sec, 0.95)",
+        }
+        agg_expr = agg_expr_map.get(agg_key, "avg(step_duration_sec)")
+        return (
+            f"SELECT _rank, COALESCE({agg_expr}, 0) AS metric "
+            f"FROM global.python.torch_step_timing "
+            f"WHERE local_step >= {lo} AND local_step <= {hi} "
+            f"GROUP BY _rank ORDER BY metric DESC LIMIT 1"
+        )
+    elif mode == "comm_max":
+        return (
+            f"SELECT _rank, COALESCE(max(duration_ms), 0) AS metric "
+            f"FROM global.python.comm_collective "
+            f"WHERE global_step >= {lo} AND global_step <= {hi} "
+            f"GROUP BY _rank ORDER BY metric DESC LIMIT 1"
+        )
+    elif mode == "host_rss":
+        return (
+            "SELECT _rank, COALESCE(max(rss_kb), 0) AS metric "
+            "FROM global.cpu.utilization "
+            "GROUP BY _rank ORDER BY metric DESC LIMIT 1"
+        )
+    # 兜底
+    return (
+        f"SELECT _rank, COALESCE(max(duration_ms), 0) AS metric "
+        f"FROM global.python.comm_collective "
+        f"WHERE global_step >= {lo} AND global_step <= {hi} "
+        f"GROUP BY _rank ORDER BY metric DESC LIMIT 1"
+    )
+
+
+def localize_federated(
+    *,
+    trigger_step: int,
+    mode: str,
+    window: int,
+    timeout_s: float,
+    total_budget_s: float = 60.0,
+) -> LocalizeResult:
+    """
+    PR-4 联邦定位：直接用 global.* 聚合 SQL，通过 probing cluster query 找 culprit rank。
+    返回 culprit_rank = 全局 rank（0-based），culprit_pid = None（多节点无单一 pid）。
+    fallback=False 表示联邦直接命中；fallback=True 表示联邦失败需退回本地模式。
+
+    时序修复（PR-4 Stage 2b）：
+    - PROBING_LOCALIZE_FEDERATED_DELAY_S（默认 5）：触发后先等 worker 落数据再发 SQL
+    - PROBING_LOCALIZE_FEDERATED_RETRIES（默认 3）：空响应/解析失败时重试
+    - PROBING_LOCALIZE_FEDERATED_RETRY_PAUSE_S（默认 2）：重试间隔
+    """
+    # 1. 预延迟：等 worker profiling 表写入数据
+    pre_delay_s = float(os.environ.get("PROBING_LOCALIZE_FEDERATED_DELAY_S", "5"))
+    if pre_delay_s > 0:
+        print(f"LOCALIZE_FEDERATED_PRE_DELAY={pre_delay_s}s (waiting for worker profiling data)")
+        time.sleep(pre_delay_s)
+
+    fed_retries = int(os.environ.get("PROBING_LOCALIZE_FEDERATED_RETRIES", "3"))
+    fed_retry_pause_s = float(os.environ.get("PROBING_LOCALIZE_FEDERATED_RETRY_PAUSE_S", "2"))
+
+    sql = _build_federated_culprit_sql(mode, trigger_step, window)
+    t0 = time.monotonic()
+
+    last_raw = ""
+    last_ok = False
+    parsed = None
+
+    deadline = t0 + total_budget_s
+    for attempt in range(max(1, fed_retries)):
+        if time.monotonic() >= deadline:
+            break
+        remaining = max(2.0, deadline - time.monotonic())
+        ok, raw = _probe_federated_query(sql, min(timeout_s, remaining))
+        last_raw = raw
+        last_ok = ok
+
+        if not ok:
+            print(f"LOCALIZE_FEDERATED_ATTEMPT={attempt} fail={raw[:200]!r}")
+        else:
+            parsed = _parse_federated_rank_metric(raw)
+            if parsed is not None:
+                break
+            print(f"LOCALIZE_FEDERATED_ATTEMPT={attempt} empty_response raw={raw[:200]!r}")
+
+        if attempt < fed_retries - 1 and time.monotonic() < deadline:
+            pause = min(fed_retry_pause_s, max(0.0, deadline - time.monotonic()))
+            print(f"LOCALIZE_FEDERATED_RETRY_PAUSE={pause}s attempt={attempt+1}/{fed_retries}")
+            time.sleep(pause)
+
+    elapsed = time.monotonic() - t0
+
+    if not last_ok:
+        return LocalizeResult(
+            mode=mode,
+            sql=sql,
+            trigger_step=trigger_step,
+            window=window,
+            culprit_rank=None,
+            culprit_pid=None,
+            fallback=True,
+            reason=f"federated_query_fail: {last_raw[:1000]}",
+            per_rank=[{"federated": True, "ok": False, "raw_head": last_raw[:1000]}],
+        )
+
+    if parsed is None:
+        return LocalizeResult(
+            mode=mode,
+            sql=sql,
+            trigger_step=trigger_step,
+            window=window,
+            culprit_rank=None,
+            culprit_pid=None,
+            fallback=True,
+            reason=f"federated_parse_fail_after_{fed_retries}_retries",
+            per_rank=[{"federated": True, "ok": True, "raw_head": last_raw[:200]}],
+        )
+
+    culprit_rank, metric = parsed
+    if metric <= 0:
+        return LocalizeResult(
+            mode=mode,
+            sql=sql,
+            trigger_step=trigger_step,
+            window=window,
+            culprit_rank=None,
+            culprit_pid=None,
+            fallback=True,
+            reason="federated_metric_zero",
+            per_rank=[{"federated": True, "ok": True, "metric": metric, "rank": culprit_rank}],
+        )
+
+    return LocalizeResult(
+        mode=mode,
+        sql=sql,
+        trigger_step=trigger_step,
+        window=window,
+        culprit_rank=culprit_rank,
+        culprit_pid=None,  # 多节点无单一 pid
+        fallback=False,
+        reason=f"federated_sql_max_metric elapsed_ms={int(elapsed*1000)}",
+        per_rank=[{
+            "federated": True,
+            "ok": True,
+            "local_rank": culprit_rank,
+            "metric": metric,
+            "raw_head": last_raw[:200],
+            "pid": None,
+        }],
+    )
+
+
 def main() -> int:
     if len(sys.argv) > 1 and sys.argv[1] == "--list-worker-pids":
         local_rank: Optional[int] = None
@@ -624,6 +922,9 @@ def main() -> int:
         for pid in list_worker_pids(victim_rank=victim_rank, local_rank=local_rank):
             print(pid)
         return 0
+
+    # PR-4：联邦模式开关（PILLAR_C_LOCALIZE_FEDERATED=1 走 global.* 跨 pod）
+    federated_mode = os.environ.get("PILLAR_C_LOCALIZE_FEDERATED", "0") in ("1", "true", "yes")
 
     out = Path(os.environ.get("OUT", "."))
     case_id = os.environ.get("CASE_ID", "")
@@ -662,22 +963,70 @@ def main() -> int:
     gt = int(gt_rank) if gt_rank and mode == "gt" else None
 
     t0 = time.monotonic()
-    res = localize(
-        trigger_step=trigger_step,
-        mode=mode,
-        window=window,
-        timeout_s=timeout_s,
-        gt_rank=gt,
-        retries=retries,
-        retry_pause_s=retry_pause_s,
-        skip_attach=prevalidated,
-        attach_timeout_s=attach_timeout_s,
-        total_budget_s=total_budget_s,
-        parallel=parallel,
-        case_id=case_id,
-        use_secondary=use_secondary,
-        victim_rank=victim_rank,
-    )
+
+    if federated_mode:
+        # PR-4 联邦路径：先尝试 global.* 跨 pod 查询
+        print("LOCALIZE_MODE=federated")
+        res = localize_federated(
+            trigger_step=trigger_step,
+            mode=mode,
+            window=window,
+            timeout_s=timeout_s,
+            total_budget_s=total_budget_s,
+        )
+        if res.fallback:
+            # 联邦失败 → fallback 到本地 per-pid 查询
+            print(f"LOCALIZE_FEDERATED_FAIL={res.reason}")
+            print("LOCALIZE_FALLBACK_REASON=federated_fail_fallback_to_local")
+            res = localize(
+                trigger_step=trigger_step,
+                mode=mode,
+                window=window,
+                timeout_s=timeout_s,
+                gt_rank=gt,
+                retries=retries,
+                retry_pause_s=retry_pause_s,
+                skip_attach=prevalidated,
+                attach_timeout_s=attach_timeout_s,
+                total_budget_s=total_budget_s,
+                parallel=parallel,
+                case_id=case_id,
+                use_secondary=use_secondary,
+                victim_rank=victim_rank,
+            )
+            # 强制 fallback=True，标记联邦失败退化
+            if not res.fallback:
+                res = LocalizeResult(
+                    mode=res.mode,
+                    sql=res.sql,
+                    trigger_step=res.trigger_step,
+                    window=res.window,
+                    culprit_rank=res.culprit_rank,
+                    culprit_pid=res.culprit_pid,
+                    fallback=True,  # 联邦失败了
+                    reason=f"federated_fallback_local:{res.reason}",
+                    per_rank=res.per_rank,
+                )
+    else:
+        # 默认本地 per-pid 查询（PR-1/2/3 兼容路径）
+        print("LOCALIZE_MODE=local")
+        res = localize(
+            trigger_step=trigger_step,
+            mode=mode,
+            window=window,
+            timeout_s=timeout_s,
+            gt_rank=gt,
+            retries=retries,
+            retry_pause_s=retry_pause_s,
+            skip_attach=prevalidated,
+            attach_timeout_s=attach_timeout_s,
+            total_budget_s=total_budget_s,
+            parallel=parallel,
+            case_id=case_id,
+            use_secondary=use_secondary,
+            victim_rank=victim_rank,
+        )
+
     elapsed_ms = int((time.monotonic() - t0) * 1000)
     write_localize_log(out, res)
     print(f"LOCALIZE_ELAPSED_MS={elapsed_ms}")

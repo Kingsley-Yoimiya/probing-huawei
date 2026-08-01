@@ -15,6 +15,20 @@ NPROC="${NPROC:-16}"
 NNODES="${NNODES:-1}"
 PARENT_RUN_ID="${PARENT_RUN_ID:?need PARENT_RUN_ID}"
 OUT_FAMILY="${OUT_FAMILY:-pillar_c}"
+
+# PR-4 多节点开关
+# PILLAR_C_MULTINODE=1 时：自动设 NNODES=2，需提供 POD=<master> WORKER_POD=<worker>
+PILLAR_C_MULTINODE="${PILLAR_C_MULTINODE:-0}"
+WORKER_POD="${WORKER_POD:-}"
+if [[ "${PILLAR_C_MULTINODE}" == "1" ]]; then
+  NNODES=2
+  if [[ -z "${WORKER_POD}" ]]; then
+    echo "FATAL: PILLAR_C_MULTINODE=1 requires WORKER_POD=<worker-pod-name>" >&2
+    exit 2
+  fi
+  # 默认联邦定位（e3a_upgrade 臂只改 scope；其他臂不自动开联邦定位）
+  export PILLAR_C_LOCALIZE_FEDERATED="${PILLAR_C_LOCALIZE_FEDERATED:-1}"
+fi
 CASE_SLUG=$(echo "$CASE_ID" | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9-')
 # e2_rate 臂目录名含常驻 rate；e3a_upgrade 含升到的 SET rate；e4_naive 固定 naive_cut；s1 固定 mid_attach
 if [[ "$ARM" == "e2_rate" ]]; then
@@ -304,6 +318,10 @@ env_args=(
   "FS_SHARED_SCRIPTS=${FS_SHARED_SCRIPTS}"
   "FS_PLATFORM_ASCEND=${FS_PLATFORM_ASCEND}"
   "LOCAL_RESULT_ROOT_BASE=${LOCAL_RESULT_ROOT_BASE}"
+  # PR-4 多节点参数
+  "PILLAR_C_MULTINODE=${PILLAR_C_MULTINODE:-0}"
+  "WORKER_POD=${WORKER_POD:-}"
+  "PILLAR_C_LOCALIZE_FEDERATED=${PILLAR_C_LOCALIZE_FEDERATED:-0}"
 )
 if [[ "$INJECT_KIND" == "8a" || "$INJECT_KIND" == "inline_8a" ]]; then
   env_args+=("INLINE_GC_EVERY=${INLINE_GC_EVERY:-1}" "INLINE_GC_STALL_S=${INLINE_GC_STALL_S:-0.25}")

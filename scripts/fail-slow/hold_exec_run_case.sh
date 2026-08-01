@@ -2,9 +2,16 @@
 # Ascend hold-exec：在 yysong-* 内 torchrun，不新建 vcjob。
 # 本机 source env.sh 后调用；经跳板 JUMP_KUBECTL exec。
 #
-# 例：
+# 例（单节点）：
 #   source scripts/fail-slow/env.sh
 #   CASE_ID=P3-EXT-A DOSE=loud PHASE=pilot ABC_CONFIGS=C0_baseline,C1_inject_none \
+#     bash scripts/fail-slow/hold_exec_run_case.sh
+#
+# 例（PR-4 双节点）：
+#   PILLAR_C_MULTINODE=1 NNODES=2 NPROC=16 \
+#   POD=grj-megatron-32card-0716-master-0 \
+#   WORKER_POD=grj-megatron-32card-0716-worker-0 \
+#   CASE_ID=P3-SW-A ARM=e3a_upgrade PARENT_RUN_ID=xxx \
 #     bash scripts/fail-slow/hold_exec_run_case.sh
 set -euo pipefail
 
@@ -21,6 +28,23 @@ NNODES="${NNODES:-1}"
 NPROC="${NPROC:-16}"
 ITERS="${ITERS:-500}"
 WARMUP="${WARMUP:-50}"
+
+# PR-4 多节点开关
+# PILLAR_C_MULTINODE=1 时：NNODES=2；需提供 WORKER_POD（第二节点）
+PILLAR_C_MULTINODE="${PILLAR_C_MULTINODE:-0}"
+WORKER_POD="${WORKER_POD:-}"
+# 多节点时 probing daemon 端口（rank0 固定端口供 federation 发现）
+PROBING_MASTER_PORT="${PROBING_MASTER_PORT:-18080}"
+# PR-4 联邦查询：等待 daemon 就绪的超时（秒）
+PROBING_FEDERATION_WAIT_S="${PROBING_FEDERATION_WAIT_S:-60}"
+
+if [[ "${PILLAR_C_MULTINODE}" == "1" ]]; then
+  NNODES=2
+  if [[ -z "${WORKER_POD}" ]]; then
+    echo "FATAL: PILLAR_C_MULTINODE=1 requires WORKER_POD=<worker-pod-name>" >&2
+    exit 2
+  fi
+fi
 SEED="${SEED:-42}"
 MODE="${MODE:-host_bound}"
 MODEL="${MODEL:-gpt2}"
@@ -294,6 +318,20 @@ jexec() {
   fi
 }
 
+# PR-4：worker pod 上的 exec（PILLAR_C_MULTINODE=1 时使用）
+jexec_worker() {
+  local cmd="$1"
+  local wpod="${WORKER_POD:-${POD}}"
+  if [[ "${JUMP_HOST}" == "localhost" || "${JUMP_HOST}" == "127.0.0.1" ]]; then
+    export KUBECONFIG="${JUMP_KUBECONFIG:-${KUBECONFIG}}"
+    K="${JUMP_KUBECTL:-kubectl}"
+    "$K" -n "${NS}" exec "${wpod}" -- bash -lc "$cmd"
+  else
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 "${JUMP_HOST}" \
+      "export KUBECONFIG='${JUMP_KUBECONFIG}'; K='${JUMP_KUBECTL}'; \$K -n '${NS}' exec '${wpod}' -- bash -lc $(printf '%q' "$cmd")"
+  fi
+}
+
 # 轮询用：Mac 侧超时；保留 exit code（供 test -f 等判断）
 _jexec_poll_run() {
   local t="$1"; shift
@@ -386,6 +424,30 @@ jsync_file() {
   return 0
 }
 
+# PR-4：同步文件到 worker pod
+jsync_file_worker() {
+  local src="$1" dst="$2"
+  local bname ddir rc
+  local wpod="${WORKER_POD:-${POD}}"
+  bname=$(basename "$src")
+  ddir=$(dirname "$dst")
+  set +e
+  if [[ "${JUMP_HOST}" == "localhost" || "${JUMP_HOST}" == "127.0.0.1" ]]; then
+    export KUBECONFIG="${JUMP_KUBECONFIG:-${KUBECONFIG}}"
+    K="${JUMP_KUBECTL:-kubectl}"
+    COPYFILE_DISABLE=1 tar -C "$(dirname "$src")" -cf - "$bname" \
+      | "$K" -n "${NS}" exec -i "${wpod}" -- bash -lc "mkdir -p '$ddir' /tmp/yjr_sync && tar -C /tmp/yjr_sync -xf - && install -m 0755 /tmp/yjr_sync/$bname '$dst' && rm -f /tmp/yjr_sync/$bname"
+  else
+    COPYFILE_DISABLE=1 tar -C "$(dirname "$src")" -cf - "$bname" \
+      | ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 "${JUMP_HOST}" \
+        "export KUBECONFIG='${JUMP_KUBECONFIG}'; K='${JUMP_KUBECTL}'; \$K -n '${NS}' exec -i '${wpod}' -- bash -lc $(printf '%q' "mkdir -p '$ddir' /tmp/yjr_sync && tar -C /tmp/yjr_sync -xf - && install -m 0755 /tmp/yjr_sync/$bname '$dst' && rm -f /tmp/yjr_sync/$bname")"
+  fi
+  rc=$?
+  set -e
+  echo "[hold-exec] jsync_worker $bname -> ${wpod}:$dst rc=$rc"
+  return 0
+}
+
 pod_ip() {
   if [[ "${JUMP_HOST}" == "localhost" || "${JUMP_HOST}" == "127.0.0.1" ]]; then
     export KUBECONFIG="${JUMP_KUBECONFIG:-${KUBECONFIG}}"
@@ -394,6 +456,19 @@ pod_ip() {
   else
     ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 "${JUMP_HOST}" \
       "export KUBECONFIG='${JUMP_KUBECONFIG}'; K='${JUMP_KUBECTL}'; \$K -n '${NS}' get pod '${POD}' -o jsonpath='{.status.podIP}'"
+  fi
+}
+
+# PR-4：获取 worker pod IP
+pod_ip_worker() {
+  local wpod="${WORKER_POD:-${POD}}"
+  if [[ "${JUMP_HOST}" == "localhost" || "${JUMP_HOST}" == "127.0.0.1" ]]; then
+    export KUBECONFIG="${JUMP_KUBECONFIG:-${KUBECONFIG}}"
+    K="${JUMP_KUBECTL:-kubectl}"
+    "$K" -n "${NS}" get pod "${wpod}" -o jsonpath='{.status.podIP}'
+  else
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 "${JUMP_HOST}" \
+      "export KUBECONFIG='${JUMP_KUBECONFIG}'; K='${JUMP_KUBECTL}'; \$K -n '${NS}' get pod '${wpod}' -o jsonpath='{.status.podIP}'"
   fi
 }
 
@@ -417,6 +492,15 @@ if [[ "${SKIP_HEAVY_JSYNC}" != "1" ]]; then
     echo "[hold-exec] sync localize → ${POD_BUNDLE}/pillar_c_localize_culprit.py"
     jsync_file "$LOCALIZE_PY_LOCAL" "${POD_BUNDLE}/pillar_c_localize_culprit.py"
   fi
+  # PR-4 多节点：同步训练脚本到 worker pod
+  if [[ "${PILLAR_C_MULTINODE}" == "1" ]]; then
+    echo "[hold-exec] PR-4: sync scripts to worker pod ${WORKER_POD}…"
+    jexec_worker "mkdir -p '${POD_BUNDLE}' '${POD_OUT}' '${POD_PYDEPS}'; exit 0" || true
+    jsync_file_worker "$TRAIN_PY_LOCAL" "${POD_BUNDLE}/train_bench_probe_npu.py"
+    if [[ -f "$LOCALIZE_PY_LOCAL" ]]; then
+      jsync_file_worker "$LOCALIZE_PY_LOCAL" "${POD_BUNDLE}/pillar_c_localize_culprit.py"
+    fi
+  fi
 else
   echo "[hold-exec] SKIP_HEAVY_JSYNC=1 — reuse bundle scripts (train/sidecar/dump/localize/hold_exec; no tar)"
 fi
@@ -429,6 +513,10 @@ echo "[hold-exec] checking pod idle…"
 
 clean_pod() {
   jexec "pkill -9 -f '[t]rain_bench_probe_npu' 2>/dev/null || true; pkill -9 -f '/tmp/[t]bp_npu.py' 2>/dev/null || true; pkill -9 -f '[t]orchrun' 2>/dev/null || true; pkill -9 -f '[s]idecar_inject_npu' 2>/dev/null || true; pkill -9 -f '[s]idecar_inject_8c' 2>/dev/null || true; pkill -9 -x stress-ng 2>/dev/null || true; pkill -9 -f '[s]tress-ng' 2>/dev/null || true; pkill -9 -f 'fio.*io_stress' 2>/dev/null || true; sleep 2; exit 0" || true
+  # PR-4：同时清理 worker pod
+  if [[ "${PILLAR_C_MULTINODE}" == "1" && -n "${WORKER_POD}" ]]; then
+    jexec_worker "pkill -9 -f '[t]rain_bench_probe_npu' 2>/dev/null || true; pkill -9 -f '/tmp/[t]bp_npu.py' 2>/dev/null || true; pkill -9 -f '[t]orchrun' 2>/dev/null || true; sleep 2; exit 0" || true
+  fi
 }
 
 fire_config() {
@@ -486,6 +574,16 @@ fire_config() {
       if [[ -n "${PROBING_DEFERRED_VALUE:-}" ]]; then
         denv="${denv} export PROBING_DEFERRED_VALUE=${PROBING_DEFERRED_VALUE};"
       fi
+    fi
+    # PR-4 多节点：rank0 固定 probing HTTP 端口（供 federation 发现）；其他 rank 随机
+    # WORLD_SIZE>1 时 maybe_start_torchrun_cluster() 自动起 HTTP daemon
+    if [[ "${PILLAR_C_MULTINODE}" == "1" ]]; then
+      denv="${denv} export PROBING_PORT=${PROBING_MASTER_PORT};"
+      denv="${denv} export PROBING_FANOUT_CONCURRENCY=128;"
+      denv="${denv} export PROBING_REMOTE_QUERY_TIMEOUT_SECS=30;"
+      # PR-4 fix: 延长 worker 从 TCPStore 发现 master 地址的超时（默认 2s 太短，
+      # master 注册可能比 worker 的 wait_for_local_address 完成晚）
+      denv="${denv} export PROBING_CLUSTER_DISCOVER_TIMEOUT_SEC=30;"
     fi
   fi
   # C1/C2：inline cube（同进程）
@@ -579,6 +677,56 @@ LAUNCH
   echo "[hold-exec] firing ${cfg}…"
   jexec "setsid nohup bash /tmp/run_${gid}.sh </dev/null >/dev/null 2>&1 & echo FIRE_OK; exit 0" || true
 
+  # PR-4 多节点：同时在 worker pod 发射 node_rank=1
+  if [[ "${PILLAR_C_MULTINODE}" == "1" ]]; then
+    local worker_out="${POD_OUT}/${CASE_ID}/by_pod/${WORKER_POD}/round_1/${cfg}"
+    jexec_worker "mkdir -p '${worker_out}/ranks'; cp -f '${POD_BUNDLE}/train_bench_probe_npu.py' /tmp/tbp_npu.py; exit 0" || true
+    cat >"${WORK}/run_w1_${gid}.sh" <<WLAUNCH
+#!/usr/bin/env bash
+set -euo pipefail
+source /root/miniconda3/etc/profile.d/conda.sh
+conda activate llm_test
+export PYTHONUNBUFFERED=1
+export PATH=${PYBIN}:\${PATH}
+export PYTHONPATH=${POD_PYDEPS}:\${PYTHONPATH:-}
+export GLOO_SOCKET_IFNAME=\${GLOO_SOCKET_IFNAME:-eth0}
+export HCCL_CONNECT_TIMEOUT=\${HCCL_CONNECT_TIMEOUT:-1800}
+export HCCL_EXEC_TIMEOUT=\${HCCL_EXEC_TIMEOUT:-600}
+export HOST_BOUND_MATMUL=${HOST_BOUND_MATMUL}
+export CKPT_DIR=${CKPT_DIR_EFFECTIVE}
+${denv}
+# PR-4 Rust fix: override reachable_addr() to use worker pod's own IP
+# (without this, worker published MASTER_ADDR as its addr, breaking federation fanout)
+_WORKER_PROBING_PORT=\${PROBING_WORKER_PORT:-18081}
+# hostname not available in NPU pods; use ifconfig or /proc/net/fib_trie
+_WORKER_IP=\$(ifconfig eth0 2>/dev/null | awk '/inet /{print \$2}' | head -1 || \
+             cat /proc/net/fib_trie 2>/dev/null | awk '/32 host/{f=1} f{if(/10\\./)print; f=0}' | head -1 || \
+             echo "")
+if [[ -n "\$_WORKER_IP" ]]; then
+  # Set IP only (no port) so reachable_addr() appends the actual bound port.
+  export PROBING_ADVERTISE_ADDR="\${_WORKER_IP}"
+fi
+export PROBING_PORT=\${_WORKER_PROBING_PORT}
+# Enable probing INFO logs (use PROBING_LOGLEVEL not RUST_LOG)
+export PROBING_LOGLEVEL=info
+OUT='${worker_out}'
+mkdir -p "\$OUT/ranks"
+${TORCHRUN} --nnodes=${NNODES} --nproc_per_node=${NPROC} --node_rank=1 \\
+  --master_addr=${MASTER_IP} --master_port=${port} \\
+  /tmp/tbp_npu.py --iters=${ITERS} --warmup=${WARMUP} --seed=${SEED} --mode=${MODE} --model=${MODEL} --seq=${SEQ} --batch=${BATCH} \\
+  --flush-every=${FLUSH_EVERY} --ckpt-every=${CKPT_EVERY} \\
+  --io-payload='${IO_PAYLOAD}' --io-read-kb=${IO_READ_KB} \\
+  --run-id=${RUN_ID} --group=${gid} --config='${cfg}' --round=1 \\
+  --out-dir="\$OUT/ranks" > "\$OUT/node_1.log" 2>&1
+rc=\$?
+if [[ \$rc -eq 0 ]]; then touch "\$OUT/node_1.done"; else echo \$rc > "\$OUT/node_1.fail"; fi
+WLAUNCH
+    chmod +x "${WORK}/run_w1_${gid}.sh"
+    jsync_file_worker "${WORK}/run_w1_${gid}.sh" "/tmp/run_w1_${gid}.sh"
+    echo "[hold-exec] firing worker node_rank=1 (${WORKER_POD})…"
+    jexec_worker "setsid nohup bash /tmp/run_w1_${gid}.sh </dev/null >/dev/null 2>&1 & echo FIRE_W1_OK; exit 0" || true
+  fi
+
   local e=0
   while [ "$e" -lt 360 ]; do
     if jexec "test -f '${out}/ranks/warmup_done'" 2>/dev/null; then
@@ -597,6 +745,52 @@ LAUNCH
   if [ "$e" -ge 360 ]; then
     echo "  warmup timeout"; jexec "tail -n 120 '${out}/node_0.log'" || true
     return 1
+  fi
+
+  # PR-4 多节点：warmup 完成后做 federation gate 自检
+  if [[ "${PILLAR_C_MULTINODE}" == "1" ]] && [[ "$cfg" == "C2_probing" ]]; then
+    echo "  PR-4: waiting for probing federation daemon (WORLD_SIZE=$((NNODES*NPROC)) > 1)…"
+    local fed_e=0
+    local fed_ok=0
+    while [ "$fed_e" -lt "${PROBING_FEDERATION_WAIT_S}" ]; do
+      # 检查 master pod 上 probing 是否监听（torchrun_cluster 在 WORLD_SIZE>1 时自动起 HTTP daemon）
+      if jexec "netstat -tlnp 2>/dev/null | grep -q ':${PROBING_MASTER_PORT}'" 2>/dev/null; then
+        echo "  federation daemon ready on master port ${PROBING_MASTER_PORT} (${fed_e}s)"
+        fed_ok=1
+        break
+      fi
+      sleep 3; fed_e=$((fed_e + 3))
+      if [ $((fed_e % 15)) -eq 0 ]; then
+        echo "  waiting federation daemon… ${fed_e}s"
+        jexec "netstat -tlnp 2>/dev/null | grep LISTEN | head -5 || ss -tlnp 2>/dev/null | head -5" || true
+      fi
+    done
+    if [[ "$fed_ok" == "1" ]]; then
+      # gate：等 worker 注册上来（cluster nodes 期望返回 2 节点，最多等 60s）
+      # worker heartbeat 第一次发送约在 warmup 后 30-50s（TCPStore discover + stagger）
+      local gate_nodes_ok=0
+      local gate_wait=0
+      local gate_nodes_max=60
+      local gate_out=""
+      while [ "$gate_wait" -lt "$gate_nodes_max" ]; do
+        gate_out=$(jexec "export PATH='${POD_PYDEPS}/bin:${PYBIN}:\${PATH:-}'; probing -t '${MASTER_IP}:${PROBING_MASTER_PORT}' cluster nodes 2>&1 || echo 'GATE_FAIL'" 2>/dev/null || echo "GATE_EXEC_FAIL")
+        local node_count
+        node_count=$(echo "$gate_out" | grep -c "rank=Some" 2>/dev/null || echo 0)
+        echo "  FEDERATION_GATE_NODES (${gate_wait}s, nodes=${node_count}): $gate_out"
+        if [ "$node_count" -ge "2" ]; then
+          echo "  federation gate: ${node_count} nodes registered OK (${gate_wait}s)"
+          gate_nodes_ok=1
+          break
+        fi
+        sleep 5; gate_wait=$((gate_wait + 5))
+      done
+      if [[ "$gate_nodes_ok" != "1" ]]; then
+        echo "  WARN: only ${gate_out} after ${gate_nodes_max}s — worker may not have registered yet"
+      fi
+      jexec "echo 'FEDERATION_GATE_NODES: ${gate_out}' >> '${out}/node_0.log'; exit 0" || true
+    else
+      echo "  WARN: federation daemon not detected on port ${PROBING_MASTER_PORT} after ${PROBING_FEDERATION_WAIT_S}s — may fallback to local localize"
+    fi
   fi
 
   # C2 健康臂（INJECT_KIND=none）：dump 不得绑在注入门闩内（PR-1 baseline 教训）
@@ -841,6 +1035,11 @@ if [[ '${set_scope}' == 'localize' ]]; then
   export PILLAR_C_ATTACH_PREVALIDATED=\"\${PILLAR_C_ATTACH_PREVALIDATED:-\$([[ \"\$_attach_ready\" == '1' ]] && echo 1 || echo 0)}\"
   export PILLAR_C_LOCALIZE_ATTACH_WAIT_S=\"\${PILLAR_C_LOCALIZE_ATTACH_WAIT_S:-4}\"
   export PILLAR_C_LOCALIZE_SECONDARY=\"\${PILLAR_C_LOCALIZE_SECONDARY:-1}\"
+  # PR-4 多节点联邦定位开关：PILLAR_C_LOCALIZE_FEDERATED=1 时走 global.* 跨 pod 查询
+  export PILLAR_C_LOCALIZE_FEDERATED=\"\${PILLAR_C_LOCALIZE_FEDERATED:-${PILLAR_C_MULTINODE}}\"
+  # PR-4：联邦查询 master 地址（rank0 probing HTTP）
+  export PROBING_MASTER_ADDR=\"\${PROBING_MASTER_ADDR:-${MASTER_IP}}\"
+  export PROBING_MASTER_PORT=\"\${PROBING_MASTER_PORT:-${PROBING_MASTER_PORT}}\"
   loc_out=\$(timeout \"\$SET_BLOCK_TIMEOUT_S\" python3 '${out}/_pillar_c_localize.py' 2>>'${out}/set_upgrade.log' || echo 'LOCALIZE_TIMEOUT')
   echo \"\$loc_out\" >>'${out}/set_upgrade.log'
   CULPRIT_RANK=\$(echo \"\$loc_out\" | awk -F= '/^CULPRIT_RANK=/{print \$2; exit}')
@@ -851,6 +1050,12 @@ if [[ '${set_scope}' == 'localize' ]]; then
   if [[ \"\$LOCALIZE_FALLBACK\" == '0' && -n \"\$CULPRIT_PID\" ]]; then
     cands=\" \$CULPRIT_PID\"
     echo CANDS_LOCALIZE=\$cands >>'${out}/set_upgrade.log'
+  elif [[ \"\$LOCALIZE_FALLBACK\" == '0' && -n \"\$CULPRIT_RANK\" ]]; then
+    # PR-4 联邦模式：culprit_rank 是全局 rank，pid=None；fallback=0 直接命中；本节点 SET victim
+    echo CANDS_FEDERATED_RANK=\$CULPRIT_RANK >>'${out}/set_upgrade.log'
+    cands=\$(SIDECAR_LOCAL_RANK='\${CULPRIT_RANK}' python3 '${out}/_pillar_c_localize.py' --list-worker-pids --local-rank=\${CULPRIT_RANK} 2>/dev/null | tr '\\n' ' ')
+    [[ -z \"\$cands\" ]] && cands=\$(python3 '${out}/_pillar_c_localize.py' --list-worker-pids 2>/dev/null | tr '\\n' ' ')
+    echo CANDS_FEDERATED=\$cands >>'${out}/set_upgrade.log'
   else
     echo LOCALIZE_FALLBACK_ALL_RANKS >>'${out}/set_upgrade.log'
     cands=\$(SIDECAR_LOCAL_RANK='${set_victim}' python3 '${out}/_pillar_c_localize.py' --list-worker-pids 2>/dev/null | tr '\\n' ' ')

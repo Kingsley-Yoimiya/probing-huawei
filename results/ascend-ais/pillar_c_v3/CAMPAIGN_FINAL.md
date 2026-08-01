@@ -56,6 +56,20 @@
 
 ## 待办 for 后续（按优先级）
 
+0. **[NEW 2026-07-29 · P0] 数据量比口径重新定义 —— 从"内容保留量"改成"真实磁盘写入压力"**：
+   - **问题**：现有 `e3_score_ratio.py:228-264` `estimate_w_truncate_tt_bytes` 用"步数比例折算字节"当头条数字（B8 88.28% / C 92.20%），是**内容量口径**——审稿人问"你省磁盘吗"答不了。真实磁盘 I/O 压力应该看**单位时间写入盘的字节速率**，全量臂线性增长、动态臂受 rate=0 骨架 + culprit 短窗密采限制，两者差距应是 10-100×，不是 12%
+   - **正确口径 3 选**（推荐由弱到强）：
+     - (a) 训练中每 30 秒采样 `du -sb probing_data/`，最后拿曲线斜率的时间积分当"实际写入字节"；**跟磁盘系统真正承受的 I/O 压力对齐**（最省事，无 wheel 改动）
+     - (b) memtable 内核加 `bytes_written_total` 计数器（每次 append 累加），dump 时读；能精确到"多少行 × 每行字节"，不受环覆盖影响（需 wheel 改动）
+     - (c) 兜底：把 `est_tt_bytes_w` 改成 `max(fb, len(steps) * bytes_per_step)`，能反映"环被覆盖多少次"（脚本级别，最快）
+   - **产物**：`PR2_E3_RATIO_B*.{md,json}` 里增补 `disk_write_bytes_per_sec` / `disk_write_bytes_total_time_integral` 两个字段；outline §5.2.C 头条数字换新口径
+   - **依赖**：跟 #3（`comm_collective` 320 MB 未压）合并——因为真实写入量口径下，`comm_collective` lazy gate 直接影响主要头条
+
+0.1. **[NEW 2026-07-29 · P1] W\* 在线验证 —— 目前只离线切窗判据首命中，没证明 memtable 在线只留 W\* 步不会挤掉关键 spike**：
+   - **问题**：`e3_retention_score.py` 是**离线切窗**（一次跑最大 retain，dump 后按 W 依次切片判分），W\*=200 步只证明"200 步的历史里有 spike 证据"，**没证明**"如果 memtable 在线 `retain_steps=200` 真跑一次，`retention_violations_step` 计数不增长且关键 spike 不被覆盖"
+   - **实验设计**：对三家族各选 W\* 档，在线跑一次 `retain_steps=W*` / `retain_secs=W*`，看 dump 出的 memtable 里 spike 步是否还在 + `retention_violations_{step,secs}` 计数
+   - **产物**：`W_STAR_ONLINE_VERIFY_<case>.json` 3 份；补进 PR-3 SUMMARY
+
 1. **PR-4 完整实现**（下战役独立立项，预计 15-19 h · outline §5.3 前置）：
    - daemon 常驻脚本 `probing_daemon_launch.sh`（跳板 fanout N pod 起 `torchrun --nnodes=N` + 等 `probing cluster nodes` 探活）
    - `pillar_c_localize_culprit.py` SQL 表名 `python.*` → `global.*`（4.1.a，pure Python）

@@ -1,9 +1,11 @@
-# PR-4 可行性摸底（阶段 0）
+# PR-4 可行性摸底（阶段 0）→ 阶段 1 进行中
 
-**日期**：2026-07-29
-**范围**：Pillar C v3 PR-4（多机 × 联邦查询）—— 手册 §4.1.a/4.1.b/4.3
-**依据**：handbook 明文 —— *"若多机机时不够，PR-4 跳过；单机 PR-1/2/3 已够撑 outline §5.2.C 头条"*
-**结论（先说）**：**DEFER**（本轮跳过 PR-4，主 Loop 收工到战役 SUMMARY）
+**日期**：2026-07-29（阶段 0 DEFER）→ 2026-07-29（阶段 1 EXECUTING）  
+**范围**：Pillar C v3 PR-4（多机 × 联邦查询）—— 手册 §4.1.a/4.1.b/4.3  
+**依据**：handbook 明文 —— *"若多机机时不够，PR-4 跳过；单机 PR-1/2/3 已够撑 outline §5.2.C 头条"*  
+**更新结论**：**阶段 0 DEFER → 阶段 1 EXECUTING**（代码改动已完成，32 rank smoke 待实跑）
+
+> 阶段 1 详情：`PR4_STAGE1_STATUS.md`
 
 ---
 
@@ -70,25 +72,30 @@ $ pgrep -af probing     → 无
 
 ---
 
-## 4. 决策：**DEFER**
+## 4. 决策更新：**DEFER → EXECUTING（阶段 1）**
 
-**触发条件对照**：
-- Federation 通？**未通**（Connection refused，daemon 从未启动，需要新脚本让 daemon 常驻）
-- 至少 2 pod IDLE？**满足**（yysong 4 + grj 2 全 IDLE）
-- Launch 改动 <2h？**不满足**（最快也要 3 h，含 debug 至少 5 h）
+**原 DEFER 原因**：federation 未通 + launch 大改（新脚本 + sidecar 改造 + wheel 编译）+ 4.1.b Rust 改动跨天
 
-**触发 DEFER**：federation 未开 + launch 大改（新脚本 + sidecar 改造 + wheel 编译）+ 4.1.b Rust 改动跨天 → 超过战役"stretch 30 min–2 h"边界。
+**更新（2026-07-29 本次 Runner 执行后）**：
+- federation 配置机制已摸清（torchrun TCPStore 自动发现，`WORLD_SIZE>1` 自动起 daemon）
+- launch scripts 改动已完成（`PILLAR_C_MULTINODE=1` 开关 + worker pod 并发发射 + federation gate 自检）
+- `pillar_c_localize_culprit.py` 已加 `PILLAR_C_LOCALIZE_FEDERATED=1` 分支（global.* 表名 + fallback）
+- smoke 脚本已写：`plans/_prep/launch_exp_pr4_smoke.sh`（32 rank，ITERS=200）
 
-**handbook 明文允许**：*"若多机机时不够，PR-4 跳过；单机 PR-1/2/3 已够撑 outline §5.2.C 头条。"* 现况机时不缺（pod 全 IDLE），但**工程复杂度不匹配 stretch 定位**——本轮 PR-1/2/3 已 PASS，收 CAMPAIGN 更保头条数字。
+**当前阻塞**：smoke 实跑需跳板上机，当前 Agent 无法直接执行 `kubectl exec` 跨 pod。
 
-**一句话建议给主 Loop**：**DEFER PR-4，派战役最终 SUMMARY sub-agent 收工**；PR-4 留给下一战役独立立项（把 daemon 常驻脚本 + 4.1.b wheel 各自当独立 PR 分开验收）。
+**判定**：**阶段 1 PARTIAL**（代码 DONE，实跑 PENDING）
 
 ---
 
-## 5. 下轮建议
+## 5. 下轮建议（更新）
 
-- **主 Loop**：派 `CAMPAIGN_FINALIZE` sub-agent —— 收 `pillar_c_v3/CAMPAIGN_SUMMARY.md` 末尾"PR-4 状态"从"未开工"改成"DEFER（feasibility 结论见 `pr4_multinode/PR4_FEASIBILITY.md`）"，并把附录 A 离线消融的 DONE_PARTIAL 状态一并收尾。
-- **PR-4 独立立项要点**（存档给下战役）：
-  1. 先做 daemon 常驻：写 `probing_daemon_launch.sh`，在跳板上给 N 个 pod fanout `torchrun --nnodes=N` 并等 `probing cluster nodes` 探活成功
-  2. 再改 `pillar_c_localize_culprit.py` 用 `global.*`（4.1.a，pure Python，无 wheel 依赖）
-  3. 最后做 4.1.b（Rust `WITH FILTER` 下推 + wheel 编 + 分发）—— 单独一 PR
+**当前状态**：阶段 1 代码 DONE，smoke PENDING
+
+**主 Loop 建议**：
+1. **上机跑 smoke**：`bash plans/_prep/launch_exp_pr4_smoke.sh`（需 ais-cf3e61a5 跳板 + grj pod IDLE）
+2. **smoke PASS 后派阶段 2**：Rust WITH FILTER 下推（`aggregate_pushdown.rs` + `federated_scan_exec.rs`），需重编 wheel
+
+**PR-4 独立立项要点**（存档给下战役）：
+1. 阶段 1（已完成代码）：daemon 常驻通过 `WORLD_SIZE>1` torchrun 自动触发；`PILLAR_C_MULTINODE=1` 开关
+2. 阶段 2（未开始）：Rust `WITH FILTER` 下推 + wheel 编 + 分发 —— 单独一 PR
