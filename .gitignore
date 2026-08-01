@@ -88,3 +88,19 @@ results/ascend-ais/pillar_c_v3/**/gpu.utilization
 results/ascend-ais/pillar_c_v3/**/cpu.tasks
 results/ascend-ais/pillar_c_v3/**/gpu.hccs
 
+# Pillar C v3 PR-4 多机 smoke（stage 1/2/2b/2c 反复试错）：dump/tar 不入库，仅保留 log/md/jsonl
+results/ascend-ais/pillar_c_pr4/**/probing_data/
+results/ascend-ais/pillar_c_pr4/**/*.memc
+results/ascend-ais/pillar_c_pr4/**/*.memt
+results/ascend-ais/pillar_c_pr4/**/*.tar
+results/ascend-ais/pillar_c_pr4/**/*.pull.tar
+results/ascend-ais/pillar_c_pr4/**/_work/
+results/ascend-ais/pillar_c_pr4/**/by_pod/
+results/ascend-ais/pillar_c_pr4/**/dynamic/
+results/ascend-ais/pillar_c_pr4/**/full_fidelity/
+
+# 本地磁盘紧张规则（2026-07-29）：任何战役 dump/大文件不留本地
+# - sub-agent pull_results 只拉 log/md/jsonl，dump 留 AFS/pod
+# - 处理脚本走开发机（ais-cf3e61a5）
+# - 详见 memory/local-disk-frugality.md
+
