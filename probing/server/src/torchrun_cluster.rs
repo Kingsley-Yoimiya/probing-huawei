@@ -137,7 +137,10 @@ fn rendezvous_endpoint() -> Option<String> {
 }
 
 fn bind_spec() -> String {
-    if is_global_rank0() {
+    // Use PROBING_PORT for any local_rank=0 process (not only global_rank=0).
+    // This ensures worker node's local0 (e.g. global_rank=16) also binds a fixed port,
+    // so reachable_addr() can publish a stable addr for federation fanout.
+    if local_rank() == 0 {
         if let Ok(port) = std::env::var("PROBING_PORT") {
             let port = port.trim();
             if !port.is_empty()
@@ -157,6 +160,25 @@ fn reachable_addr(bound: &str) -> String {
     };
     let host = host.trim().trim_matches(['[', ']']);
     if matches!(host, "0.0.0.0" | "::" | "" | "*") {
+        // Priority 1: PROBING_ADVERTISE_ADDR — explicit escape hatch, always wins
+        if let Ok(advertise) = std::env::var("PROBING_ADVERTISE_ADDR") {
+            let advertise = advertise.trim();
+            if !advertise.is_empty() {
+                return if advertise.contains(':') {
+                    advertise.to_string()
+                } else {
+                    format!("{advertise}:{port}")
+                };
+            }
+        }
+        // Priority 2: POD_IP — Kubernetes-injected pod IP; correct in multi-node containers
+        if let Ok(pod_ip) = std::env::var("POD_IP") {
+            let pod_ip = pod_ip.trim();
+            if !pod_ip.is_empty() && pod_ip != "None" && pod_ip != "none" {
+                return format!("{pod_ip}:{port}");
+            }
+        }
+        // Priority 3: MASTER_ADDR — last resort, valid for single-node rank-0 scenario
         let master = std::env::var("MASTER_ADDR").unwrap_or_default();
         let master = master.trim();
         if master == "127.0.0.1" || master == "localhost" {
@@ -165,6 +187,7 @@ fn reachable_addr(bound: &str) -> String {
         if !master.is_empty() {
             return format!("{master}:{port}");
         }
+        // Priority 4: hostname fallback
         return format!(
             "{}:{port}",
             get_hostname().unwrap_or_else(|_| "localhost".into())
@@ -542,6 +565,8 @@ mod tests {
             "LOCAL_RANK",
             "PROBING_PORT",
             "MASTER_ADDR",
+            "POD_IP",
+            "PROBING_ADVERTISE_ADDR",
         ] {
             std::env::remove_var(key);
         }
@@ -620,13 +645,59 @@ mod tests {
     }
 
     #[test]
-    fn bind_spec_global_rank0_uses_probing_port() {
+    fn reachable_addr_pod_ip_priority() {
         let _guard = lock_mutex(&ENV_LOCK, "torchrun test ENV_LOCK");
         clear_torchrun_env();
+        // POD_IP must beat MASTER_ADDR in multi-node k8s scenario
+        std::env::set_var("MASTER_ADDR", "10.119.0.183"); // master IP
+        std::env::set_var("POD_IP", "10.119.0.200");      // this worker's pod IP
+        assert_eq!(
+            reachable_addr("0.0.0.0:9922"),
+            "10.119.0.200:9922",
+            "POD_IP should take priority over MASTER_ADDR"
+        );
+    }
+
+    #[test]
+    fn reachable_addr_advertise_addr_highest_priority() {
+        let _guard = lock_mutex(&ENV_LOCK, "torchrun test ENV_LOCK");
+        clear_torchrun_env();
+        std::env::set_var("MASTER_ADDR", "10.0.0.1");
+        std::env::set_var("POD_IP", "10.0.0.2");
+        std::env::set_var("PROBING_ADVERTISE_ADDR", "10.0.0.3");
+        // PROBING_ADVERTISE_ADDR without port => port appended
+        assert_eq!(
+            reachable_addr("0.0.0.0:9922"),
+            "10.0.0.3:9922",
+            "PROBING_ADVERTISE_ADDR should override both POD_IP and MASTER_ADDR"
+        );
+        // PROBING_ADVERTISE_ADDR with port => used verbatim
+        std::env::set_var("PROBING_ADVERTISE_ADDR", "10.0.0.3:8080");
+        assert_eq!(
+            reachable_addr("0.0.0.0:9922"),
+            "10.0.0.3:8080",
+            "PROBING_ADVERTISE_ADDR with port should be used verbatim"
+        );
+    }
+
+    #[test]
+    fn bind_spec_local_rank0_uses_probing_port() {
+        let _guard = lock_mutex(&ENV_LOCK, "torchrun test ENV_LOCK");
+        clear_torchrun_env();
+        // local_rank=0 on master node (global_rank=0)
         std::env::set_var("RANK", "0");
+        std::env::set_var("LOCAL_RANK", "0");
         std::env::set_var("PROBING_PORT", "18080");
         assert_eq!(bind_spec(), "0.0.0.0:18080");
+        // local_rank=0 on worker node (global_rank=16) — NEW: should also use PROBING_PORT
+        // so worker can bind a known port for federation discovery
+        std::env::set_var("RANK", "16");
+        std::env::set_var("LOCAL_RANK", "0");
+        std::env::set_var("PROBING_PORT", "18081");
+        assert_eq!(bind_spec(), "0.0.0.0:18081");
+        // non-local_rank0 uses random port
         std::env::set_var("RANK", "1");
+        std::env::set_var("LOCAL_RANK", "1");
         assert_eq!(bind_spec(), "0.0.0.0:0");
     }
 }
