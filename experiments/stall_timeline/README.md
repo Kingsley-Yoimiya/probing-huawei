@@ -3,6 +3,12 @@
 目标：在训练式 `compute -> collective -> synchronize` 循环中，用低开销采样同时记录
 device phase 时间和 host 同步时间，验证能否捕捉约 500 ms 的局部 stall 及其跨 rank 传播。
 
+> **与真训练战役的衔接（2026-08-08）**  
+> 本目录验证的是 Probing 观测原语与合成环签名。真 Megatron 上的间歇慢步 / 同步 stall
+> **一致性 → 优化方向**总报告见：  
+> `plans/case-b-512card/sync_stall/REPORT_STALL_OPT_DIRECTION_20260808.md`  
+> 数据索引：`results/huawei-a3-32/DATA_INDEX_STALL_20260808.md`
+
 ## 假设
 
 | 编号 | 假设 | 可观测签名 |
