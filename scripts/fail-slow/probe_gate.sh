@@ -26,11 +26,12 @@ for n in d.get("items",[]):
 print("allocatable_keys", sorted(keys))
 print("TOTAL_ASCEND", tot)
 '
-echo "WARN: hold-exec on yysong-* (our 64 via SYY); never touch a3-megatron / grj-megatron"
-echo "=== yysong pods (idle = no live torchrun) ==="
-for p in yysong-master-0 yysong-worker-0 yysong-worker-1 yysong-worker-2; do
+echo "NOTE: small tasks → self-raise 16-card yjr-*; yysong unavailable; GRJ only if IDLE"
+echo "=== grj hold pods (idle = no live torchrun) ==="
+for p in grj-megatron-32card-0716-master-0 grj-megatron-32card-0716-worker-0; do
   live=\$(\$K exec "\$p" -- bash -lc "pgrep -af 'torchrun|megatron|tbp.py' 2>/dev/null | grep -v defunct | grep -v 'bash -lc' | head -3" 2>/dev/null || true)
   if [[ -z "\$live" ]]; then echo "\$p IDLE"; else echo "\$p BUSY"; echo "\$live"; fi
 done
-\$K get pods -n default --no-headers 2>/dev/null | awk '/yysong|a3-megatron|grj-megatron/{print}' || true
+echo "=== related pods (yysong legacy / holds / a3) ==="
+\$K get pods -n default --no-headers 2>/dev/null | awk '/yysong|a3-megatron|grj-megatron|yjr-/{print}' || true
 EOF

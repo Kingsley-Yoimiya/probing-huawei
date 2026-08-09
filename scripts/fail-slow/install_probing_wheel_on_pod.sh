@@ -1,20 +1,28 @@
 #!/usr/bin/env bash
-# 在 yysong hold-exec pod 内构建并安装 probing-huawei wheel（aarch64 / NPU）。
-# 源码：/data/yinjinrun.p-huawei/probing-huawei/src
-# 产物：wheels/ + probe-bundle/pydeps + llm_test site-packages
+# 在 Ascend pod 内构建并安装 probing-huawei wheel（aarch64 / NPU）。
+# 优先自升 16 卡；须显式 POD=。yysong 已不可用。
+# 源码/产物路径以 AFS / 调用方为准（grj 无 /data/yinjinrun.p-huawei）。
 #
 # 铁律（docs/fail-slow/agents/BUILD_WHEEL.md）：
 #   禁止在 pod 内从公网 rustup/curl 装工具链；缺 rustc → 本机 Clash 摆渡后再跑。
 #
 #   source scripts/fail-slow/env.sh
-#   bash scripts/fail-slow/install_probing_wheel_on_pod.sh
+#   POD=<yjr-16-or-IDLE-grj> bash scripts/fail-slow/install_probing_wheel_on_pod.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck disable=SC1091
 source "${ROOT}/scripts/fail-slow/env.sh"
 
-POD="${POD:-${FS_HOLD_PODS_CASE:-yysong-master-0}}"
+POD="${POD:-${FS_HOLD_PODS_CASE:-}}"
+if [[ -z "${POD}" ]]; then
+  echo "ERROR: set POD= (self-raised 16-card or IDLE grj). yysong is unavailable." >&2
+  exit 2
+fi
+if [[ "${POD}" == yysong-* ]]; then
+  echo "ERROR: yysong hold is unavailable; do not use ${POD}" >&2
+  exit 2
+fi
 NS="${NS:-default}"
 REMOTE_BUILD="/data/yinjinrun.p-huawei/probing-huawei/build_wheel_inner.sh"
 

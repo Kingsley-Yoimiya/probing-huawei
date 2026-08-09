@@ -9,7 +9,15 @@ source "${ROOT}/scripts/fail-slow/env.sh"
 
 CASE_ID="${CASE_ID:-P3-SW-A}"
 DOSE="${DOSE:-loud}"
-POD="${POD:-yysong-worker-0}"
+POD="${POD:-${FS_HOLD_PODS_C:-}}"
+if [[ -z "${POD}" ]]; then
+  echo "ERROR: set POD= (self-raised 16 or IDLE grj); yysong unavailable" >&2
+  exit 2
+fi
+if [[ "${POD}" == yysong-* ]]; then
+  echo "ERROR: yysong unavailable: ${POD}" >&2
+  exit 2
+fi
 NPROC="${NPROC:-16}"
 RATES="${RATES:-0.001 0.05 0.5 1.0}"
 RESIDENT_RATE="${RESIDENT_RATE:-0}"

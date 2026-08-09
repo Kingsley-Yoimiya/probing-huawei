@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# P-FIX：在 yysong-worker-2 上编 probing wheel（cpu.utilization 环默认 8MiB）
+# P-FIX：在 Ascend pod 上编 probing wheel（cpu.utilization 环默认 8MiB；历史曾用 yysong-w2）
 # 前提：RUSTUP_HOME 已有可用 stable（见 docs/fail-slow/agents/BUILD_WHEEL.md）。
 # 禁止本脚本内 rustup toolchain install / curl static.rust-lang.org。
 set -euo pipefail

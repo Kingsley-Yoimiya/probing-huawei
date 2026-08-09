@@ -125,5 +125,5 @@ Details in each `skills/<id>/SKILL.md`.
 | `scripts/fail-slow/env.sh` | SYY kube + `results/ascend-ais` |
 
 编排脚本仍共享 `project/probing-test/scripts/fail-slow/`（含 `platform/ascend/`）。  
-进集群借 `songyiyang.p`；落盘只写 `yinjinrun.p-huawei`；**主池 hold-exec `yysong-*`**（允许进壳）；禁止写宋盘 / 删 `yysong` vcjob；grj 仅 IDLE 备选。  
+进集群借 `songyiyang.p`；落盘只写 `yinjinrun.p-huawei`；**小任务优先自升 16 卡**（`yysong` 已不可用）；GRJ 不一定空闲，仅 IDLE 或用户明示时 hold-exec；禁止写宋盘 / 删他人 vcjob。  
 Case 前缀 `yjr-as-c-*`；Baseline `yjr-as-b-*`。入口：`docs/fail-slow/README.md`。

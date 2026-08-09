@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# Ascend hold-exec：在 yysong-* 内 torchrun，不新建 vcjob。
+# Ascend hold-exec：在显式指定的 hold/自有 pod 内 torchrun。
+# 小任务优先自升 16 卡；yysong 已不可用；GRJ 须 IDLE。
 # 本机 source env.sh 后调用；经跳板 JUMP_KUBECTL exec。
 #
-# 例（单节点）：
+# 例（单节点，须 POD=）:
 #   source scripts/fail-slow/env.sh
+#   POD=grj-megatron-32card-0716-master-0   # 仅 IDLE
 #   CASE_ID=P3-EXT-A DOSE=loud PHASE=pilot ABC_CONFIGS=C0_baseline,C1_inject_none \
 #     bash scripts/fail-slow/hold_exec_run_case.sh
 #
-# 例（PR-4 双节点）：
+# 例（PR-4 双节点）:
 #   PILLAR_C_MULTINODE=1 NNODES=2 NPROC=16 \
 #   POD=grj-megatron-32card-0716-master-0 \
 #   WORKER_POD=grj-megatron-32card-0716-worker-0 \
@@ -22,7 +24,15 @@ source "${ROOT}/scripts/fail-slow/env.sh"
 CASE_ID="${CASE_ID:?need CASE_ID}"
 DOSE="${DOSE:-loud}"
 PHASE="${PHASE:-pilot}"
-POD="${POD:-${FS_HOLD_PODS_CASE:-yysong-master-0}}"
+POD="${POD:-${FS_HOLD_PODS_CASE:-}}"
+if [[ -z "${POD}" ]]; then
+  echo "ERROR: set POD= (self-raised 16-card or IDLE grj). yysong is unavailable." >&2
+  exit 2
+fi
+if [[ "${POD}" == yysong-* ]]; then
+  echo "ERROR: yysong hold is unavailable; do not use ${POD}" >&2
+  exit 2
+fi
 NS="${NS:-default}"
 NNODES="${NNODES:-1}"
 NPROC="${NPROC:-16}"
@@ -271,6 +281,13 @@ case "$CASE_ID" in
     ;;
 esac
 
+HOLD_JOB_LABEL="${FS_HOLD_JOBS:-}"
+case "${POD}" in
+  grj-*|*-grj-*) HOLD_JOB_LABEL="${HOLD_JOB_LABEL:-grj-megatron-32card-0716}" ;;
+  yjr-*) HOLD_JOB_LABEL="${HOLD_JOB_LABEL:-self-vcjob}" ;;
+  *) HOLD_JOB_LABEL="${HOLD_JOB_LABEL:-${POD}}" ;;
+esac
+
 cat >"$LOCAL_RESULT_ROOT/manifest.yaml" <<YAML
 case_id: ${CASE_ID}
 dose: ${DOSE}
@@ -281,7 +298,7 @@ nnodes: ${NNODES}
 nproc: ${NPROC}
 pod: ${POD}
 pool: pool-case
-hold_job: yysong
+hold_job: ${HOLD_JOB_LABEL}
 mode: ${MODE}
 inject_kind: ${INJECT_KIND}
 inject_args: "${INJECT_ARGS}"

@@ -6,8 +6,8 @@
 
 - **角色**：单 case 执行者（探索 → 冻结 → 正式 → 判分）
 - **规模**：默认 **16 卡**（2×8）；未获批准不得扩到 32/64/128
-- **运行模式**：`hold-exec`——默认 **`yysong-master-0`**（主池 64）；备选 `grj-megatron-32card-0716-master-0`（空闲借用 + 让路）
-- **结果/日志标签**：`yjr-as-c-*`；不新建 vcjob；**禁止**碰 `a3-megatron-*`；允许 hold-exec `yysong-*`，禁止写宋盘 / 删 `yysong` vcjob
+- **运行模式**：优先 **自升一台 16 卡**（`yjr-*`）；备选 `grj-megatron-32card-0716-master-0`（确认 IDLE + 让路）。**`yysong` 已不可用**，勿默认 hold-exec
+- **结果/日志标签**：`yjr-as-c-*`；自有 vcjob 跑完 **suspend 不 delete**；**禁止**碰 `a3-megatron-*`；禁止写宋盘 / 删他人 vcjob
 - **落盘**：`yinjinrun.p-huawei` → `results/ascend-ais/`（不写宋盘）
 - **工具线**：本阶段仅 **C0 / C1 / C2（Probing）**
 - **必读**：`rules.md`、`ledger.md`、`CASE_QUEUE.md`、`agents/RESOURCE.md`、`env.sh`
@@ -37,8 +37,9 @@ run_id_hint: null          # 可选
 
 - 碰 `a3-megatron-*`；在 grj 对方训练再现时继续占卡不让路  
 - 写 `geruijun` / `grj-shared-log-ckpt` / 宋 AFS  
-- 因「allocatable 空闲=0」停跑；**删/改** `yysong` vcjob（除非用户明确要求）  
-- 写宋一扬 AFS / `/afs-a3-241ceshi-shared/yysong`（hold-exec 进壳跑实验是允许的）  
+- 因「allocatable 空闲=0」停跑；**删/改** `yysong` / `grj-megatron-*` vcjob（除非用户明确要求）  
+- 写宋一扬 AFS / `/afs-a3-241ceshi-shared/yysong`  
+- 把已不可用的 `yysong` 当默认池、或未确认 IDLE 就蹭 GRJ  
 - 往 `results/muxi-h3c/` 写  
 - 未穷尽就给 baseline 写 `ENV-BLOCKED`  
 - 改「全局固定」控变而不记理由  
@@ -69,6 +70,6 @@ run_id_hint: null          # 可选
 你是昇腾 Fail-Slow Case Runner。只处理 case_id={{CASE}}，world_size=16，标签 yjr-as-c-*。
 必读 project/probing-huawei/docs/fail-slow/{rules,ledger,CASE_QUEUE,CONTRAST_QUEUE}.md 与 agents/{CASE_RUNNER,RESOURCE}.md。
 source scripts/fail-slow/env.sh；跳板 kubectl=/root/.cache/volcano/kubectl/kubectl；SYY kube。
-模式 hold-exec：默认在 **yysong-master-0** 跑；壳空=无活 torchrun。主池被占才改 grj-m0（IDLE+让路）。勿碰 a3；勿删 yysong/grj vcjob；勿抢 worker 对照作业。落盘 yinjinrun.p-huawei → $LOCAL_RESULT_ROOT_BASE。
+优先自升一台 16 卡（yjr-*）；GRJ 仅确认 IDLE 才 hold-exec + 让路。yysong 已不可用。勿碰 a3；勿删他人 vcjob。落盘 yinjinrun.p-huawei → $LOCAL_RESULT_ROOT_BASE。
 只跑 C0/C1/C2。无 calibrated dose 先移植。LOUD_OK/SCORED 后登记 CONTRAST_QUEUE（GH+XPU PENDING）。结束更新台账并回传 BLOCKED.md（若有）。
 ```

@@ -4,11 +4,11 @@
 
 | 文件 | 作用 |
 |------|------|
-| `env.sh` | 结果根、AFS/DATA、SYY kube、hold-exec pods、定位 `probing-test` |
+| `env.sh` | 结果根、AFS/DATA、SYY kube；默认 **self-vcjob**（小任务自升 16）；hold 须显式 POD |
 | `dose_recipes.yaml` | 昇腾剂量 |
-| `hold_exec_run_case.sh` | yysong hold-exec 发射（经跳板 kubectl） |
+| `hold_exec_run_case.sh` | hold/自有 pod 内发射（须 `POD=`；经跳板 kubectl） |
 | `sync_kube_to_jump.sh` | 本机 SYY kube → 跳板 `/tmp/...` |
-| `probe_gate.sh` | 门禁快检（can-i / yysong IDLE） |
+| `probe_gate.sh` | 门禁快检（can-i / GRJ IDLE；提醒自升 16） |
 
 对外总入口：`docs/fail-slow/SHARE.md` · 身份：`docs/fail-slow/IDENTITY.md`。
 

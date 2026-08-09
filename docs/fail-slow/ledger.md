@@ -57,11 +57,11 @@
 | 2 | SYY kube 在跳板 `/tmp/config-vc-a3-241ceshi-songyiyang.yaml` | ✅ | 已 sync |
 | 3 | `auth can-i get/create pods` = yes | ✅ | user=`songyiyang.p` |
 | 4 | Ascend910 可分配合计可见 | ✅ | 128 |
-| 5 | 主池 `yysong`；**可空闲借 grj**；**不碰 a3**；不写宋/对方 AFS | ✅ | 2026-07-25 修订 |
+| 5 | 可升卡；小任务自升 16；GRJ 仅 IDLE 借用；`yysong` 不可用；**不碰 a3**；不写宋/对方 AFS | ✅ | 2026-08-10 修订 |
 | 6 | 自有 AFS 可写（pod 内 → yinjinrun.p-huawei） | ✅ | pod 内 `/data/yinjinrun.p-huawei` |
 | 7 | 镜像内 torch_npu + HCCL + `npu-smi` | ✅ | llm_test；torch_npu 2.7.1；HCCL ok |
 | 8 | Probing wheel 可 import + SQL 有值 | ⬜ | 镜像尚无 probing 包 |
-| 9 | hold-exec 池：Case=master；GH=w1；XPU=w2 | ✅ | RESOURCE.md |
+| 9 | 默认自升 16；GRJ 备选 IDLE；`yysong` 不可用 | ✅ | RESOURCE.md 2026-08-10 |
 | 10 | `NO_PROXY` / `unset ALL_PROXY`（跳板侧） | ⬜ | |
 | 11 | 跳板 kubectl 绝对路径可用 | ✅ | `/root/.cache/volcano/kubectl/kubectl` |
 
@@ -307,6 +307,7 @@ Loud 归档 [`agents/LOOP_LOUD.md`](agents/LOOP_LOUD.md)。
 
 | 日期 | 变更 |
 |---|---|
+| 2026-08-10 | **资源对齐**：`yysong` 64 hold 已不可用；小任务（Agent 编译/smoke/短测）**优先自升一台 16 卡**；GRJ 不一定空闲、勿默认蹭；更新 RESOURCE / CASE_RUNNER / PILLAR_C_RUNNER / myportal `cluster-identity` / `CURRENT.md` |
 | 2026-07-27 | **资源对齐回 yysong 主池**：`env.sh` / RESOURCE / CASE_RUNNER / LOOP / handbook / cluster-identity 默认从临时 grj 拨回 **yysong**（C=`yysong-worker-0`，Case=`yysong-master-0`）；grj 仅 IDLE 备选+让路；澄清「勿碰 yysong」=禁止写宋盘/删 vcjob，**允许** hold-exec；Pillar C v3 现役；派遣 **composer-2.5** |
 | 2026-07-27 | **Param-Calib 主队列收官**：批次1–4 全 DONE；20m loop 停；`LOOP_LAST_PARAM_CALIB` status=CLOSED；产物根 `results/ascend-ais/param_calib/` |
 | 2026-07-27 | **Param-Calib ③-C DONE（批次4收官）**：`3c_local_vs_global_upgrade.py`；scope=**local_suspect_only**；量比 local/global=**0.0625**（16×）；D4=D4 同级；复用 ③-A `014151` victim 臂+离线外推（避 SET_SCOPE=all 死锁 `012805`）；Dynolog 对照文献+20–44%/沐曦 P3-SW-A≈+53%；`param_calib/3C_local_vs_global_upgrade/`；**主队列可收官** |

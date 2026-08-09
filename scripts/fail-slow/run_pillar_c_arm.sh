@@ -10,7 +10,15 @@ source "${ROOT}/scripts/fail-slow/env.sh"
 ARM="${ARM:?need ARM=full_fidelity|probing_collapse|naive_downsample|e2_rate|e3a_upgrade|e4_naive|s1_mid_attach}"
 CASE_ID="${CASE_ID:-P3-SW-A}"
 DOSE="${DOSE:-loud}"
-POD="${POD:-${FS_HOLD_PODS_C:-yysong-worker-0}}"
+POD="${POD:-${FS_HOLD_PODS_C:-}}"
+if [[ -z "${POD}" ]]; then
+  echo "ERROR: set POD= (self-raised 16 or IDLE grj); yysong unavailable" >&2
+  exit 2
+fi
+if [[ "${POD}" == yysong-* ]]; then
+  echo "ERROR: yysong unavailable: ${POD}" >&2
+  exit 2
+fi
 NPROC="${NPROC:-16}"
 NNODES="${NNODES:-1}"
 PARENT_RUN_ID="${PARENT_RUN_ID:?need PARENT_RUN_ID}"
