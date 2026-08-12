@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # One-shot B fixture debug on GRJ master.
 set -euo pipefail
-JUMP="${JUMP:-ais-cf3e61a5}"
-KUBE="${KUBE:-/tmp/config-vc-a3-241ceshi-songyiyang.yaml}"
-KUBECTL="${KUBECTL:-/root/.cache/volcano/kubectl/kubectl}"
+JUMP="${JUMP:-afs-cpu}"
+KUBE="${KUBE:-/root/.kube/config-vc-a3-241ceshi-songyiyang.yaml}"
+KUBECTL="${KUBECTL:-/root/bin/kubectl}"
 POD="${MASTER_POD:-grj-megatron-32card-0716-master-0}"
 CODE="/afs-a3-weight-share/yinjinrun.p-huawei/probing-huawei/experiments/mspti_sync_skeleton-yield-fp"
 

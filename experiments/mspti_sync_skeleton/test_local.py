@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,8 @@ from strict_validate import (
     StrictValidationError,
     audit_fatal_signals_in_node_logs,
     parse_drop_flags,
+    resolve_meta_raw_kernels,
+    validate_adaptive_native_meta,
     validate_attempt_manifest,
     validate_ours_dir,
     validate_rank_rows,
@@ -165,7 +168,7 @@ def _write_rank(root: Path, rank: int, raw: int = 100, comm: int = 10, **kw) -> 
         + "\n",
         encoding="utf-8",
     )
-    (root / f"rank_{rank:04d}.mspti_meta.json").write_text(
+    (root / f"rank_{rank:04d}.npu_sync_meta.json").write_text(
         json.dumps(_good_meta(rank, raw=raw)), encoding="utf-8"
     )
 
@@ -258,6 +261,128 @@ def test_atexit_finalize_rejected() -> None:
         assert "finalize_reason" in str(exc)
 
 
+def test_adaptive_false_positive_rejected() -> None:
+    """REPLAN §3.2: sidecar adaptive_v1 without native authority must fail-closed."""
+    meta = _good_meta(0, raw=200)
+    meta.update(
+        {
+            "granularity_mode": "adaptive_v1",
+            "adaptive_source": "python_fixture",
+            "adaptive": {
+                "granularity_mode": "adaptive_v1",
+                "abi_version": 1,
+                "adapt_min_samples": 32,
+                "threshold_updates": 0,
+                "total_raw_kernels": 200,
+                "total_kseg": 20,
+                "streams": [
+                    {
+                        "device_id": 0,
+                        "stream_id": 1,
+                        "raw_kernels": 200,
+                        "kseg_count": 20,
+                        "positive_gaps": 200,
+                    }
+                ],
+            },
+        }
+    )
+    try:
+        validate_adaptive_native_meta(meta, rank=0, expected_mode="adaptive_v1")
+        raise AssertionError("UNEXPECTED_PASS adaptive false positive")
+    except StrictValidationError as exc:
+        assert "adaptive_source" in str(exc) or "false positive" in str(exc)
+
+
+def _adaptive_native_meta(rank: int, raw: int = 100, comm: int = 10) -> dict:
+    """Production-shaped sidecar: raw_kernel_count + adaptive rollups, no top-level raw_kernels."""
+    meta = _good_meta(rank, raw=raw)
+    meta.pop("raw_kernels", None)
+    meta.pop("raw_comms", None)
+    meta.update(
+        {
+            "granularity_mode": "adaptive_v1",
+            "adaptive_source": "native",
+            "raw_kernel_count": raw,
+            "raw_comm_count": comm,
+            "adaptive": {
+                "granularity_mode": "adaptive_v1",
+                "abi_version": 1,
+                "adapt_min_samples": 128,
+                "adapt_every": 256,
+                "threshold_updates": 4,
+                "total_raw_kernels": raw,
+                "total_kseg": max(1, raw // 5),
+                "streams": [
+                    {
+                        "device_id": 0,
+                        "stream_id": 37,
+                        "raw_kernels": raw,
+                        "kseg_count": max(1, raw // 5),
+                        "positive_gaps": raw,
+                        "threshold_updates": 4,
+                    }
+                ],
+            },
+        }
+    )
+    return meta
+
+
+def test_adaptive_native_meta_raw_kernel_count_strict_ok() -> None:
+    """§9 a02 shape: per-stream adaptive + raw_kernel_count, no top-level raw_kernels."""
+    raw = 100
+    meta = _adaptive_native_meta(0, raw=raw)
+    assert resolve_meta_raw_kernels(meta) == raw
+    validate_adaptive_native_meta(meta, rank=0, expected_mode="adaptive_v1")
+    validate_rank_rows(
+        _good_rows(0, raw_count=raw),
+        expected_rank=0,
+        capture_step=10,
+        meta=meta,
+        min_raw_kernels=50,
+        min_comm=5,
+    )
+
+
+def test_resolve_meta_raw_kernel_sources_disagree_fails() -> None:
+    meta = _adaptive_native_meta(0, raw=100)
+    meta["raw_kernels"] = 99
+    try:
+        resolve_meta_raw_kernels(meta)
+        raise AssertionError("UNEXPECTED_PASS disagreeing raw sources")
+    except StrictValidationError as exc:
+        assert "disagree" in str(exc)
+
+
+def test_legacy_mspti_meta_rejected_for_formal_ours() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _write_rank(root, 0, raw=100, comm=10)
+        legacy = root / "rank_0000.npu_sync_meta.json"
+        legacy.unlink()
+        (root / "rank_0000.mspti_meta.json").write_text(
+            json.dumps(_good_meta(0)), encoding="utf-8"
+        )
+        (root / "config.json").write_text(
+            json.dumps(
+                {
+                    "granularity_mode": "adaptive_v1",
+                    "frozen_thresholds": {
+                        "min_raw_kernels_per_rank": 50,
+                        "min_comm_per_rank": 5,
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        try:
+            validate_ours_dir(root, expected_ranks=1, capture_step=10)
+            raise AssertionError("UNEXPECTED_PASS legacy meta")
+        except StrictValidationError as exc:
+            assert "npu_sync_meta" in str(exc) or "legacy" in str(exc)
+
+
 def test_all_ranks_raw1_fails_absolute() -> None:
     """P1 负例：32rank 全 raw=1 — 绝对下限拦截（禁止仅靠自参考 median×0.25）。"""
     with tempfile.TemporaryDirectory() as td:
@@ -339,7 +464,7 @@ def test_strict_bad_json_fails() -> None:
             if r == 1:
                 lines[1] = "{bad"
             p.write_text("\n".join(lines) + "\n", encoding="utf-8")
-            (root / f"rank_{r:04d}.mspti_meta.json").write_text(
+            (root / f"rank_{r:04d}.npu_sync_meta.json").write_text(
                 json.dumps(_good_meta(r)), encoding="utf-8"
             )
         (root / "config.json").write_text(
@@ -709,6 +834,117 @@ def test_analyzer_no_flush_slot_keyerror() -> None:
         _ = a.get("capture_step_ms")
 
 
+def test_analyzer_ours_process_wall_ms_manifest_proxy_legacy_allowlist() -> None:
+    """192117 + explicit flag may use manifest e2e proxy."""
+    from analyze_megatron_ab import _resolve_process_wall_ms, analyze_attempt
+
+    group_id = "20260809_192117-megatron-ab-formal6x20"
+    meta = _good_meta(0)
+    del meta["process_wall_ms"]
+    man = {"e2e_wall_ms": 109952.0, "node_launch": {"node_0.launch.json": {"e2e_wall_ms": 109952.0}}}
+    proc, src, disc = _resolve_process_wall_ms(
+        meta,
+        man,
+        group_id=group_id,
+        allow_legacy_process_wall_proxy=True,
+    )
+    assert proc == 109952.0
+    assert src == "manifest_e2e_wall_ms_proxy"
+    assert disc is not None
+    assert disc["legacy_proxy_exception"] is True
+    assert disc["group_id"] == group_id
+
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td) / "attempt_02_ours"
+        d.mkdir()
+        lines = ["pretrain_gpt.py"]
+        lines += [
+            f"iteration       {k}/      20 | elapsed time per iteration (ms): 10.0 | lm loss: 1.0"
+            for k in range(1, 21)
+        ]
+        (d / "node_0.log").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        _write_rank(d, 0, raw=300, comm=12)
+        (d / "rank_0000.npu_sync_meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        (d / "counters.json").write_text(
+            json.dumps(
+                {
+                    "pass": True,
+                    "convert_trace_write_ms": 1.0,
+                    "convert_command_wall_ms": 2.0,
+                }
+            ),
+            encoding="utf-8",
+        )
+        (d / "cluster.trace.json").write_text("{}", encoding="utf-8")
+        model = {"gbs": 64, "seq": 4096, "world_size": 32, "tp": 2, "pp": 1, "seed": 1234}
+        man_full = {
+            "arm": "ours",
+            "train_iters": 20,
+            "e2e_wall_ms": 109952.0,
+            "node_launch": man["node_launch"],
+        }
+        (d / "attempt_manifest.json").write_text(json.dumps(man_full), encoding="utf-8")
+        a = analyze_attempt(
+            d,
+            10,
+            model,
+            False,
+            group_id=group_id,
+            allow_legacy_process_wall_proxy=True,
+        )
+        assert a["tail_tax"]["process_wall_ms"] == 109952.0
+        assert a["tail_tax"]["process_wall_ms_source"] == "manifest_e2e_wall_ms_proxy"
+        assert a["steady_exclude_iters"] == [10, 11]
+        assert 11 not in a["steady_step_ids"]
+
+
+def test_analyzer_ours_process_wall_ms_missing_fail_closed() -> None:
+    from analyze_megatron_ab import _resolve_process_wall_ms
+
+    meta = _good_meta(0)
+    del meta["process_wall_ms"]
+    proc, src, disc = _resolve_process_wall_ms(
+        meta,
+        {},
+        group_id="20260809_192117-megatron-ab-formal6x20",
+        allow_legacy_process_wall_proxy=False,
+    )
+    assert proc is None and src is None and disc is None
+
+
+def test_analyzer_ours_process_wall_ms_wrong_group_fail_closed() -> None:
+    from analyze_megatron_ab import _resolve_process_wall_ms
+
+    meta = _good_meta(0)
+    del meta["process_wall_ms"]
+    man = {"e2e_wall_ms": 109952.0}
+    proc, src, disc = _resolve_process_wall_ms(
+        meta,
+        man,
+        group_id="20260810_future-group-formal6x20",
+        allow_legacy_process_wall_proxy=True,
+    )
+    assert proc is None and src is None
+    assert disc is not None
+    assert disc["legacy_proxy_denied"] is True
+
+
+def test_analyzer_ours_process_wall_ms_allowlist_but_manifest_missing_fail_closed() -> None:
+    from analyze_megatron_ab import _resolve_process_wall_ms
+
+    meta = _good_meta(0)
+    del meta["process_wall_ms"]
+    proc, src, disc = _resolve_process_wall_ms(
+        meta,
+        {},
+        group_id="20260809_192117-megatron-ab-formal6x20",
+        allow_legacy_process_wall_proxy=True,
+    )
+    assert proc is None and src is None
+    assert disc is not None
+    assert disc["reason"] == "manifest_e2e_wall_ms_missing"
+
+
 def test_wheel_select_dry_run() -> None:
     """build_handoff_wheel_pod.sh must not use head -1 on stale dist."""
     script = (
@@ -869,7 +1105,7 @@ def test_required_digest_coverage_negatives() -> None:
     for name in (
         "counters.json",
         "rank_0000.skeleton.jsonl",
-        "rank_0000.mspti_meta.json",
+        "rank_0000.npu_sync_meta.json",
         "node_0.done",
         "node_0.log",
         "run.log",
@@ -985,6 +1221,7 @@ def test_ab_dry_run_full_plan() -> None:
         env["BACKUP_ROOT"] = backup
         env["LOG_DIR"] = log_dir
         env["CLAIM_PARENT"] = str(Path(td) / "claims")
+        env["JUMP_CONTROL_PARENT"] = str(Path(td) / "jump_control")
         env["ATTEMPTS"] = "normal ours torch torch ours normal"
         env["MSPTI_MIN_RAW_KERNELS"] = "7000"
         env["MSPTI_MIN_COMM"] = "1000"
@@ -1300,7 +1537,7 @@ def test_sealed_so_actual_hash_negatives() -> None:
         (root / "rank_0000.skeleton.jsonl").write_text(
             "\n".join(json.dumps(r) for r in _good_rows(0)) + "\n", encoding="utf-8"
         )
-        (root / "rank_0000.mspti_meta.json").write_text(
+        (root / "rank_0000.npu_sync_meta.json").write_text(
             json.dumps(_good_meta(0)), encoding="utf-8"
         )
         (root / "counters.json").write_text(json.dumps({"pass": True}), encoding="utf-8")
@@ -1692,7 +1929,7 @@ def test_synthetic_sealed_so_runlog_chain_local() -> None:
         (root / "rank_0000.skeleton.jsonl").write_text(
             "\n".join(json.dumps(r) for r in _good_rows(0)) + "\n", encoding="utf-8"
         )
-        (root / "rank_0000.mspti_meta.json").write_text(json.dumps(_good_meta(0)), encoding="utf-8")
+        (root / "rank_0000.npu_sync_meta.json").write_text(json.dumps(_good_meta(0)), encoding="utf-8")
         (root / "counters.json").write_text(json.dumps({"pass": True}), encoding="utf-8")
         (root / "cluster.trace.json").write_text("{}", encoding="utf-8")
         art = build_artifact_digest(root)
@@ -1793,7 +2030,7 @@ def test_ours_node_loaded_so_required_negatives() -> None:
         (root / "rank_0000.skeleton.jsonl").write_text(
             "\n".join(json.dumps(r) for r in _good_rows(0)) + "\n", encoding="utf-8"
         )
-        (root / "rank_0000.mspti_meta.json").write_text(
+        (root / "rank_0000.npu_sync_meta.json").write_text(
             json.dumps(_good_meta(0)), encoding="utf-8"
         )
         (root / "counters.json").write_text(json.dumps({"pass": True}), encoding="utf-8")
@@ -2331,6 +2568,199 @@ def test_yield_ownership_race_matrix() -> None:
         assert "pid=62" in line and "pgid=60" in line
         assert "pid=60" not in line
 
+    # 7) r6 a03 replay: bash -lc + Ascend/torchrun bootstrap without RUN_MARKER → STARTUP/CLEAR
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td)
+        (out / "node_0.pgid").write_text("96233\n", encoding="utf-8")
+        ascend_wrap = (
+            "bash --noprofile --norc -lc source /usr/local/Ascend/cann-8.5.0/set_env.sh && "
+            "source /root/miniconda3/etc/profile.d/conda.sh && conda activate llm_test && "
+            "setsid env timeout 1800 /root/miniconda3/envs/llm_test/bin/torchrun "
+            "--nnodes=16 --nproc_per_node=16 pretrain_gpt.py"
+        )
+        ps = f"PID PGID STAT ARGS\n96233 96233 S {ascend_wrap}\n"
+        fx = {
+            "96233": {
+                "status": "OK",
+                "has_marker": False,
+                "has_out_dir": False,
+                "starttime": 1717118092,
+            },
+        }
+        rc, line = _run(out, ps, fx)
+        assert rc == 0 and line in ("CLEAR", "STARTUP"), (rc, line)
+
+    # 8) r6 negative control: foreign pretrain without marker still OPPONENT
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td)
+        (out / "node_0.pgid").write_text("10\n", encoding="utf-8")
+        ps = "PID PGID STAT ARGS\n10 10 S torchrun own\n99 99 R pretrain_gpt.py foreign-no-marker\n"
+        fx = {
+            "10": {
+                "status": "OK",
+                "has_marker": True,
+                "marker_value": marker,
+                "has_out_dir": True,
+                "out_dir_value": str(out),
+                "starttime": 1,
+            },
+            "99": {
+                "status": "OK",
+                "has_marker": False,
+                "has_out_dir": False,
+                "starttime": 55,
+            },
+        }
+        rc, line = _run(out, ps, fx)
+        assert rc == 10, (rc, line)
+        assert "pid=99" in line
+
+    # 9) Arbiter binding: own marked torchrun + Ascend/bash-lc foreign torchrun pretrain
+    # (no tree/bootstrap) → OPPONENT rc=10 — cluster-real opponent shape.
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td)
+        (out / "node_0.pgid").write_text("10\n", encoding="utf-8")
+        foreign_wrap = (
+            "bash --noprofile --norc -lc source /usr/local/Ascend/cann-8.5.0/set_env.sh && "
+            "source /root/miniconda3/etc/profile.d/conda.sh && conda activate llm_test && "
+            "/root/miniconda3/envs/llm_test/bin/torchrun --nnodes=1 --nproc_per_node=16 pretrain_gpt.py"
+        )
+        ps = (
+            "PID PGID STAT ARGS\n"
+            f"10 10 S torchrun own-marked\n"
+            f"99 99 R {foreign_wrap}\n"
+        )
+        fx = {
+            "10": {
+                "status": "OK",
+                "has_marker": True,
+                "marker_value": marker,
+                "has_out_dir": True,
+                "out_dir_value": str(out),
+                "starttime": 1,
+            },
+            "99": {
+                "status": "OK",
+                "has_marker": False,
+                "has_out_dir": False,
+                "starttime": 55,
+            },
+        }
+        rc, line = _run(out, ps, fx)
+        assert rc == 10, (rc, line)
+        assert line.startswith("OPPONENT|")
+        assert "pid=99" in line
+        assert "pid=10" not in line
+
+
+def test_group_invalid_shell_flag_vs_file_e2e() -> None:
+    """Shell: GROUP_INVALID_WRITTEN=1 only when JSON exists; ensure failure is observable."""
+    here = Path(__file__).resolve().parent
+    exp = str(here)
+    script = """#!/usr/bin/env bash
+set -u -o pipefail
+EXP_LOCAL="__EXP__"
+GROUP_ID="shell_flag_e2e"
+LOCAL_GROUP_CLAIMED=1
+GROUP_INVALID_WRITTEN=0
+BACKUP_ROOT=""
+
+mark_group_invalid() {
+  local reason="$1" attempt="${2:-}" stage="${3:-unknown}" cleanup_status="${4:-}"
+  if (( LOCAL_GROUP_CLAIMED != 1 )); then
+    return 0
+  fi
+  set +e
+  REASON="$reason" ATTEMPT="$attempt" STAGE="$stage" CLEANUP="$cleanup_status" BACKUP_ROOT="$BACKUP_ROOT" GROUP_ID="$GROUP_ID" EXP_LOCAL="$EXP_LOCAL" python3 - <<'PY'
+import os, sys
+from pathlib import Path
+sys.path.insert(0, os.environ["EXP_LOCAL"])
+from fanout_orchestrator import mark_group_invalid
+extra = {}
+cs = os.environ.get("CLEANUP", "")
+if cs:
+    extra["cleanup_status"] = cs
+mark_group_invalid(
+    Path(os.environ["BACKUP_ROOT"]),
+    group_id=os.environ["GROUP_ID"],
+    reason=os.environ["REASON"],
+    attempt_id=os.environ.get("ATTEMPT", ""),
+    stage=os.environ.get("STAGE", "unknown"),
+    extra=extra or None,
+)
+PY
+  local wrc=$?
+  if [[ -f "${BACKUP_ROOT}/GROUP_INVALID.json" ]]; then
+    GROUP_INVALID_WRITTEN=1
+    return 0
+  fi
+  GROUP_INVALID_WRITTEN=0
+  return 1
+}
+
+ensure_group_invalid_written() {
+  local reason="$1" attempt="${2:-}" stage="${3:-unknown}" cleanup_status="${4:-}"
+  if [[ -f "${BACKUP_ROOT}/GROUP_INVALID.json" ]]; then
+    GROUP_INVALID_WRITTEN=1
+    return 0
+  fi
+  mark_group_invalid "${reason}" "${attempt}" "${stage}" "${cleanup_status}"
+  local wrc=$?
+  if [[ ! -f "${BACKUP_ROOT}/GROUP_INVALID.json" ]]; then
+    echo "FATAL: GROUP_INVALID missing after mark reason=${reason} stage=${stage} wrc=${wrc}" >&2
+    return 1
+  fi
+  return 0
+}
+
+set +e
+FAIL_ROOT="$(mktemp)"
+echo "not-a-dir" > "${FAIL_ROOT}"
+BACKUP_ROOT="${FAIL_ROOT}"
+mark_group_invalid "write_fail" "" "e2e_fail" ""
+mrc=$?
+ensure_group_invalid_written "write_fail_retry" "" "e2e_fail" ""
+erc=$?
+if [[ "${GROUP_INVALID_WRITTEN}" -ne 0 ]]; then
+  echo "BAD_FLAG_ON_FAIL flag=${GROUP_INVALID_WRITTEN}" >&2
+  exit 2
+fi
+if [[ -f "${FAIL_ROOT}/GROUP_INVALID.json" ]]; then
+  echo "BAD_FILE_ON_FAIL" >&2
+  exit 3
+fi
+if [[ "${mrc}" -eq 0 && "${erc}" -eq 0 ]]; then
+  echo "BAD_RC_ON_FAIL mrc=${mrc} erc=${erc}" >&2
+  exit 4
+fi
+
+BACKUP_ROOT="$(mktemp -d)"
+GROUP_INVALID_WRITTEN=0
+if ! ensure_group_invalid_written "yield_opponent" "attempt_03_torch" "yield" "CLEANUP_OK"; then
+  echo "ENSURE_FAIL_ON_SUCCESS" >&2
+  exit 5
+fi
+if [[ "${GROUP_INVALID_WRITTEN}" -ne 1 ]]; then
+  echo "BAD_FLAG_ON_SUCCESS flag=${GROUP_INVALID_WRITTEN}" >&2
+  exit 6
+fi
+if [[ ! -f "${BACKUP_ROOT}/GROUP_INVALID.json" ]]; then
+  echo "BAD_MISSING_JSON_ON_SUCCESS" >&2
+  exit 7
+fi
+echo "SHELL_FLAG_E2E_OK"
+""".replace("__EXP__", exp)
+    with tempfile.NamedTemporaryFile("w", suffix=".sh", delete=False) as tf:
+        tf.write(script)
+        tf_path = tf.name
+    try:
+        os.chmod(tf_path, 0o755)
+        proc = subprocess.run(["bash", tf_path], capture_output=True, text=True, check=False)
+        assert proc.returncode == 0, (proc.returncode, proc.stdout, proc.stderr)
+        assert "SHELL_FLAG_E2E_OK" in proc.stdout
+    finally:
+        os.unlink(tf_path)
+
 
 def test_yield_fail_closed_fixture() -> None:
     """no opponent → continue; opponent → stop; check rc!=0 → YIELD_CHECK_FAILED; cleanup residual."""
@@ -2354,11 +2784,21 @@ def test_yield_fail_closed_fixture() -> None:
     assert classify_yield_check("CLEAR", 0).status == YIELD_CLEAR
     assert classify_yield_check("OK", 0).status == YIELD_CLEAR
     assert classify_yield_check("STARTUP", 0).status == YIELD_CLEAR
+    assert classify_yield_check("STARTUP", 20).status == YIELD_CLEAR
+    assert classify_yield_check("CLEAR", 20).status == YIELD_CLEAR
     assert classify_yield_check("OPPONENT|123 torchrun", 0).status == YIELD_OPPONENT
     assert classify_yield_check("OPP|123 torchrun", 0).status == YIELD_OPPONENT
     assert classify_yield_check("OK", 1).status == YIELD_CHECK_FAILED
     assert classify_yield_check("", 0).status == YIELD_CHECK_FAILED  # empty ≠ clear
     assert classify_yield_check("weird", 0).status == YIELD_CHECK_FAILED
+    from local_group_guard import classify_pod_yield, normalize_pod_transport_rc
+
+    assert normalize_pod_transport_rc(255, "STARTUP") == (
+        RC_YIELD_CHECK_FAILED,
+        "CHECK_FAILED|STARTUP",
+    )
+    assert classify_pod_yield("STARTUP", 255).status == YIELD_CHECK_FAILED
+    assert classify_pod_yield("OPPONENT|9 torchrun", 20).status == YIELD_OPPONENT
     assert classify_idle_check("CLEAR", 0).status == YIELD_CLEAR
     assert classify_idle_check("OPPONENT|123 torchrun", 0).status == YIELD_OPPONENT
     assert classify_idle_check("", 255).status == YIELD_CHECK_FAILED
@@ -2387,6 +2827,15 @@ def test_yield_fail_closed_fixture() -> None:
             cleanup_rc=0,
             group_dir=g,
         )
+        assert r.continued and not r.stopped
+        assert not (g / "GROUP_INVALID.json").exists()
+
+    # r2 §9 124246 replay: STARTUP×12 + CLEAR×4 all rc=20 → continue (startup grace)
+    with tempfile.TemporaryDirectory() as td:
+        g = Path(td) / "g_startup_grace"
+        g.mkdir()
+        checks = [("STARTUP", 20)] * 12 + [("CLEAR", 20)] * 4
+        r = simulate_yield_monitor(checks=checks, cleanup_rc=0, group_dir=g)
         assert r.continued and not r.stopped
         assert not (g / "GROUP_INVALID.json").exists()
 
@@ -2446,6 +2895,11 @@ def test_yield_fail_closed_fixture() -> None:
     assert "|| true)" not in grj.split("yield_if_opponent()")[1].split("pull_evidence")[0]
     assert "set +e" in ab and "rc=$?" in ab
     assert "YIELD_CHECK_FAILED" in ab and "YIELD_CHECK_FAILED" in grj
+    assert "yield_check_pod_with_retry" in ab and "yield_check_pod_with_retry" in grj
+    assert "merge_fanout_pod_checks" in ab or "MERGE_DIR" in ab
+    assert 'return "${yrc:-20}"' not in ab and 'return "${yrc:-20}"' not in grj
+    assert "classify_parse_incomplete" in ab and "classify_parse_incomplete" in grj
+    assert "master: rc=" not in ab.split("yield_if_opponent()")[1].split("pull_attempt_evidence")[0]
     assert "return 20" in ab and "return 10" in ab
     assert "return 20" in grj and "return 10" in grj
     assert "claim_local_group_dirs" in ab and "claim_local_group_dirs" in grj
@@ -2590,6 +3044,320 @@ def test_local_group_refuse_reuse_fixture() -> None:
         assert complete.read_text() == "old_complete\n"
 
 
+def test_gbs_scale_contract() -> None:
+    """256 卡强制 GBS=512；64 卡强制 GBS=128；32 卡默认 64；错误 GBS 拒绝。"""
+    from model_scale_contract import (
+        FROZEN_GBS_256,
+        FROZEN_GBS_64,
+        GbsContractError,
+        resolve_frozen_gbs,
+    )
+    from ab_plan import build_ab_plan
+
+    m32 = resolve_frozen_gbs(nnodes=2, nproc=16, gbs=None)
+    assert m32["gbs"] == 64
+    assert m32["world_size"] == 32
+    assert m32["dp"] == 16
+    assert m32["frozen_gbs_256"] is False
+    assert m32["frozen_gbs_64"] is False
+
+    m64 = resolve_frozen_gbs(nnodes=4, nproc=16, gbs=None)
+    assert m64["gbs"] == FROZEN_GBS_64 == 128
+    assert m64["world_size"] == 64
+    assert m64["dp"] == 32
+    assert m64["grad_accum"] == 4
+    assert m64["frozen_gbs_64"] is True
+    assert m64["gbs_contract"] == "frozen_128"
+
+    m256 = resolve_frozen_gbs(nnodes=16, nproc=16, gbs=None)
+    assert m256["gbs"] == FROZEN_GBS_256 == 512
+    assert m256["world_size"] == 256
+    assert m256["dp"] == 128
+    assert m256["grad_accum"] == 4
+    assert m256["frozen_gbs_256"] is True
+    assert m256["gbs_contract"] == "frozen_512"
+
+    try:
+        resolve_frozen_gbs(nnodes=16, nproc=16, gbs=64)
+        raise AssertionError("expected GbsContractError for GBS=64 @256")
+    except GbsContractError as exc:
+        assert "512" in str(exc) and "64" in str(exc)
+
+    try:
+        resolve_frozen_gbs(nnodes=4, nproc=16, gbs=64)
+        raise AssertionError("expected GbsContractError for GBS=64 @64")
+    except GbsContractError as exc:
+        assert "128" in str(exc) and "64" in str(exc)
+
+    try:
+        resolve_frozen_gbs(nnodes=4, nproc=16, gbs=512)
+        raise AssertionError("expected GbsContractError for GBS=512 @64")
+    except GbsContractError as exc:
+        assert "128" in str(exc) and "512" in str(exc)
+
+    plan256 = build_ab_plan(
+        group_id="g256",
+        code_dir="/tmp/code",
+        code_hash="abc",
+        attempts=["normal", "ours", "torch", "torch", "ours", "normal"],
+        nnodes=16,
+        nproc=16,
+        world_size=256,
+        expected_ranks=256,
+        train_iters=20,
+        capture_iter=10,
+        base_port=39000,
+        group_dir="/tmp/g",
+        min_raw_kernels=100,
+        min_comm=10,
+        rel_raw_floor=0.8,
+        rel_comm_floor=0.8,
+    )
+    assert plan256["model"]["gbs"] == 512
+    assert plan256["model"]["dp"] == 128
+
+    plan64 = build_ab_plan(
+        group_id="g64",
+        code_dir="/tmp/code",
+        code_hash="abc",
+        attempts=["normal", "ours", "torch", "torch", "ours", "normal"],
+        nnodes=4,
+        nproc=16,
+        world_size=64,
+        expected_ranks=64,
+        train_iters=20,
+        capture_iter=10,
+        base_port=39000,
+        group_dir="/tmp/g64",
+        min_raw_kernels=100,
+        min_comm=10,
+        rel_raw_floor=0.8,
+        rel_comm_floor=0.8,
+    )
+    assert plan64["model"]["gbs"] == 128
+    assert plan64["model"]["dp"] == 32
+
+
+def test_runner_defaults_afs_cpu_kube() -> None:
+    """64 rebase: default JUMP=afs-cpu; shell kube under /root/.kube (not /tmp)."""
+    here = Path(__file__).resolve().parent
+    for name in (
+        "launch_megatron_ab.sh",
+        "launch_megatron_smoke.sh",
+        "yield_fp_regression.sh",
+        "launch_probing_adaptive_smoke.sh",
+        "launch_probing_main_smoke.sh",
+    ):
+        text = (here / name).read_text(encoding="utf-8")
+        assert 'JUMP="${JUMP:-afs-cpu}"' in text, name
+        assert "/root/.kube/config-vc-a3-241ceshi-songyiyang.yaml" in text, name
+        assert "/tmp/config-vc-a3-241ceshi-songyiyang.yaml" not in text, name
+
+
+def test_launcher_wrap_from_hashed_reads_hashed_tree() -> None:
+    """Wrapper must source launch_megatron_ab.sh from hashed CODE_DIR, not unhashed base."""
+    from launcher_wrap_from_hashed import build_launcher_wrap
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        base = root / "mspti_sync_skeleton"
+        hashed = root / "mspti_sync_skeleton-deadbeefcafebabe"
+        base.mkdir()
+        hashed.mkdir()
+        marker = "UNHASHED_LAUNCHER_SHOULD_NOT_APPEAR"
+        (base / "launch_megatron_ab.sh").write_text(
+            f"#!/bin/bash\n{marker}\nROOT=bad\nEXP_LOCAL=bad\n"
+            'CODE_HASH="$(echo bad)"\nCODE_DIR=bad\n',
+            encoding="utf-8",
+        )
+        (hashed / "launch_megatron_ab.sh").write_text(
+            (Path(__file__).resolve().parent / "launch_megatron_ab.sh").read_text(
+                encoding="utf-8"
+            ),
+            encoding="utf-8",
+        )
+        wrap = root / "wrap.sh"
+        build_launcher_wrap(
+            code_dir_hashed=hashed,
+            launch_wrap=wrap,
+            code_hash="deadbeefcafebabe",
+        )
+        out = wrap.read_text(encoding="utf-8")
+        assert marker not in out
+        assert 'CODE_HASH="deadbeefcafebabe"' in out
+        assert "mspti_sync_skeleton-deadbeefcafebabe" in out
+
+
+def test_convert_fail_uses_ensure_group_invalid_written() -> None:
+    launch = Path(__file__).with_name("launch_megatron_ab.sh").read_text(encoding="utf-8")
+    assert 'ensure_group_invalid_written "convert_fail rc=${CONVERT_RC}"' in launch
+    convert_block = launch.split("STRICT convert failed", 1)[1].split("RUN_LOG_SEALED", 1)[0]
+    assert "set +e" in convert_block
+    assert "mark_group_invalid \"convert_fail" not in convert_block
+
+
+def test_opponent_path_false_positive() -> None:
+    """Arbiter 114102: find .../megatron-ab/... must CLEAR; real torchrun → OPPONENT."""
+    import opponent_check as oc
+    from opponent_check import _looks_train, parse_ps_rows, run_idle
+
+    find_cmd = (
+        "bash -lc find /afs-a3-weight-share/yinjinrun.p-huawei/results/"
+        "mspti-sync-skeleton/megatron-ab/20260810_114102-megatron-ab-formal6x20"
+    )
+    assert not _looks_train(find_cmd)
+    rows = parse_ps_rows(f"PID PGID STAT COMMAND\n63481 63481 S {find_cmd}\n")
+    assert run_idle(rows) == oc.RC_CLEAR
+
+    train_cmd = "torchrun --nproc_per_node=16 pretrain_gpt.py --micro-batch-size 1"
+    assert _looks_train(train_cmd)
+    rows2 = parse_ps_rows(f"PID PGID STAT COMMAND\n99 99 S {train_cmd}\n")
+    assert run_idle(rows2) == oc.RC_OPPONENT
+
+    path_only = "python3 /opt/Megatron-LM/tools/checkpoint/convert.py"
+    assert not _looks_train(path_only)
+
+
+def test_fanout_merge_arbiter() -> None:
+    """16-pod per-rank merge: CHECK_FAILED > OPPONENT > CLEAR; no rc/stdout splicing."""
+    from local_group_guard import (
+        merge_fanout_pod_checks,
+        YIELD_CHECK_FAILED,
+        YIELD_CLEAR,
+        YIELD_OPPONENT,
+    )
+
+    def sixteen_clear() -> list[dict]:
+        return [
+            {"rank": i, "pod": f"pod-{i}", "stdout": "CLEAR", "rc": 0} for i in range(16)
+        ]
+
+    assert merge_fanout_pod_checks(sixteen_clear()).status == YIELD_CLEAR
+
+    mixed = sixteen_clear()
+    mixed[7] = {
+        "rank": 7,
+        "pod": "worker-7",
+        "stdout": "OPPONENT|pid=9 torchrun pretrain_gpt.py",
+        "rc": 10,
+    }
+    v_opp = merge_fanout_pod_checks(mixed)
+    assert v_opp.status == YIELD_OPPONENT
+    assert v_opp.rc == 10
+
+    mixed_fail = sixteen_clear()
+    mixed_fail[3] = {
+        "rank": 3,
+        "pod": "worker-3",
+        "stdout": "CHECK_FAILED|pid=1 errno=13 errno_name=EACCES",
+        "rc": 20,
+    }
+    mixed_fail[7] = {
+        "rank": 7,
+        "pod": "worker-7",
+        "stdout": "OPPONENT|pid=9 torchrun",
+        "rc": 10,
+    }
+    assert merge_fanout_pod_checks(mixed_fail).status == YIELD_CHECK_FAILED
+
+    # 114102 replay: rank0 false OPPONENT(find) + 15 CLEAR → OPPONENT (not mismatch)
+    replay = sixteen_clear()
+    replay[0] = {
+        "rank": 0,
+        "pod": "master-0",
+        "stdout": (
+            "OPPONENT|pid=63481 pgid=63481 starttime=1708176785 marker=no "
+            "outdir=no tree=0 pgid_own=0 bash -lc find .../megatron-ab/202608"
+        ),
+        "rc": 10,
+    }
+    v_replay = merge_fanout_pod_checks(replay)
+    assert v_replay.status == YIELD_OPPONENT
+
+    # Transport noise only when stdout is non-protocol
+    v_noise = merge_fanout_pod_checks(
+        [{"rank": 0, "pod": "p0", "stdout": "", "rc": 255}]
+    )
+    assert v_noise.status == YIELD_CHECK_FAILED
+
+    # r2 §9 124246 early-yield: 12×STARTUP + 4×CLEAR with transport rc=20 → CLEAR
+    startup_mixed = []
+    for i in range(16):
+        line = "STARTUP" if i < 12 else "CLEAR"
+        startup_mixed.append(
+            {"rank": i, "pod": f"worker-{i}", "stdout": line, "rc": 20}
+        )
+    v_startup = merge_fanout_pod_checks(startup_mixed)
+    assert v_startup.status == YIELD_CLEAR
+    assert v_startup.rc == 0
+
+    # True CHECK_FAILED transport still wins over startup grace
+    startup_with_fail = list(startup_mixed)
+    startup_with_fail[5] = {
+        "rank": 5,
+        "pod": "worker-5",
+        "stdout": "CHECK_FAILED|pid=1 errno=13 errno_name=EACCES",
+        "rc": 20,
+    }
+    assert merge_fanout_pod_checks(startup_with_fail).status == YIELD_CHECK_FAILED
+
+    # Shell yrc parse fix: per-pod rc must follow classify verdict, not yrc:-20 default.
+    # CLEAR path → merge rc=0 even when transport layer still surfaces rc=20.
+    v_clear_rc0 = merge_fanout_pod_checks(
+        [{"rank": 0, "pod": "p0", "stdout": "CLEAR", "rc": 0}]
+    )
+    assert v_clear_rc0.status == YIELD_CLEAR
+    assert v_clear_rc0.rc == 0
+
+    # OPPONENT + forced rc=20 (old launcher bug) must stay OPPONENT, not CHECK_FAILED.
+    v_opp_forced20 = merge_fanout_pod_checks(
+        [
+            {
+                "rank": 0,
+                "pod": "p0",
+                "stdout": "OPPONENT|pid=9 torchrun pretrain_gpt.py",
+                "rc": 20,
+            }
+        ]
+    )
+    assert v_opp_forced20.status == YIELD_OPPONENT
+    assert v_opp_forced20.rc == 10
+
+    # Non-protocol transport rc + protocol-looking stdout → fail-closed.
+    v_startup255 = merge_fanout_pod_checks(
+        [{"rank": 0, "pod": "p0", "stdout": "STARTUP", "rc": 255}]
+    )
+    assert v_startup255.status == YIELD_CHECK_FAILED
+
+
+def test_yield_transport_retry() -> None:
+    """Non-protocol noise retriable; rc=10+OPPONENT stdout is never timeout."""
+    from local_group_guard import (
+        YIELD_CHECK_FAILED,
+        YIELD_CLEAR,
+        YIELD_OPPONENT,
+        classify_yield_attempt,
+        classify_yield_check,
+        poll_yield_with_retry,
+    )
+
+    opp_line = "OPPONENT|pid=9 torchrun pretrain_gpt.py"
+    a = classify_yield_attempt(opp_line, 10)
+    assert a.transient is False
+    assert a.verdict is not None and a.verdict.status == YIELD_OPPONENT
+
+    v = poll_yield_with_retry([("", 255), ("CLEAR", 0)], max_attempts=4)
+    assert v.status == YIELD_CLEAR
+
+    v_ex = poll_yield_with_retry([("", 255)] * 4, max_attempts=4)
+    assert v_ex.status == YIELD_CHECK_FAILED
+
+    v_opp = poll_yield_with_retry([(opp_line, 10)], max_attempts=4)
+    assert v_opp.status == YIELD_OPPONENT
+
+    assert classify_yield_check("CLEAR", 0).status == YIELD_CLEAR
+
+
 def main() -> int:
     test_throughput_formula()
     test_strict_rank_ok()
@@ -2621,6 +3389,10 @@ def main() -> int:
     test_kill_attempt_escalate_fixture()
     test_yield_ownership_race_matrix()
     test_yield_fail_closed_fixture()
+    test_opponent_path_false_positive()
+    test_fanout_merge_arbiter()
+    test_yield_transport_retry()
+    test_gbs_scale_contract()
     test_local_group_refuse_reuse_fixture()
     test_counterbalanced_sequence_negatives()
     test_fanout_partial_failure_fixture()
@@ -2632,14 +3404,279 @@ def main() -> int:
     test_synthetic_sealed_so_runlog_chain_local()
     test_provenance_env_denylist()
     test_analyzer_no_flush_slot_keyerror()
+    test_pod_resolver_fixture_sorting()
+    test_storage_contract_capacity()
+    test_fanout_preflight_fixture()
+    test_launch_megatron_ab_bash_syntax()
+    test_pod_resolver_worker10_emit_fail_fixture()
     test_wheel_select_dry_run()
     test_ab_dry_run_and_missing_thresholds()
     test_strict_empty_not_auto_collector_off()
     test_parse_drop_flags_requires_all()
     test_kseg_cpp()
     test_collector_logic_cpp()
+    test_sigsegv_probing_zero_arm_gate_mirror()
+    test_sigsegv_normal_torch_launch_env_off()
+    test_launcher_afs_capacity_receipt_wired()
+    test_launcher_first_fail_node_and_skip_seal_contract()
+    test_yield_group_invalid_harden_fixture()
+    test_group_invalid_shell_flag_vs_file_e2e()
     print("OK test_local")
     return 0
+
+
+def test_pod_resolver_fixture_sorting() -> None:
+    from pod_resolver import resolve_job_pods
+
+    class FakeKubectl:
+        def __init__(self) -> None:
+            self.job_uid = "job-uid-abc"
+            self.pods: list[dict] = []
+
+        def set_pods(self, names: list[str]) -> None:
+            self.pods = []
+            for name in names:
+                task = "master" if "master" in name else "worker"
+                idx = 0 if task == "master" else int(name.rsplit("-", 1)[-1])
+                self.pods.append(
+                    {
+                        "metadata": {
+                            "name": name,
+                            "uid": f"pod-{name}",
+                            "ownerReferences": [{"uid": self.job_uid}],
+                        },
+                        "spec": {"nodeName": f"node-{name}"},
+                        "status": {
+                            "phase": "Running",
+                            "podIP": f"10.0.0.{idx}",
+                            "conditions": [{"type": "Ready", "status": "True"}],
+                        },
+                    }
+                )
+
+    fk = FakeKubectl()
+    job = "yjr-mspti-256-test"
+    workers = [f"{job}-worker-{i}" for i in range(15)]
+    fk.set_pods([f"{job}-master-0", *workers])
+
+    def fake_json(args, **kw):
+        if "vcjob" in args:
+            return {
+                "metadata": {"uid": fk.job_uid},
+                "spec": {
+                    "minAvailable": 16,
+                    "tasks": [
+                        {"name": "master", "replicas": 1},
+                        {"name": "worker", "replicas": 15},
+                    ],
+                },
+            }
+        return {"items": fk.pods}
+
+    import pod_resolver as pr
+
+    orig = pr._kubectl_json
+    pr._kubectl_json = lambda args, **kw: fake_json(args, **kw)  # type: ignore[assignment]
+    try:
+        pm = resolve_job_pods(
+            job_name=job,
+            kubeconfig="/fake",
+            kubectl="kubectl",
+            expected_nodes=16,
+        )
+    finally:
+        pr._kubectl_json = orig  # type: ignore[assignment]
+
+    ranks = [p["node_rank"] for p in pm["pods"]]
+    assert ranks == list(range(16))
+    assert pm["pods"][0]["pod"].endswith("master-0")
+    assert pm["pods"][15]["pod"].endswith("worker-14")
+
+
+def test_storage_contract_capacity() -> None:
+    from storage_contract import (
+        B_TORCH_R3,
+        P_GROUP_R3,
+        AFS_REQUIRED_START_R3,
+        check_capacity,
+        compute_storage_paths,
+    )
+
+    paths = compute_storage_paths("test-group")
+    assert paths.afs_live_root.name == "attempts"
+    assert paths.afs_seal_root.name == "sealed"
+    rep = check_capacity(
+        jump_path="/",
+        afs_path="/",
+        control_peak_bytes=100 * 1024**2,
+        payload_estimate_bytes=50 * 1024**3,
+        formal_mode=False,
+    )
+    assert rep.jump_required_bytes >= 10 * 1024**3
+    assert rep.afs_required_bytes >= 200 * 1024**3
+    formal = check_capacity(
+        control_peak_bytes=8_000_000,
+        control_peak_provenance={
+            "source": "measured_full_six_arm",
+            "code_hash": "x",
+            "plan_hash": "y",
+            "six_arm_covered": True,
+        },
+        payload_estimate_bytes=P_GROUP_R3,
+        jump_avail_override=500 * 1024**3,
+        afs_avail_override=AFS_REQUIRED_START_R3 + 1,
+        formal_mode=True,
+    )
+    assert formal.ok
+    assert formal.payload_estimate_bytes == P_GROUP_R3
+    assert B_TORCH_R3 == 45 * 1024**3
+
+
+def test_preflight_dataset_gate_local_missing() -> None:
+    from preflight_dataset_gate import verify_dataset_paths, DATA_PATH_DEFAULT_OWN
+
+    receipt = verify_dataset_paths("/tmp/nonexistent_enwiki_prefix_12345")
+    assert receipt["data_ok"] is False
+    assert "bin_missing" in receipt["errors"]
+    # default own path constant is the pjlab-new copy (not legacy public).
+    assert "yinjinrun.p-huawei/data" in DATA_PATH_DEFAULT_OWN
+
+
+def test_fanout_preflight_fixture() -> None:
+    from fanout_preflight import run_fanout_preflight
+
+    pod_map = {
+        "pods": [
+            {
+                "node_rank": i,
+                "pod": f"yjr-mspti-256-test-{'master-0' if i == 0 else f'worker-{i-1}'}",
+            }
+            for i in range(16)
+        ]
+    }
+
+    def exec_fn(pod: str, cmd: str) -> tuple[int, str]:
+        return 0, '{"import_ok": true, "afs_writable": true}'
+
+    with tempfile.TemporaryDirectory() as td:
+        summary = run_fanout_preflight(
+            pod_map,
+            exec_fn=exec_fn,
+            code_dir="/afs/code",
+            afs_root="/afs-a3-weight-share/yinjinrun.p-huawei",
+            receipt_dir=Path(td),
+        )
+        assert summary["pass"] is True
+        assert summary["done"] == 16
+
+
+def test_launch_megatron_ab_bash_syntax() -> None:
+    here = Path(__file__).resolve().parent
+    proc = subprocess.run(["bash", "-n", str(here / "launch_megatron_ab.sh")], capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stderr
+
+
+def test_pod_resolver_worker10_emit_fail_fixture() -> None:
+    from fanout_preflight import run_fanout_preflight
+
+    pod_map = {
+        "pods": [
+            {"node_rank": i, "pod": f"job-{'master-0' if i == 0 else f'worker-{i-1}'}"}
+            for i in range(16)
+        ]
+    }
+
+    def exec_fn(pod: str, cmd: str) -> tuple[int, str]:
+        if "worker-10" in pod:
+            return 42, "emit fail"
+        return 0, '{"import_ok": true}'
+
+    with tempfile.TemporaryDirectory() as td:
+        summary = run_fanout_preflight(
+            pod_map,
+            exec_fn=exec_fn,
+            code_dir="/afs/code",
+            afs_root="/afs",
+            receipt_dir=Path(td),
+        )
+        assert summary["pass"] is False
+        assert summary["done"] < 16
+
+
+def _probing_arm_enabled_mirror(env: dict[str, str]) -> bool:
+    """Mirror of probing_core::env_gate::probing_arm_enabled for fixture tests."""
+
+    token = env.get("PROBING_ORIGINAL") or env.get("PROBING", "0")
+    if token.startswith("init:"):
+        token = token.split("+", 1)[1] if "+" in token else "0"
+    token = token.strip()
+    lower = token.lower()
+    if lower in {"", "0", "false", "no", "off"}:
+        return False
+    if lower in {"1", "followed", "2", "nested"}:
+        return True
+    return token not in {"0"}
+
+
+def test_sigsegv_probing_zero_arm_gate_mirror() -> None:
+    assert not _probing_arm_enabled_mirror({"PROBING": "0"})
+    assert _probing_arm_enabled_mirror({"PROBING": "2"})
+    assert not _probing_arm_enabled_mirror({"PROBING": "2", "PROBING_ORIGINAL": "0"})
+
+
+def test_sigsegv_normal_torch_launch_env_off() -> None:
+    launch = Path(__file__).with_name("run_megatron_node.sh").read_text(encoding="utf-8")
+    assert "PROBING=0" in launch
+    assert "PROBING_GPU=off" in launch
+    normal_block = launch.split("normal)", 1)[1].split(";;", 1)[0]
+    torch_block = launch.split("torch)", 1)[1].split(";;", 1)[0]
+    assert "PROBING_GPU=off" in normal_block
+    assert "PROBING_GPU=off" in torch_block
+
+
+def test_launcher_afs_capacity_receipt_wired() -> None:
+    launch = Path(__file__).with_name("launch_megatron_ab.sh").read_text(encoding="utf-8")
+    assert "AFS_CAPACITY_RECEIPT" in launch
+    assert "mock-afs-avail-bytes" in launch
+    assert "formal mode requires AFS_CAPACITY_RECEIPT" in launch
+
+
+def test_launcher_first_fail_node_and_skip_seal_contract() -> None:
+    launch = Path(__file__).with_name("launch_megatron_ab.sh").read_text(encoding="utf-8")
+    assert "FIRST_FAIL_NODE=" in launch
+    assert "SKIP_ATTEMPT_SEAL" in launch
+    assert "GROUP_INVALID_WRITTEN=1" in launch
+    assert "ensure_group_invalid_written" in launch
+    yield_paths = launch.split("yield_if_opponent")[1:]
+    # early + main yield loops (two call sites)
+    assert sum(1 for chunk in yield_paths if "ensure_group_invalid_written" in chunk) >= 2
+    for chunk in yield_paths:
+        if "ensure_group_invalid_written" in chunk:
+            for line in chunk.splitlines():
+                if "ensure_group_invalid_written" in line:
+                    assert "|| true" not in line, line
+
+
+def test_yield_group_invalid_harden_fixture() -> None:
+    """yield rc=10 must atomically write GROUP_INVALID.json (trap-safe)."""
+    from fanout_orchestrator import mark_group_invalid
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td) / "g_yield_trap"
+        root.mkdir()
+        (root / "group_plan.json").write_text('{"ok":1}\n', encoding="utf-8")
+        mark_group_invalid(
+            root,
+            group_id=root.name,
+            reason="yield_opponent",
+            attempt_id="attempt_03_torch",
+            stage="yield",
+            extra={"cleanup_status": "CLEANUP_INCOMPLETE"},
+        )
+        inv = json.loads((root / "GROUP_INVALID.json").read_text(encoding="utf-8"))
+        assert inv["status"] == "GROUP_INVALID"
+        assert inv["reason"] == "yield_opponent"
+        assert inv["stage"] == "yield"
 
 
 if __name__ == "__main__":

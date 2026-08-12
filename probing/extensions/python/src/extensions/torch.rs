@@ -125,10 +125,7 @@ impl ProbeExtension for TorchProbeExtension {
         vec![ProbeExtensionOption {
             key: TRUTH_KEY_PROFILING.to_string(),
             value: Some(self.profiling.to_string()),
-            help: format!(
-                "PyTorch profiling spec (truth key). Deprecated alias: {}.",
-                DEPRECATED_ALIAS_PROFILING
-            ),
+            help: "PyTorch profiling spec (truth key). Deprecated alias: torch.profiling.",
         }]
     }
 }

@@ -1831,7 +1831,21 @@ def _build_mini_sealed_tree(
         ).encode()
         + b"\n",
         "rank_0000.skeleton.jsonl": b'{"rank":0}\n',
-        "rank_0000.mspti_meta.json": b'{"rank":0,"finalize_complete":true}\n',
+        "rank_0000.npu_sync_meta.json": (
+            json.dumps(
+                {
+                    "rank": 0,
+                    "finalize_complete": True,
+                    "finalize_rc": 0,
+                    "raw_kernels": 100,
+                    "raw_comms": 10,
+                    "finalize_ms": 1.0,
+                    "finalize_reason": "last_train_step",
+                },
+                sort_keys=True,
+            ).encode()
+            + b"\n"
+        ),
         "rank_0000.trace.json": b'{"trace":true,"pad":"' + (b"x" * 64) + b'"}\n',
         "SUMMARY.md": b"# summary\n",
         so_rel: so_bytes,
@@ -3041,10 +3055,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     p_fb.add_argument("--group-plan", required=True)
     p_fb.add_argument("--group-id", required=True)
     p_fb.add_argument("--plan-hash", required=True)
-    p_fb.add_argument("--jump", default="ais-cf3e61a5")
+    p_fb.add_argument("--jump", default="afs-cpu")
     p_fb.add_argument(
         "--kubeconfig",
-        default="/tmp/config-vc-a3-241ceshi-songyiyang.yaml",
+        default="/root/.kube/config-vc-a3-241ceshi-songyiyang.yaml",
     )
     p_fb.add_argument(
         "--kubectl",

@@ -20,6 +20,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Optional
 
+from model_scale_contract import resolve_frozen_gbs
 from provenance import (
     build_artifact_digest,
     write_local_verified_seal,
@@ -33,6 +34,8 @@ DEFAULT_ATTEMPTS = ("normal", "ours", "torch", "torch", "ours", "normal")
 # Future sequences require an explicit design field + whitelist entry.
 SUPPORTED_SEQUENCES: dict[str, tuple[str, ...]] = {
     "counterbalanced_v1": DEFAULT_ATTEMPTS,
+    "smoke_normal_v1": ("normal",),
+    "smoke_ours_v1": ("ours",),
 }
 DEFAULT_DESIGN_SEQUENCE = "counterbalanced_v1"
 
@@ -49,14 +52,26 @@ def validate_attempts_sequence(
             f"unsupported design_sequence={design!r}; "
             f"allowed={sorted(SUPPORTED_SEQUENCES)}"
         )
-    expected = list(SUPPORTED_SEQUENCES[design])
     got = list(attempts)
+    if design == "smoke_normal_v1":
+        if got != ["normal"] or len(got) != 1:
+            raise ValueError(
+                f"smoke_normal_v1 requires exactly ['normal'], got {got}"
+            )
+        return design
+    if design == "smoke_ours_v1":
+        if got != ["ours"] or len(got) != 1:
+            raise ValueError(
+                f"smoke_ours_v1 requires exactly ['ours'], got {got}"
+            )
+        return design
+    expected = list(SUPPORTED_SEQUENCES[design])
     if got != expected:
         raise ValueError(
             f"counterbalanced sequence mismatch for {design}: "
             f"expected {expected}, got {got}"
         )
-    if len(got) != 6:
+    if len(got) != 6 and design not in ("smoke_normal_v1", "smoke_ours_v1"):
         raise ValueError(f"counterbalanced AB requires exactly 6 attempts, got {len(got)}")
     return design
 
@@ -90,6 +105,21 @@ def build_ab_plan(
     design_sequence: Optional[str] = None,
 ) -> dict[str, Any]:
     design = validate_attempts_sequence(attempts, design_sequence=design_sequence)
+    tp = int((model or {}).get("tp", 2))
+    pp = int((model or {}).get("pp", 1))
+    mbs = int((model or {}).get("mbs", 1))
+    gbs_in = (model or {}).get("gbs")
+    resolved_model = resolve_frozen_gbs(
+        nnodes=int(nnodes),
+        nproc=int(nproc),
+        tp=tp,
+        pp=pp,
+        mbs=mbs,
+        gbs=int(gbs_in) if gbs_in is not None else None,
+        seq=int((model or {}).get("seq", 4096)),
+        layers=int((model or {}).get("layers", 32)),
+        seed=int((model or {}).get("seed", 1234)),
+    )
     plan: dict[str, Any] = {
         "group_id": group_id,
         "code_dir": code_dir,
@@ -104,16 +134,7 @@ def build_ab_plan(
         "train_iters": int(train_iters),
         "capture_megatron_iter": int(capture_iter),
         "attempts_order": list(attempts),
-        "model": model
-        or {
-            "tp": 2,
-            "pp": 1,
-            "gbs": 64,
-            "seq": 4096,
-            "layers": 32,
-            "seed": 1234,
-            "world_size": int(world_size),
-        },
+        "model": resolved_model,
         "frozen_thresholds": {
             "min_raw_kernels_per_rank": int(min_raw_kernels),
             "min_comm_per_rank": int(min_comm),
@@ -185,7 +206,7 @@ def _required_for_arm(arm: str, expected_ranks: int, nnodes: int) -> list[str]:
         req.append("cluster.trace.json")
         for r in range(int(expected_ranks)):
             req.append(f"rank_{r:04d}.skeleton.jsonl")
-            req.append(f"rank_{r:04d}.mspti_meta.json")
+            req.append(f"rank_{r:04d}.npu_sync_meta.json")
         req.append("sealed_bins/")  # prefix marker; concrete hash name filled at seal
     if arm == "torch":
         req.append("torch_prof_node*/**/trace_view.json")
@@ -194,10 +215,13 @@ def _required_for_arm(arm: str, expected_ranks: int, nnodes: int) -> list[str]:
 
 def validate_plan(plan: dict[str, Any]) -> None:
     attempts = plan.get("attempts") or []
-    if len(attempts) != 6:
-        raise ValueError(f"plan must have 6 attempts, got {len(attempts)}")
-    arms = [a["arm"] for a in attempts]
     design = plan.get("design_sequence") or DEFAULT_DESIGN_SEQUENCE
+    expected_len = 1 if design in ("smoke_normal_v1", "smoke_ours_v1") else 6
+    if len(attempts) != expected_len:
+        raise ValueError(
+            f"plan must have {expected_len} attempts for {design}, got {len(attempts)}"
+        )
+    arms = [a["arm"] for a in attempts]
     validate_attempts_sequence(arms, design_sequence=design)
     if arms != list(plan.get("attempts_order") or []):
         raise ValueError("attempts_order mismatch with attempts[].arm")
@@ -211,10 +235,10 @@ def validate_plan(plan: dict[str, Any]) -> None:
         if k not in ft or ft[k] in (None, ""):
             raise ValueError(f"missing frozen threshold {k}")
     ports = [a["master_port"] for a in attempts]
-    if len(set(ports)) != 6:
+    if len(set(ports)) != len(ports):
         raise ValueError(f"master ports not unique: {ports}")
     ids = [a["attempt_id"] for a in attempts]
-    if len(set(ids)) != 6:
+    if len(set(ids)) != len(ids):
         raise ValueError(f"attempt_id not unique: {ids}")
     for i, a in enumerate(attempts, 1):
         for key in (
@@ -381,8 +405,8 @@ def _synthetic_rank_jsonl(path: Path, rank: int, capture_step: int, n_kseg: int 
     path.write_text("\n".join(json.dumps(r, sort_keys=True) for r in rows) + "\n", encoding="utf-8")
 
 
-def _synthetic_meta(path: Path, rank: int, raw: int) -> None:
-    meta = {
+def _synthetic_meta(path: Path, rank: int, raw: int, *, adaptive: bool = False) -> None:
+    meta: dict[str, Any] = {
         "rank": rank,
         "finalize_complete": True,
         "finalize_rc": 0,
@@ -400,6 +424,56 @@ def _synthetic_meta(path: Path, rank: int, raw: int) -> None:
         "collector_start_ms": 0.1,
         "process_wall_ms": 1000.0,
     }
+    if adaptive:
+        kseg = max(1, raw // 8)
+        meta.update(
+            {
+                "granularity_mode": "adaptive_v1",
+                "adaptive_source": "native",
+                "abi_version": 1,
+                "adaptive": {
+                    "granularity_mode": "adaptive_v1",
+                    "abi_version": 1,
+                    "initial_gap_us": 50.0,
+                    "final_gap_us": 75.0,
+                    "target_kseg_ratio": 0.08,
+                    "adapt_min_samples": 128,
+                    "adapt_every": 256,
+                    "adaptive_gap_min_us": 10,
+                    "adaptive_gap_max_us": 200,
+                    "threshold_updates": 2,
+                    "total_raw_kernels": raw,
+                    "total_kseg": kseg,
+                    "actual_ratio": round(kseg / raw, 6),
+                    "streams": [
+                        {
+                            "device_id": 0,
+                            "stream_id": 1,
+                            "raw_kernels": raw,
+                            "kseg_count": kseg,
+                            "ratio": round(kseg / raw, 6),
+                            "final_threshold_us": 75.0,
+                            "threshold_updates": 2,
+                            "positive_gaps": max(128, raw),
+                        }
+                    ],
+                    "threshold_history": [
+                        {
+                            "raw_index": 200,
+                            "device_id": 0,
+                            "stream_id": 1,
+                            "threshold_us": 60.0,
+                        },
+                        {
+                            "raw_index": 400,
+                            "device_id": 0,
+                            "stream_id": 1,
+                            "threshold_us": 75.0,
+                        },
+                    ],
+                },
+            }
+        )
     path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
 
 
@@ -431,6 +505,8 @@ def materialize_fixture_attempt(
         "model": plan["model"],
         "fixture": True,
     }
+    if arm == "ours":
+        cfg["granularity_mode"] = "adaptive_v1"
     (attempt_dir / "config.json").write_text(
         json.dumps(cfg, indent=2, sort_keys=True), encoding="utf-8"
     )
@@ -510,7 +586,12 @@ def materialize_fixture_attempt(
                 n_comm=max(20, int(plan["frozen_thresholds"]["min_comm_per_rank"])),
             )
             raw = max(80, int(plan["frozen_thresholds"]["min_raw_kernels_per_rank"]))
-            _synthetic_meta(attempt_dir / f"rank_{r:04d}.mspti_meta.json", r, raw)
+            _synthetic_meta(
+                attempt_dir / f"rank_{r:04d}.npu_sync_meta.json",
+                r,
+                raw,
+                adaptive=True,
+            )
         (attempt_dir / "cluster.trace.json").write_text(
             json.dumps({"fixture": True, "events": []}), encoding="utf-8"
         )

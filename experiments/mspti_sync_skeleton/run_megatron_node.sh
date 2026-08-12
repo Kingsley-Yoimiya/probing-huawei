@@ -38,10 +38,19 @@ SEQ="${SEQ:-4096}"
 LAYERS="${LAYERS:-32}"
 VOCAB="${VOCAB:-151936}"
 SEED="${SEED:-1234}"
-DATA_PATH="${DATA_PATH:-/afs-a3-weight-share/enwiki/enwiki20230101/enwiki20230101-00000_text_document}"
+# pjlab-new (pvc-5gnm2) 无顶层 /enwiki；自有副本见 fire_512.sh / PLAN.md §2f。
+DATA_PATH="${DATA_PATH:-/afs-a3-weight-share/yinjinrun.p-huawei/data/enwiki20230101/enwiki20230101-00000_text_document}"
 CACHE="${CACHE:-/afs-a3-weight-share/yinjinrun.p-huawei/megatron-data-cache}"
 CAPTURE_ITER="${MSPTI_CAPTURE_MEGATRON_ITER:-10}"
 WORLD_SIZE=$((NNODES * NPROC))
+# 256 卡节点侧二次校验（与 launcher model_scale_contract 对齐）。
+if [[ -f "${CODE_DIR}/model_scale_contract.py" ]]; then
+  GBS="$(
+    python3 "${CODE_DIR}/model_scale_contract.py" --format gbs \
+      --nnodes "${NNODES}" --nproc "${NPROC}" --tp "${TP}" --pp "${PP}" --mbs "${MBS}" \
+      --gbs "${GBS}" --seq "${SEQ}" --layers "${LAYERS}" --seed "${SEED}"
+  )" || { echo "FATAL: GBS scale contract failed on node ${NODE_RANK}" >&2; exit 2; }
+fi
 DP=$((WORLD_SIZE / TP / PP))
 if (( DP < 1 )); then DP=1; fi
 export TP PP MBS GBS SEQ LAYERS SEED DATA_PATH CACHE WORLD_SIZE DP TRAIN_ITERS
@@ -52,9 +61,10 @@ rm -f "${OUT_DIR}/node_${NODE_RANK}.done" "${OUT_DIR}/node_${NODE_RANK}.fail" \
 
 PROFILE_ARGS=()
 EXTRA_ENV=()
+PRETRAIN_SCRIPT="pretrain_gpt.py"
 case "${ARM}" in
   normal)
-    EXTRA_ENV+=(MSPTI_SKELETON=0)
+    EXTRA_ENV+=(MSPTI_SKELETON=0 PROBING=0 PROBING_NPU_SYNC_SKELETON=0 PROBING_GPU=off PROBING_CPU=off PROBING_HCCS=off)
     ;;
   ours)
     # Load immutable content-addressed SO copy (never the mutable build/*.so path alone).
@@ -102,22 +112,29 @@ PY
       chmod a-w "${OUT_DIR}/sealed_bins/${SEALED_NAME}" || true
     fi
     EXTRA_ENV+=(
-      MSPTI_SKELETON=1
-      MSPTI_OUT_DIR="${OUT_DIR}"
-      MSPTI_COLLECTOR_LIB="${SEALED_SO}"
-      MSPTI_COLLECTOR_SO_SHA256="${SO_HASH_LOADED}"
-      MSPTI_CAPTURE_MEGATRON_ITER="${CAPTURE_ITER}"
-      MSPTI_CAPTURE_RANKS="${MSPTI_CAPTURE_RANKS:-all}"
-      MSPTI_MAX_QUEUE_BYTES="${MSPTI_MAX_QUEUE_BYTES:-134217728}"
-      MSPTI_DRAIN_TIMEOUT_MS="${MSPTI_DRAIN_TIMEOUT_MS:-30000}"
+      PROBING=2
+      PROBING_NPU_SYNC_SKELETON=1
+      PROBING_NPU_SYNC_SKELETON_LIB="${SEALED_SO}"
+      PROBING_NPU_SYNC_SKELETON_OUT_DIR="${OUT_DIR}"
+      PROBING_NPU_SYNC_SKELETON_RANKS="${MSPTI_CAPTURE_RANKS:-all}"
+      PROBING_NPU_SYNC_SKELETON_STEP="${CAPTURE_ITER}"
+      PROBING_NPU_SYNC_SKELETON_WINDOW_START_STEP="${CAPTURE_ITER}"
+      PROBING_NPU_SYNC_SKELETON_WINDOW_STEPS=1
+      PROBING_NPU_SYNC_SKELETON_GRANULARITY_MODE=adaptive_v1
+      PROBING_NPU_SYNC_SKELETON_GAP_US=50
+      PROBING_NPU_SYNC_SKELETON_REORDER_US=1000
+      PROBING_NPU_SYNC_SKELETON_ADAPT_MIN_SAMPLES=128
+      PROBING_NPU_SYNC_SKELETON_ADAPT_EVERY=256
+      MSPTI_SKELETON=0
       PYTHONPATH="${CODE_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
       LD_LIBRARY_PATH="/usr/local/Ascend/cann-8.5.0/lib64:${LD_LIBRARY_PATH:-}"
     )
     export MSPTI_COLLECTOR_LIB_RESOLVED="${SEALED_SO}"
     export MSPTI_COLLECTOR_SO_SHA256_LOADED="${SO_HASH_LOADED}"
+    PRETRAIN_SCRIPT="${CODE_DIR}/run_probing_main_pretrain.py"
     ;;
   torch)
-    EXTRA_ENV+=(MSPTI_SKELETON=0)
+    EXTRA_ENV+=(MSPTI_SKELETON=0 PROBING=0 PROBING_NPU_SYNC_SKELETON=0 PROBING_GPU=off PROBING_CPU=off PROBING_HCCS=off)
     PROFILE_ARGS+=(
       --profile
       --profile-step-start "${CAPTURE_ITER}"
@@ -143,7 +160,7 @@ FULL_ARGV=(
   --node_rank="${NODE_RANK}"
   --master_addr="${MASTER_ADDR}"
   --master_port="${MASTER_PORT}"
-  pretrain_gpt.py
+  "${PRETRAIN_SCRIPT}"
   --tensor-model-parallel-size "${TP}"
   --pipeline-model-parallel-size "${PP}"
   --use-mcore-models --use-distributed-optimizer
@@ -215,6 +232,19 @@ ALLOW = {
     "MSPTI_CAPTURE_RANKS",
     "MSPTI_MAX_QUEUE_BYTES",
     "MSPTI_DRAIN_TIMEOUT_MS",
+    "PROBING",
+    "PROBING_NPU_SYNC_SKELETON",
+    "PROBING_NPU_SYNC_SKELETON_LIB",
+    "PROBING_NPU_SYNC_SKELETON_OUT_DIR",
+    "PROBING_NPU_SYNC_SKELETON_RANKS",
+    "PROBING_NPU_SYNC_SKELETON_STEP",
+    "PROBING_NPU_SYNC_SKELETON_WINDOW_START_STEP",
+    "PROBING_NPU_SYNC_SKELETON_WINDOW_STEPS",
+    "PROBING_NPU_SYNC_SKELETON_GRANULARITY_MODE",
+    "PROBING_NPU_SYNC_SKELETON_GAP_US",
+    "PROBING_NPU_SYNC_SKELETON_REORDER_US",
+    "PROBING_NPU_SYNC_SKELETON_ADAPT_MIN_SAMPLES",
+    "PROBING_NPU_SYNC_SKELETON_ADAPT_EVERY",
     "ARM",
     "SEED",
     "HCCL_CONNECT_TIMEOUT",
@@ -286,6 +316,11 @@ payload = {
     "extra_env": extra,
     "env": keep,
     "workload_kind": "megatron",
+    "probing_main": os.environ.get("ARM") == "ours",
+    "granularity_mode": (
+        "adaptive_v1" if os.environ.get("ARM") == "ours" else None
+    ),
+    "pretrain_script": argv[6] if len(argv) > 6 else None,
     "raw_exit_code_pending": True,
     "collector_so_loaded_path": so_path,
     "collector_so_sha256_loaded": so_hash,

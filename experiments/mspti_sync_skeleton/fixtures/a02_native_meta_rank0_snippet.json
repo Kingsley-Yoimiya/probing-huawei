@@ -1,0 +1,63 @@
+{
+  "adapt_every": 256,
+  "adapt_min_samples": 128,
+  "adaptive": {
+    "abi_version": 1,
+    "actual_ratio": 0.0849438,
+    "adapt_every": 256,
+    "adapt_min_samples": 128,
+    "adaptive_gap_max_us": 200,
+    "adaptive_gap_min_us": 10,
+    "final_gap_us": 200,
+    "granularity_mode": "adaptive_v1",
+    "initial_gap_us": 50,
+    "streams": [
+      {
+        "device_id": 0,
+        "final_threshold_us": 50,
+        "kseg_count": 11,
+        "positive_gaps": 10,
+        "ratio": 1,
+        "raw_kernels": 11,
+        "stream_id": 30,
+        "threshold_updates": 0
+      },
+      {
+        "device_id": 0,
+        "final_threshold_us": 200,
+        "kseg_count": 549,
+        "positive_gaps": 679,
+        "ratio": 0.413093,
+        "raw_kernels": 1329,
+        "stream_id": 37,
+        "threshold_updates": 4
+      }
+    ],
+    "target_kseg_ratio": 0.1,
+    "threshold_history": [],
+    "threshold_updates": 4,
+    "total_kseg": 560,
+    "total_raw_kernels": 1340
+  },
+  "adaptive_gap_max_us": 200,
+  "adaptive_gap_min_us": 10,
+  "adaptive_source": "native",
+  "capture_begin_ms": 0.12,
+  "capture_end_ms": 0.21,
+  "capture_end_rc": 0,
+  "collector_start_ms": 3.4,
+  "finalize_complete": true,
+  "finalize_ms": 1.2,
+  "finalize_drain_ms": 0.4,
+  "finalize_flush_ms": 0.5,
+  "finalize_rc": 0,
+  "finalize_reason": "last_train_step",
+  "gap_us": 50,
+  "granularity_mode": "adaptive_v1",
+  "incomplete": false,
+  "raw_comm_count": 42,
+  "raw_kernel_count": 1340,
+  "rank": 0,
+  "reorder_us": 0,
+  "target_kseg_ratio": 0.1
+}

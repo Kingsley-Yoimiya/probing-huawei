@@ -191,6 +191,7 @@ def _iter_artifact_files(out_dir: Path) -> list[Path]:
     }
     top_patterns = [
         "rank_*.skeleton.jsonl",
+        "rank_*.npu_sync_meta.json",
         "rank_*.mspti_meta.json",
         "rank_*.trace.json",
         "node_*.done",
@@ -355,6 +356,41 @@ def write_local_verified_seal(
     }
     out = local_dir / "LOCAL_VERIFIED_SEAL.json"
     out.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    return payload
+
+
+def write_afs_verified_seal(
+    sealed_dir: Path,
+    *,
+    run_id: str,
+    remote_manifest_sha256: Optional[str] = None,
+    live_root: Optional[str] = None,
+) -> dict[str, Any]:
+    """Full verification seal on AFS sealed mirror (replaces LOCAL_VERIFIED_SEAL).
+
+    Same scientific strength: re-read every artifact, verify aggregate hash,
+    write immutable AFS_VERIFIED_SEAL.json as the last success-producing action.
+  """
+    payload = write_local_verified_seal(
+        sealed_dir,
+        run_id=run_id,
+        remote_manifest_sha256=remote_manifest_sha256,
+    )
+    # Rename seal file to AFS contract name; keep local alias for backward compat readers.
+    local_seal = sealed_dir / "LOCAL_VERIFIED_SEAL.json"
+    afs_seal = sealed_dir / "AFS_VERIFIED_SEAL.json"
+    if local_seal.exists() and not afs_seal.exists():
+        afs_payload = json.loads(local_seal.read_text(encoding="utf-8"))
+        afs_payload["seal_kind"] = "AFS_VERIFIED_SEAL"
+        if live_root:
+            afs_payload["afs_live_root"] = live_root
+        afs_payload["afs_sealed_root"] = str(sealed_dir)
+        tmp = afs_seal.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(afs_payload, indent=2, sort_keys=True), encoding="utf-8")
+        tmp.replace(afs_seal)
+        local_seal.unlink(missing_ok=True)
+    elif afs_seal.exists():
+        payload = json.loads(afs_seal.read_text(encoding="utf-8"))
     return payload
 
 

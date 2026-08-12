@@ -6,9 +6,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 EXP_LOCAL="${ROOT}/experiments/mspti_sync_skeleton"
-JUMP="${JUMP:-ais-cf3e61a5}"
-KUBE="${KUBE:-/tmp/config-vc-a3-241ceshi-songyiyang.yaml}"
-KUBECTL="${KUBECTL:-/root/.cache/volcano/kubectl/kubectl}"
+JUMP="${JUMP:-afs-cpu}"
+KUBE="${KUBE:-/root/.kube/config-vc-a3-241ceshi-songyiyang.yaml}"
+KUBECTL="${KUBECTL:-/root/bin/kubectl}"
 NS="${NS:-default}"
 MASTER_POD="${MASTER_POD:-grj-megatron-32card-0716-master-0}"
 WORKER_POD="${WORKER_POD:-grj-megatron-32card-0716-worker-0}"
@@ -157,69 +157,125 @@ kill_our_attempt() {
 
 # Continuous yield: shared opponent_check.py（subprocess.run ps + returncode）。
 # 三态 CLEAR(0) / OPPONENT(10) / CHECK_FAILED(20)；禁止 || true / os.popen。
-yield_if_opponent() {
-  local out="$1" marker="${2:-${RUN_MARKER}}"
-  local pod node_id=0
-  local pods=("${MASTER_POD}")
-  if [[ "${NNODES}" == "2" ]]; then
-    pods+=("${WORKER_POD}")
-  fi
-  local any_opp=0
-  local any_fail=0
-  local detail=""
-  for pod in "${pods[@]}"; do
-    local result rc
+# kubectl/SSH 瞬时失败：有界重试；真实 OPPONENT 立即让路。
+YIELD_TRANSPORT_RETRIES="${YIELD_TRANSPORT_RETRIES:-4}"
+YIELD_TRANSPORT_BACKOFF_S="${YIELD_TRANSPORT_BACKOFF_S:-0.5}"
+
+yield_check_pod_with_retry() {
+  local pod="$1" node_id="$2" out="$3" marker="$4"
+  local attempt=0 result rc status detail yrc
+  while (( attempt < YIELD_TRANSPORT_RETRIES )); do
     set +e
     result="$(pod_exec "${pod}" \
       "python3 '${CODE_DIR}/opponent_check.py' --mode yield --out-dir '${out}' --run-marker '${marker}' --node-id ${node_id}")"
     rc=$?
     set -e
-    if (( rc != 0 && rc != 10 && rc != 20 )); then
-      rc=20
-      result="CHECK_FAILED|transport"
-    fi
-    local status
-    status="$(
+    {
+      IFS= read -r status || status=""
+      IFS= read -r detail || detail=""
+      IFS= read -r yrc || yrc=""
+    } < <(
       EXP_LOCAL_FOR_YIELD="${EXP_LOCAL}" \
-      YIELD_OUT_M="${result}" YIELD_RC_M="${rc}" \
+      YIELD_OUT="${result}" YIELD_RC="${rc}" \
       python3 - <<'PY'
 import os, sys
 sys.path.insert(0, os.environ.get("EXP_LOCAL_FOR_YIELD", "."))
-from local_group_guard import classify_yield_check
-v = classify_yield_check(os.environ.get("YIELD_OUT_M", ""), int(os.environ.get("YIELD_RC_M", "1")))
-print(v.status)
+from local_group_guard import classify_yield_attempt
+a = classify_yield_attempt(os.environ.get("YIELD_OUT", ""), int(os.environ.get("YIELD_RC", "1")))
+if a.transient:
+    print("TRANSIENT")
+    print(a.detail)
+    print("0")
+elif a.verdict:
+    print(a.verdict.status)
+    print(a.verdict.detail)
+    print(str(a.verdict.rc))
+else:
+    print("CHECK_FAILED")
+    print("no_verdict")
+    print("20")
 PY
-    )"
-    if [[ "${status}" == "CHECK_FAILED" ]]; then
-      any_fail=1
-      detail="${detail}; pod=${pod} rc=${rc} out=${result}"
-      echo "YIELD_CHECK_FAILED on ${pod}: rc=${rc} out=${result}" >&2
-    elif [[ "${status}" == "OPPONENT" ]]; then
-      any_opp=1
-      detail="${detail}; pod=${pod} ${result}"
-      echo "YIELD: opponent on ${pod}: ${result}" >&2
+    )
+    if [[ -z "${status}" || -z "${yrc}" ]]; then
+      echo "CHECK_FAILED|classify_parse_incomplete pod=${pod} node=${node_id}" >&2
+      printf '%s\n' "CHECK_FAILED|classify_parse_incomplete"
+      return 20
     fi
+    if [[ "${status}" == "TRANSIENT" ]]; then
+      attempt=$((attempt + 1))
+      echo "YIELD_RETRY attempt=${attempt}/${YIELD_TRANSPORT_RETRIES} pod=${pod} node=${node_id} ${detail}" >&2
+      sleep "${YIELD_TRANSPORT_BACKOFF_S}"
+      continue
+    fi
+    printf '%s\n' "${result}"
+    return "${yrc}"
+  done
+  echo "CHECK_FAILED|transport_exhausted pod=${pod} node=${node_id} attempts=${YIELD_TRANSPORT_RETRIES} last=${detail}" >&2
+  printf '%s\n' "CHECK_FAILED|transport_exhausted"
+  return 20
+}
+
+yield_if_opponent() {
+  local out="$1" marker="${2:-${RUN_MARKER}}"
+  local pod node_id=0 result rc status yrc detail krc
+  local merge_dir n=0
+  merge_dir="$(mktemp -d "${TMPDIR:-/tmp}/mspti-yield-merge.XXXXXX")"
+  local pods=("${MASTER_POD}")
+  if [[ "${NNODES}" == "2" ]]; then
+    pods+=("${WORKER_POD}")
+  fi
+  for pod in "${pods[@]}"; do
+    set +e
+    result="$(yield_check_pod_with_retry "${pod}" "${node_id}" "${out}" "${marker}")"
+    rc=$?
+    set -e
+    printf '%s' "${node_id}" > "${merge_dir}/rank_${n}"
+    printf '%s' "${pod}" > "${merge_dir}/pod_${n}"
+    printf '%s' "${rc}" > "${merge_dir}/rc_${n}"
+    printf '%s' "${result}" > "${merge_dir}/stdout_${n}"
+    n=$((n + 1))
     node_id=$((node_id + 1))
   done
-  if (( any_fail != 0 )); then
-    YIELD_STATUS="CHECK_FAILED"
-    set +e
-    kill_our_attempt "${out}" "${marker}"
-    YIELD_KILL_RC=$?
-    set -e
-    return 20
+  read -r status yrc detail < <(
+    EXP_LOCAL_FOR_YIELD="${EXP_LOCAL}" MERGE_DIR="${merge_dir}" POD_COUNT="${n}" \
+    python3 - <<'PY'
+import os, sys
+from pathlib import Path
+sys.path.insert(0, os.environ.get("EXP_LOCAL_FOR_YIELD", "."))
+from local_group_guard import merge_fanout_pod_checks
+merge_dir = Path(os.environ["MERGE_DIR"])
+count = int(os.environ.get("POD_COUNT", "0"))
+checks = []
+for i in range(count):
+    checks.append({
+        "rank": int((merge_dir / f"rank_{i}").read_text(encoding="utf-8")),
+        "pod": (merge_dir / f"pod_{i}").read_text(encoding="utf-8"),
+        "rc": int((merge_dir / f"rc_{i}").read_text(encoding="utf-8").strip() or "99"),
+        "stdout": (merge_dir / f"stdout_{i}").read_text(encoding="utf-8", errors="replace"),
+    })
+v = merge_fanout_pod_checks(checks)
+print(v.status, v.rc, v.detail)
+PY
+  )
+  rm -rf "${merge_dir}"
+  if [[ "${status}" == "CLEAR" ]]; then
+    YIELD_STATUS="CLEAR"
+    YIELD_KILL_RC=0
+    return 0
   fi
-  if (( any_opp != 0 )); then
-    YIELD_STATUS="OPPONENT"
-    set +e
-    kill_our_attempt "${out}" "${marker}"
-    YIELD_KILL_RC=$?
-    set -e
-    return 10
+  if [[ "${status}" == "OPPONENT" ]]; then
+    echo "YIELD: opponent training detected; stopping our attempt only" >&2
+  else
+    echo "YIELD_CHECK_FAILED: SSH/kubectl/proc check unsafe; stopping our attempt only" >&2
   fi
-  YIELD_STATUS="CLEAR"
-  YIELD_KILL_RC=0
-  return 0
+  echo "detail: ${detail}" >&2
+  set +e
+  kill_our_attempt "${out}" "${marker}"
+  krc=$?
+  set -e
+  YIELD_STATUS="${status}"
+  YIELD_KILL_RC="${krc}"
+  return "${yrc}"
 }
 
 pull_evidence() {

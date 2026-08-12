@@ -50,12 +50,18 @@ pub async fn initialize_engine() -> Result<()> {
     // Background hot→cold compaction (default on; PROBING_COLD=off / SET memtable.cold_compaction=off).
     crate::memtable_ext::start_cold_compaction_from_env();
     if result.is_ok() {
-        cc::start_cpu_sampling_from_env();
-        #[cfg(feature = "gpu")]
-        {
-            gpu::start_gpu_sampling_from_env();
-            // Ascend HCCS (NVLink analogue) — independent of gpu.utilization cadence.
-            gpu::start_hccs_sampling_from_env();
+        if probing_core::env_gate::probing_arm_enabled() {
+            cc::start_cpu_sampling_from_env();
+            #[cfg(feature = "gpu")]
+            {
+                gpu::start_gpu_sampling_from_env();
+                // Ascend HCCS (NVLink analogue) — independent of gpu.utilization cadence.
+                gpu::start_hccs_sampling_from_env();
+            }
+        } else {
+            log::debug!(
+                "Background CPU/GPU collectors skipped (PROBING disabled for this process)"
+            );
         }
         crate::engine_lifecycle::mark_engine_ready();
     }

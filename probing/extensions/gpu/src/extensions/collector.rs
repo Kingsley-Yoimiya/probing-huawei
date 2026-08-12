@@ -21,6 +21,8 @@ use super::backend::read_npu_utilization_by_index;
 
 use probing_memtable::ring_config;
 
+use probing_core::env_gate::probing_arm_enabled;
+
 const DEFAULT_SAMPLE_INTERVAL_MS: u64 = 1000;
 
 fn gpu_util_ring_layout() -> (u32, u32) {
@@ -35,6 +37,10 @@ fn gpu_util_ring_layout() -> (u32, u32) {
 /// - `PROBING_GPU=on` → force enable (even if backend probe fails at start).
 /// - Otherwise: **auto** — enabled at 1000 ms when a GPU backend is detected; silent skip when none.
 pub fn autostart_interval_ms() -> Option<u64> {
+    if !probing_arm_enabled() {
+        return None;
+    }
+
     if matches!(
         std::env::var("PROBING_GPU").ok().as_deref(),
         Some(v) if matches!(v.trim(), "0" | "off" | "false" | "no")
@@ -297,7 +303,15 @@ impl GpuCollector {
 
                 let wall_start = Instant::now();
                 let ts = ts_micros();
-                let samples = sample_all(&backends);
+                let samples = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    sample_all(&backends)
+                })) {
+                    Ok(rows) => rows,
+                    Err(_) => {
+                        log::warn!("gpu collector: sample_all panicked; skipping tick");
+                        Vec::new()
+                    }
+                };
                 let wall_ns = wall_start.elapsed().as_nanos() as u64;
 
                 let mut exposed = lock_gpu_table(&table);
@@ -331,8 +345,19 @@ mod tests {
     static ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
 
     fn clear_gpu_env() {
+        std::env::remove_var("PROBING");
+        std::env::remove_var("PROBING_ORIGINAL");
         std::env::remove_var("PROBING_GPU");
         std::env::remove_var("PROBING_GPU_SAMPLE_MS");
+    }
+
+    #[test]
+    fn autostart_off_when_probing_zero() {
+        let _guard = ENV_TEST_LOCK.lock().unwrap();
+        clear_gpu_env();
+        std::env::set_var("PROBING", "0");
+        assert!(autostart_interval_ms().is_none());
+        clear_gpu_env();
     }
 
     #[test]

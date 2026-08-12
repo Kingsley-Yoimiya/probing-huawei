@@ -57,11 +57,154 @@ def read_jsonl_strict(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def _read_meta(run_dir: Path, rank: int) -> dict[str, Any]:
-    path = run_dir / f"rank_{rank:04d}.mspti_meta.json"
-    if not path.exists():
-        raise StrictValidationError(f"missing meta {path.name}")
+NPU_SYNC_META_SUFFIX = "npu_sync_meta.json"
+LEGACY_MSPTI_META_SUFFIX = "mspti_meta.json"
+
+
+def resolve_meta_raw_kernels(meta: dict[str, Any]) -> Optional[int]:
+    """Resolve authoritative raw-kernel count from main-path sidecar shapes.
+
+    Production ``npu_sync_meta`` uses ``raw_kernel_count`` plus optional
+    ``adaptive.total_raw_kernels`` / per-stream rollups; legacy fixtures use
+  ``raw_kernels``.  All sources must agree when more than one is present.
+    """
+    candidates: list[tuple[str, int]] = []
+    for key in ("raw_kernels", "raw_kernel_count"):
+        val = meta.get(key)
+        if val is not None:
+            candidates.append((key, int(val)))
+    adaptive = meta.get("adaptive")
+    if isinstance(adaptive, dict):
+        total = adaptive.get("total_raw_kernels")
+        if total is not None:
+            candidates.append(("adaptive.total_raw_kernels", int(total)))
+        streams = adaptive.get("streams")
+        if isinstance(streams, list) and streams:
+            stream_sum = sum(
+                int(s.get("raw_kernels", 0)) for s in streams if isinstance(s, dict)
+            )
+            if stream_sum:
+                candidates.append(("sum(adaptive.streams.raw_kernels)", stream_sum))
+    if not candidates:
+        return None
+    values = {v for _, v in candidates}
+    if len(values) > 1:
+        detail = ", ".join(f"{k}={v}" for k, v in candidates)
+        raise StrictValidationError(
+            f"meta raw kernel sources disagree: {detail}"
+        )
+    return candidates[0][1]
+
+
+def resolve_meta_raw_comms(meta: dict[str, Any]) -> Optional[int]:
+    """Resolve comm count from ``raw_comms`` or ``raw_comm_count``."""
+    candidates: list[tuple[str, int]] = []
+    for key in ("raw_comms", "raw_comm_count"):
+        val = meta.get(key)
+        if val is not None:
+            candidates.append((key, int(val)))
+    if not candidates:
+        return None
+    values = {v for _, v in candidates}
+    if len(values) > 1:
+        detail = ", ".join(f"{k}={v}" for k, v in candidates)
+        raise StrictValidationError(f"meta raw comm sources disagree: {detail}")
+    return candidates[0][1]
+
+
+def _meta_path(run_dir: Path, rank: int, *, require_main_path: bool) -> Path:
+    main = run_dir / f"rank_{rank:04d}.{NPU_SYNC_META_SUFFIX}"
+    if main.exists():
+        return main
+    legacy = run_dir / f"rank_{rank:04d}.{LEGACY_MSPTI_META_SUFFIX}"
+    if require_main_path:
+        if legacy.exists():
+            raise StrictValidationError(
+                f"rank{rank}: legacy {LEGACY_MSPTI_META_SUFFIX} present but "
+                f"formal ours requires {NPU_SYNC_META_SUFFIX}"
+            )
+        raise StrictValidationError(f"missing meta {main.name}")
+    if legacy.exists():
+        return legacy
+    raise StrictValidationError(
+        f"missing meta rank_{rank:04d}.{NPU_SYNC_META_SUFFIX} "
+        f"or rank_{rank:04d}.{LEGACY_MSPTI_META_SUFFIX}"
+    )
+
+
+def _read_meta(run_dir: Path, rank: int, *, require_main_path: bool = True) -> dict[str, Any]:
+    path = _meta_path(run_dir, rank, require_main_path=require_main_path)
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _run_granularity_mode(run_dir: Path) -> Optional[str]:
+    cfg_path = run_dir / "config.json"
+    if not cfg_path.exists():
+        return None
+    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    mode = cfg.get("granularity_mode")
+    return str(mode) if mode else None
+
+
+def validate_adaptive_native_meta(
+    meta: dict[str, Any],
+    *,
+    rank: int,
+    expected_mode: Optional[str] = None,
+) -> None:
+    """Fail-closed: reject sidecar claiming adaptive_v1 without native authority.
+
+    Catches the REPLAN §3.2 false positive where sidecar labels adaptive_v1 but
+    the collector actually ran static gap thresholds (no native ABI / no updates).
+    """
+    mode = str(meta.get("granularity_mode") or "")
+    want = expected_mode or "adaptive_v1"
+    if want != "adaptive_v1":
+        return
+    if mode != "adaptive_v1":
+        raise StrictValidationError(
+            f"rank{rank}: formal ours expects granularity_mode=adaptive_v1, got {mode!r}"
+        )
+    source = meta.get("adaptive_source")
+    if source != "native":
+        raise StrictValidationError(
+            f"rank{rank}: adaptive_v1 requires adaptive_source=native, got {source!r}"
+        )
+    adaptive = meta.get("adaptive")
+    if not isinstance(adaptive, dict):
+        raise StrictValidationError(f"rank{rank}: adaptive_v1 meta missing adaptive block")
+    if str(adaptive.get("granularity_mode") or "") != "adaptive_v1":
+        raise StrictValidationError(
+            f"rank{rank}: adaptive.granularity_mode mismatch: {adaptive.get('granularity_mode')!r}"
+        )
+    abi = adaptive.get("abi_version", meta.get("abi_version"))
+    if int(abi or 0) < 1:
+        raise StrictValidationError(f"rank{rank}: adaptive abi_version invalid: {abi!r}")
+    streams = adaptive.get("streams")
+    if not isinstance(streams, list) or not streams:
+        raise StrictValidationError(f"rank{rank}: adaptive.streams missing or empty")
+    total_positive = sum(int(s.get("positive_gaps", 0)) for s in streams if isinstance(s, dict))
+    adapt_min = int(adaptive.get("adapt_min_samples") or meta.get("adapt_min_samples") or 128)
+    updates = int(adaptive.get("threshold_updates") or 0)
+    if total_positive >= adapt_min and updates == 0:
+        raise StrictValidationError(
+            f"rank{rank}: adaptive_v1 false positive — threshold_updates=0 with "
+            f"positive_gaps={total_positive} >= adapt_min_samples={adapt_min}"
+        )
+    total_raw = int(resolve_meta_raw_kernels(meta) or 0)
+    total_kseg = int(adaptive.get("total_kseg") or 0)
+    stream_raw = sum(int(s.get("raw_kernels", 0)) for s in streams if isinstance(s, dict))
+    stream_kseg = sum(int(s.get("kseg_count", 0)) for s in streams if isinstance(s, dict))
+    if total_raw and stream_raw and total_raw != stream_raw:
+        raise StrictValidationError(
+            f"rank{rank}: adaptive total_raw_kernels={total_raw} != "
+            f"sum(streams.raw_kernels)={stream_raw}"
+        )
+    if total_kseg and stream_kseg and total_kseg != stream_kseg:
+        raise StrictValidationError(
+            f"rank{rank}: adaptive total_kseg={total_kseg} != "
+            f"sum(streams.kseg_count)={stream_kseg}"
+        )
 
 
 def parse_drop_flags(flags: str) -> dict[str, int]:
@@ -241,10 +384,12 @@ def validate_rank_rows(
             f"rank{expected_rank}: capture_end_rc={meta.get('capture_end_rc')}"
         )
 
-    meta_raw = meta.get("raw_kernels")
-    if meta_raw is None:
-        raise StrictValidationError(f"rank{expected_rank}: meta.raw_kernels missing")
-    meta_raw_i = int(meta_raw)
+    meta_raw_i = resolve_meta_raw_kernels(meta)
+    if meta_raw_i is None:
+        raise StrictValidationError(
+            f"rank{expected_rank}: meta raw kernel count missing "
+            "(need raw_kernels/raw_kernel_count/adaptive.total_raw_kernels)"
+        )
     if meta_raw_i != raw_from_kseg:
         raise StrictValidationError(
             f"rank{expected_rank}: meta.raw_kernels={meta_raw_i} != "
@@ -341,11 +486,17 @@ def validate_ours_dir(
             "strict requires frozen min_comm_per_rank (CLI/config)"
         )
 
+    expected_granularity = _run_granularity_mode(run_dir)
+
     per_rank = []
     for rank in range(expected_ranks):
         path = run_dir / f"rank_{rank:04d}.skeleton.jsonl"
         rows = read_jsonl_strict(path)
-        meta = _read_meta(run_dir, rank)
+        meta = _read_meta(run_dir, rank, require_main_path=True)
+        if expected_granularity == "adaptive_v1":
+            validate_adaptive_native_meta(
+                meta, rank=rank, expected_mode=expected_granularity
+            )
         per_rank.append(
             validate_rank_rows(
                 rows,
@@ -449,6 +600,7 @@ REQUIRED_ARTIFACT_BASENAMES = (
 
 REQUIRED_ARTIFACT_GLOBS = (
     "rank_*.skeleton.jsonl",
+    "rank_*.npu_sync_meta.json",
     "rank_*.mspti_meta.json",
     "rank_*.trace.json",
     "node_*.done",
@@ -680,7 +832,9 @@ def collect_required_artifact_names(
                 continue
             name = path.name
             if arm_l in ("normal", "torch"):
-                if name.endswith((".skeleton.jsonl", ".mspti_meta.json", ".trace.json")):
+                if name.endswith(
+                    (".skeleton.jsonl", ".npu_sync_meta.json", ".mspti_meta.json", ".trace.json")
+                ):
                     continue
                 if name == "cluster.trace.json":
                     continue
@@ -702,7 +856,7 @@ def collect_required_artifact_names(
     if arm_l == "ours" and expected_ranks:
         for r in range(int(expected_ranks)):
             required.add(f"rank_{r:04d}.skeleton.jsonl")
-            required.add(f"rank_{r:04d}.mspti_meta.json")
+            required.add(f"rank_{r:04d}.npu_sync_meta.json")
         if (attempt_dir / "cluster.trace.json").exists() or arm_l == "ours":
             required.add("cluster.trace.json")
 
@@ -888,12 +1042,12 @@ def verify_local_anchor(
     *,
     require: bool = True,
 ) -> Optional[dict[str, Any]]:
-    """Formal accept gate: LOCAL_VERIFIED_SEAL.json written by parent after pullback."""
+    """Legacy Mac pullback anchor — not authoritative for formal AFS path."""
     path = attempt_dir / "LOCAL_VERIFIED_SEAL.json"
     if not path.exists():
         if require:
             raise StrictValidationError(
-                "missing LOCAL_VERIFIED_SEAL.json (formal mode requires parent local anchor)"
+                "missing LOCAL_VERIFIED_SEAL.json (legacy local anchor)"
             )
         return None
     seal = json.loads(path.read_text(encoding="utf-8"))
@@ -903,7 +1057,6 @@ def verify_local_anchor(
     man_hash = _sha256_file(man)
     if seal.get("local_manifest_sha256") != man_hash:
         raise StrictValidationError("LOCAL_VERIFIED_SEAL local_manifest_sha256 mismatch")
-    # Re-verify aggregate still matches
     art = verify_artifact_digest(
         attempt_dir,
         expected_aggregate=seal.get("artifact_aggregate_sha256"),
@@ -912,6 +1065,57 @@ def verify_local_anchor(
     if art["aggregate_sha256"] != seal.get("artifact_aggregate_sha256"):
         raise StrictValidationError("LOCAL_VERIFIED_SEAL artifact_aggregate_sha256 mismatch")
     return seal
+
+
+def verify_afs_anchor(
+    attempt_dir: Path,
+    *,
+    require: bool = True,
+) -> Optional[dict[str, Any]]:
+    """Formal accept gate: AFS_VERIFIED_SEAL.json on AFS sealed mirror."""
+    path = attempt_dir / "AFS_VERIFIED_SEAL.json"
+    if not path.exists():
+        if require:
+            raise StrictValidationError(
+                "missing AFS_VERIFIED_SEAL.json (formal mode requires AFS sealed anchor)"
+            )
+        return None
+    seal = json.loads(path.read_text(encoding="utf-8"))
+    if seal.get("seal_kind") != "AFS_VERIFIED_SEAL":
+        raise StrictValidationError("AFS_VERIFIED_SEAL seal_kind mismatch")
+    man = attempt_dir / "attempt_manifest.json"
+    if not man.exists():
+        raise StrictValidationError("AFS_VERIFIED_SEAL present but no attempt_manifest.json")
+    man_hash = _sha256_file(man)
+    if seal.get("local_manifest_sha256") != man_hash:
+        raise StrictValidationError("AFS_VERIFIED_SEAL local_manifest_sha256 mismatch")
+    art = verify_artifact_digest(
+        attempt_dir,
+        expected_aggregate=seal.get("artifact_aggregate_sha256"),
+        require_required_globs=False,
+    )
+    if art["aggregate_sha256"] != seal.get("artifact_aggregate_sha256"):
+        raise StrictValidationError("AFS_VERIFIED_SEAL artifact_aggregate_sha256 mismatch")
+    return seal
+
+
+def verify_verified_seal(
+    attempt_dir: Path,
+    *,
+    require: bool = True,
+    prefer_afs: bool = True,
+) -> Optional[dict[str, Any]]:
+    """Authoritative seal: AFS_VERIFIED_SEAL; LOCAL is legacy-only."""
+    afs_path = attempt_dir / "AFS_VERIFIED_SEAL.json"
+    if prefer_afs:
+        if afs_path.exists():
+            return verify_afs_anchor(attempt_dir, require=True)
+        if require:
+            raise StrictValidationError(
+                "missing AFS_VERIFIED_SEAL.json; LOCAL_VERIFIED_SEAL is not authoritative"
+            )
+        return None
+    return verify_local_anchor(attempt_dir, require=require)
 
 
 def audit_fatal_signals_in_node_logs(attempt_dir: Path) -> dict[str, Any]:
@@ -961,6 +1165,7 @@ def validate_attempt_manifest(
     require_seal: bool = True,
     require_provenance: bool = True,
     require_local_anchor: bool = False,
+    require_afs_anchor: bool = False,
 ) -> dict[str, Any]:
     manifest_path = attempt_dir / "attempt_manifest.json"
     if not manifest_path.exists():
@@ -1174,7 +1379,9 @@ def validate_attempt_manifest(
         # fail if artifact entries no longer match (verify_artifact_digest above)
         # or if local anchor is required.
 
-    if require_local_anchor:
+    if require_afs_anchor:
+        verify_afs_anchor(attempt_dir, require=True)
+    elif require_local_anchor:
         verify_local_anchor(attempt_dir, require=True)
 
     fatal_audit = audit_fatal_signals_in_node_logs(attempt_dir)

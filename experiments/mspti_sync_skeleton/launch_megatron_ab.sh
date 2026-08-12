@@ -5,18 +5,22 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 EXP_LOCAL="${ROOT}/experiments/mspti_sync_skeleton"
-JUMP="${JUMP:-ais-cf3e61a5}"
+JUMP="${JUMP:-afs-cpu}"
 # JUMP_LOCAL=1：脚本已在跳板本机执行，jump/jump_n 直接 eval kubectl，不 ssh。
 JUMP_LOCAL="${JUMP_LOCAL:-0}"
 if [[ "${JUMP_LOCAL}" == "1" ]]; then
   # transfer_recovery / chunk_pull treat jump=local as no-ssh kubectl.
   JUMP="local"
 fi
-KUBE="${KUBE:-/tmp/config-vc-a3-241ceshi-songyiyang.yaml}"
-KUBECTL="${KUBECTL:-/root/.cache/volcano/kubectl/kubectl}"
+KUBE="${KUBE:-/root/.kube/config-vc-a3-241ceshi-songyiyang.yaml}"
+KUBECTL="${KUBECTL:-/root/bin/kubectl}"
 NS="${NS:-default}"
 MASTER_POD="${MASTER_POD:-grj-megatron-32card-0716-master-0}"
 WORKER_POD="${WORKER_POD:-grj-megatron-32card-0716-worker-0}"
+JOB_NAME="${JOB_NAME:-}"
+FANOUT_PARALLEL="${FANOUT_PARALLEL:-16}"
+FANOUT_PREFLIGHT="${FANOUT_PREFLIGHT:-0}"
+JUMP_CONTROL_PARENT="${JUMP_CONTROL_PARENT:-/root/myportal-results/mspti-control}"
 NNODES="${NNODES:-2}"
 NPROC="${NPROC:-16}"
 WORLD_SIZE=$((NNODES * NPROC))
@@ -38,7 +42,21 @@ print(h.hexdigest()[:16])
 PY
 )"
 CODE_DIR="${AFS_ROOT}/probing-huawei/experiments/mspti_sync_skeleton-${CODE_HASH}"
-GROUP_DIR="${AFS_ROOT}/results/mspti-sync-skeleton/megatron-ab/${GROUP_ID}"
+# Layered storage (P0 REPLAN): live + sealed on AFS; jump control only on overlay.
+AFS_GROUP_ROOT="${AFS_ROOT}/results/mspti-sync-skeleton/megatron-ab/${GROUP_ID}"
+AFS_LIVE_ROOT="${AFS_GROUP_ROOT}/attempts"
+AFS_SEAL_ROOT="${AFS_GROUP_ROOT}/sealed"
+JUMP_CONTROL_ROOT="${JUMP_CONTROL_PARENT}/${GROUP_ID}"
+GROUP_DIR="${AFS_GROUP_ROOT}"
+POD_MAP_FILE="${POD_MAP_FILE:-}"
+if [[ "${FANOUT_PREFLIGHT}" == "1" ]]; then
+  # Control-only tree on jump overlay (no Mac backup for no-training preflight).
+  BACKUP_PARENT="${JUMP_CONTROL_PARENT}"
+  BACKUP_ROOT="${JUMP_CONTROL_ROOT}"
+  LOG_DIR="${JUMP_CONTROL_ROOT}/logs"
+  # Claim files must not live under BACKUP_ROOT (mkdir parents=True would pre-create it).
+  CLAIM_PARENT="${JUMP_CONTROL_PARENT}/.claims"
+fi
 # BACKUP_ROOT 可测可覆盖；默认本机唯一 group 目录。禁止复用已存在路径。
 BACKUP_PARENT="${BACKUP_PARENT:-/Users/yinjinrun/Codespace/myportal/results/huawei-a3-32/mspti-sync-skeleton/megatron-ab}"
 BACKUP_ROOT="${BACKUP_ROOT:-${BACKUP_PARENT}/${GROUP_ID}}"
@@ -54,7 +72,18 @@ DESIGN_SEQUENCE="${DESIGN_SEQUENCE:-counterbalanced_v1}"
 BASE_PORT="${BASE_PORT:-39100}"
 SEED="${SEED:-1234}"
 TP="${TP:-2}"; PP="${PP:-1}"; MBS="${MBS:-1}"; GBS="${GBS:-64}"; SEQ="${SEQ:-4096}"; LAYERS="${LAYERS:-32}"
-DATA_PATH="${DATA_PATH:-/afs-a3-weight-share/enwiki/enwiki20230101/enwiki20230101-00000_text_document}"
+# 256 卡冻结 GBS=512（DP=128）；禁止默默落到 GBS=64。
+read -r GBS WORLD_SIZE FROZEN_DP GBS_CONTRACT < <(
+  python3 "${EXP_LOCAL}/model_scale_contract.py" --format json \
+    --nnodes "${NNODES}" --nproc "${NPROC}" --tp "${TP}" --pp "${PP}" --mbs "${MBS}" \
+    --gbs "${GBS}" --seq "${SEQ}" --layers "${LAYERS}" --seed "${SEED}" \
+    | python3 -c "import json,sys; m=json.load(sys.stdin); print(m['gbs'], m['world_size'], m['dp'], m['gbs_contract'])"
+) || { echo "FATAL: GBS scale contract failed (see model_scale_contract.py)" >&2; exit 2; }
+if [[ "${GBS_CONTRACT}" == "frozen_512" || "${GBS_CONTRACT}" == "frozen_128" ]]; then
+  echo "[megatron-ab] GBS frozen: world_size=${WORLD_SIZE} DP=${FROZEN_DP} GBS=${GBS} contract=${GBS_CONTRACT}" >&2
+fi
+# pjlab-new (pvc-5gnm2) 无 /afs-a3-weight-share/enwiki；自有 shard 在 yinjinrun.p-huawei/data。
+DATA_PATH="${DATA_PATH:-/afs-a3-weight-share/yinjinrun.p-huawei/data/enwiki20230101/enwiki20230101-00000_text_document}"
 CACHE="${CACHE:-/afs-a3-weight-share/yinjinrun.p-huawei/megatron-data-cache}"
 EXPECTED_RANKS="${EXPECTED_RANKS:-${WORLD_SIZE}}"
 STRICT="${STRICT:-1}"
@@ -74,6 +103,30 @@ REL_RAW_FLOOR="${MSPTI_REL_RAW_FLOOR:-0.8}"
 REL_COMM_FLOOR="${MSPTI_REL_COMM_FLOOR:-0.8}"
 DRY_RUN="${DRY_RUN:-0}"
 FIXTURE_RUN="${FIXTURE_RUN:-0}"
+SEAL_BACKEND="${SEAL_BACKEND:-AFS_MIRROR}"
+# Formal = real training path (not dry-run / fixture / fanout-only preflight).
+FORMAL_MODE=0
+if [[ "${DRY_RUN}" != "1" && "${FIXTURE_RUN}" != "1" && "${FANOUT_PREFLIGHT}" != "1" ]]; then
+  FORMAL_MODE=1
+fi
+# Formal forbids CAPACITY_JUMP_ONLY bypass (REPLAN Acceptance 1).
+if [[ "${FORMAL_MODE}" == "1" ]]; then
+  _cap_jump_only="${CAPACITY_JUMP_ONLY:-0}"
+  if [[ "${_cap_jump_only}" != "0" ]]; then
+    echo "INVALID_CAPACITY_MODE CAPACITY_JUMP_ONLY=${_cap_jump_only} forbidden in formal mode" >&2
+    exit 3
+  fi
+  if [[ "${SEAL_BACKEND}" != "AFS_MIRROR" ]]; then
+    echo "FATAL: formal mode requires SEAL_BACKEND=AFS_MIRROR (got ${SEAL_BACKEND})" >&2
+    exit 3
+  fi
+fi
+# Formal frozen artifacts — consume artifact_manifest.json when present.
+FORMAL_BUILD_ROOT="${FORMAL_BUILD_ROOT:-}"
+FORMAL_WHEEL_SHA256="${FORMAL_WHEEL_SHA256:-}"
+FORMAL_SO_SHA256="${FORMAL_SO_SHA256:-}"
+ARTIFACT_MANIFEST="${ARTIFACT_MANIFEST:-}"
+PYBIN="${PYBIN:-/root/miniconda3/envs/llm_test/bin}"
 
 if [[ -z "${MIN_RAW_KERNELS}" || -z "${MIN_COMM}" ]]; then
   echo "FATAL: formal AB requires MIN_RAW_KERNELS/MIN_COMM before launch (got empty)" >&2
@@ -114,6 +167,105 @@ jump_n() {
   ssh -n -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
     -o BatchMode=yes \
     "${JUMP}" "export KUBECONFIG='${KUBE}'; K='${KUBECTL}'; $*"
+}
+
+load_formal_artifact_manifest() {
+  if [[ -n "${FORMAL_BUILD_ROOT}" && -n "${FORMAL_WHEEL_SHA256}" && -n "${FORMAL_SO_SHA256}" ]]; then
+    return 0
+  fi
+  local manifest="${ARTIFACT_MANIFEST:-${FORMAL_BUILD_ROOT}/artifact_manifest.json}"
+  if [[ -z "${FORMAL_BUILD_ROOT}" && -n "${ARTIFACT_MANIFEST}" && -f "${ARTIFACT_MANIFEST}" ]]; then
+    FORMAL_BUILD_ROOT="$(python3 -c "import json; print(json.load(open('${ARTIFACT_MANIFEST}'))['build_root'])")"
+  fi
+  if [[ -n "${manifest}" && -f "${manifest}" ]]; then
+    read -r FORMAL_BUILD_ROOT FORMAL_WHEEL_SHA256 FORMAL_SO_SHA256 < <(
+      python3 -c "import json; m=json.load(open('${manifest}')); print(m['build_root'], m['wheel_sha256'], m['so_sha256'])"
+    )
+    ARTIFACT_MANIFEST="${manifest}"
+  fi
+  if [[ -z "${FORMAL_BUILD_ROOT}" || -z "${FORMAL_WHEEL_SHA256}" || -z "${FORMAL_SO_SHA256}" ]]; then
+    echo "FATAL: missing formal artifact manifest / FORMAL_BUILD_ROOT/WHEEL_SHA/SO_SHA" >&2
+    return 2
+  fi
+}
+
+resolve_pod_map() {
+  # JOB_NAME required for NNODES>2 or FANOUT_PREFLIGHT; legacy 2-node may use MASTER/WORKER.
+  if [[ -n "${JOB_NAME}" ]]; then
+    POD_MAP_FILE="${POD_MAP_FILE:-${BACKUP_ROOT}/pod_map.json}"
+    mkdir -p "$(dirname "${POD_MAP_FILE}")"
+    python3 "${EXP_LOCAL}/pod_resolver.py" \
+      --job-name "${JOB_NAME}" \
+      --namespace "${NS}" \
+      --kubeconfig "${KUBE}" \
+      --kubectl "${KUBECTL}" \
+      --expected-nodes "${NNODES}" \
+      --out "${POD_MAP_FILE}" || return $?
+    MASTER_POD="$(python3 -c "import json; pm=json.load(open('${POD_MAP_FILE}')); print([p['pod'] for p in pm['pods'] if p['node_rank']==0][0])")"
+    WORKER_POD="$(python3 -c "import json; pm=json.load(open('${POD_MAP_FILE}')); print([p['pod'] for p in pm['pods'] if p['node_rank']==1][0])" 2>/dev/null || echo "")"
+    return 0
+  fi
+  if (( NNODES > 2 )); then
+    echo "FATAL: NNODES=${NNODES} requires JOB_NAME for pod map resolution" >&2
+    return 2
+  fi
+  return 0
+}
+
+pod_map_entries_tsv() {
+  if [[ -n "${POD_MAP_FILE}" && -f "${POD_MAP_FILE}" ]]; then
+    python3 -c "
+import json
+pm=json.load(open('${POD_MAP_FILE}'))
+for p in sorted(pm['pods'], key=lambda x: x['node_rank']):
+    print(p['node_rank'], p['pod'])
+"
+    return 0
+  fi
+  echo "0 ${MASTER_POD}"
+  if (( NNODES >= 2 )); then
+    echo "1 ${WORKER_POD}"
+  fi
+}
+
+fanout_parallel_exec() {
+  # Bounded parallel pod_exec: args are remote command template with __POD__ __RANK__ placeholders.
+  local cmd_tpl="$1"
+  local -a pids=() ranks=() pods=() rcs=()
+  local parallel="${FANOUT_PARALLEL}"
+  (( parallel < 1 )) && parallel=1
+  (( parallel > NNODES )) && parallel="${NNODES}"
+  while read -r rank pod; do
+    [[ -n "${rank}" ]] || continue
+    local cmd="${cmd_tpl//__POD__/${pod}}"
+    cmd="${cmd//__RANK__/${rank}}"
+    pod_exec "${pod}" "${cmd}" &
+    pids+=("$!")
+    ranks+=("${rank}")
+    pods+=("${pod}")
+    if ((${#pids[@]} >= parallel)); then
+      local i
+      for i in "${!pids[@]}"; do
+        set +e
+        wait "${pids[$i]}"
+        rcs+=("$?")
+        set -e
+      done
+      pids=()
+    fi
+  done < <(pod_map_entries_tsv)
+  local i
+  for i in "${!pids[@]}"; do
+    set +e
+    wait "${pids[$i]}"
+    rcs+=("$?")
+    set -e
+  done
+  local fail=0
+  for rc in "${rcs[@]}"; do
+    if (( rc != 0 )); then fail=1; fi
+  done
+  return "${fail}"
 }
 
 pod_exec() {
@@ -170,6 +322,47 @@ check_idle() {
     echo "FATAL: idle empty/unknown stdout → CHECK_FAILED pod=${pod} out=${active}" >&2
     return 20
   fi
+  return 0
+}
+
+# 点火前数据集门禁：DATA_PATH 对应 .bin/.idx 须在目标 pod 挂载上可读；FAIL 不得 claim GROUP。
+dataset_gate_preflight() {
+  local gate_out="${DATA_GATE_OUT:-/tmp/mspti_dataset_gate_${GROUP_ID}.json}"
+  local probe_pod="${DATA_PROBE_POD:-}"
+  local pod_map_early="/tmp/mspti_pod_map_early_${GROUP_ID}.json"
+  if [[ "${DRY_RUN}" == "1" || "${FIXTURE_RUN}" == "1" ]]; then
+    echo "[megatron-ab] DATA_GATE_SKIP dry_run/fixture"
+    return 0
+  fi
+  if [[ -z "${probe_pod}" && -n "${JOB_NAME}" ]]; then
+    python3 "${EXP_LOCAL}/pod_resolver.py" \
+      --job-name "${JOB_NAME}" \
+      --namespace "${NS}" \
+      --kubeconfig "${KUBE}" \
+      --kubectl "${KUBECTL}" \
+      --expected-nodes "${NNODES}" \
+      --out "${pod_map_early}" || return $?
+    probe_pod="$(python3 -c "import json; pm=json.load(open('${pod_map_early}')); print([p['pod'] for p in pm['pods'] if p['node_rank']==0][0])")"
+    POD_MAP_FILE="${POD_MAP_FILE:-${pod_map_early}}"
+    MASTER_POD="${probe_pod}"
+  fi
+  if [[ -z "${probe_pod}" ]]; then
+    echo "FATAL: dataset gate requires JOB_NAME (running pods) or DATA_PROBE_POD" >&2
+    return 2
+  fi
+  echo "[megatron-ab] DATA_GATE pod=${probe_pod} data_path=${DATA_PATH}"
+  if ! python3 "${EXP_LOCAL}/preflight_dataset_gate.py" \
+    --data-path "${DATA_PATH}" \
+    --pod "${probe_pod}" \
+    --namespace "${NS}" \
+    --kubeconfig "${KUBE}" \
+    --kubectl "${KUBECTL}" \
+    --also-check-legacy \
+    --out "${gate_out}"; then
+    echo "FATAL: DATA_OK=FAIL — refuse GROUP claim (see ${gate_out})" >&2
+    return 2
+  fi
+  echo "[megatron-ab] DATA_OK=PASS receipt=${gate_out}"
   return 0
 }
 
@@ -250,6 +443,14 @@ require_idle_or_invalid() {
   exit "${rc}"
 }
 
+require_idle_or_invalid_all() {
+  local stage="${1:-pre_start}"
+  while read -r rank pod; do
+    [[ -n "${rank}" ]] || continue
+    require_idle_or_invalid "${pod}" "${stage}"
+  done < <(pod_map_entries_tsv)
+}
+
 # 只杀本 pod 带 exact RUN_MARKER 的进程；验收清零；禁止 || true 后宣称成功。
 kill_our_attempt() {
   local out="$1"
@@ -262,12 +463,10 @@ kill_our_attempt() {
     return 2
   fi
   local node_id=0
-  local pods=("${MASTER_POD}")
   local cleanup_rc=0
-  if [[ "${NNODES}" == "2" ]]; then
-    pods+=("${WORKER_POD}")
-  fi
-  for pod in "${pods[@]}"; do
+  while read -r rank pod; do
+    [[ -n "${rank}" ]] || continue
+    node_id="${rank}"
     set +e
     pod_exec "${pod}" \
       "python3 '${CODE_DIR}/kill_attempt.py' --out-dir '${out}' --node-id ${node_id} --run-marker '${marker}'"
@@ -277,8 +476,7 @@ kill_our_attempt() {
       echo "CLEANUP_INCOMPLETE pod=${pod} node=${node_id} rc=${rc}" >&2
       cleanup_rc=1
     fi
-    node_id=$((node_id + 1))
-  done
+  done < <(pod_map_entries_tsv)
   return "${cleanup_rc}"
 }
 
@@ -292,6 +490,7 @@ mark_group_invalid() {
     return 0
   fi
   # BACKUP_ROOT 已由 atomic claim 创建；禁止 mkdir -p 回写旧树。
+  set +e
   python3 - <<PY
 import sys
 from pathlib import Path
@@ -311,9 +510,36 @@ mark_group_invalid(
 )
 print("GROUP_INVALID written reason=${reason} stage=${stage} attempt=${attempt}")
 PY
+  local wrc=$?
+  set -e
+  if [[ -f "${BACKUP_ROOT}/GROUP_INVALID.json" ]]; then
+    GROUP_INVALID_WRITTEN=1
+    return 0
+  fi
+  echo "FATAL: GROUP_INVALID write failed reason=${reason} stage=${stage} wrc=${wrc}" >&2
+  GROUP_INVALID_WRITTEN=0
+  return 1
+}
+
+ensure_group_invalid_written() {
+  local reason="$1" attempt="${2:-}" stage="${3:-unknown}" cleanup_status="${4:-}"
+  if [[ -f "${BACKUP_ROOT}/GROUP_INVALID.json" ]]; then
+    GROUP_INVALID_WRITTEN=1
+    return 0
+  fi
+  set +e
+  mark_group_invalid "${reason}" "${attempt}" "${stage}" "${cleanup_status}"
+  local wrc=$?
+  set -e
+  if [[ ! -f "${BACKUP_ROOT}/GROUP_INVALID.json" ]]; then
+    echo "FATAL: GROUP_INVALID missing after mark reason=${reason} stage=${stage} wrc=${wrc}" >&2
+    return 1
+  fi
+  return 0
 }
 
 GROUP_COMPLETE_FLAG=0
+GROUP_INVALID_WRITTEN=0
 LOCAL_GROUP_CLAIMED=0
 ACTIVE_OUT_DIR=""
 ACTIVE_RUN_MARKER=""
@@ -330,6 +556,13 @@ _group_trap_handler() {
   # 未认领本机目录前（含 REFUSE_LOCAL_GROUP_REUSE）禁止写盘，避免污染旧 group。
   if (( LOCAL_GROUP_CLAIMED != 1 )); then
     echo "TRAP_${sig} ec=${ec} — skip INVALID write (local group not claimed)" >&2
+    if [[ "${sig}" == "INT" ]]; then exit 130; fi
+    if [[ "${sig}" == "TERM" ]]; then exit 143; fi
+    if [[ "${sig}" == "EXIT" && "${ec}" -ne 0 ]]; then exit "${ec}"; fi
+    return 0
+  fi
+  if (( GROUP_INVALID_WRITTEN == 1 )) || [[ -f "${BACKUP_ROOT}/GROUP_INVALID.json" ]]; then
+    echo "TRAP_${sig} ec=${ec} — GROUP_INVALID already written" >&2
     if [[ "${sig}" == "INT" ]]; then exit 130; fi
     if [[ "${sig}" == "TERM" ]]; then exit 143; fi
     if [[ "${sig}" == "EXIT" && "${ec}" -ne 0 ]]; then exit "${ec}"; fi
@@ -357,55 +590,107 @@ _group_trap_handler() {
 
 # 对方进程：共享 opponent_check.py（subprocess.run ps，检查 returncode）。
 # 三态：CLEAR(0) / OPPONENT(10) / CHECK_FAILED(20)。绝不用 || true / os.popen。
+# kubectl/SSH 瞬时失败：有界重试；真实 OPPONENT 立即让路；耗尽仍 fail-closed。
 # 发现对方或检查失败：只停本 RUN_MARKER，绝不杀对方。
-yield_if_opponent() {
-  local out="$1" marker="$2"
-  local result result_w rc_m=0 rc_w=0
-  yield_check_pod() {
-    local pod="$1" node_id="$2"
-    pod_exec "${pod}" \
-      "python3 '${CODE_DIR}/opponent_check.py' --mode yield --out-dir '${out}' --run-marker '${marker}' --node-id ${node_id}"
-  }
-  set +e
-  result="$(yield_check_pod "${MASTER_POD}" 0)"
-  rc_m=$?
-  set -e
-  result_w="CLEAR"
-  rc_w=0
-  if [[ "${NNODES}" == "2" ]]; then
+YIELD_TRANSPORT_RETRIES="${YIELD_TRANSPORT_RETRIES:-4}"
+YIELD_TRANSPORT_BACKOFF_S="${YIELD_TRANSPORT_BACKOFF_S:-0.5}"
+
+yield_check_pod_with_retry() {
+  local pod="$1" node_id="$2" out="$3" marker="$4"
+  local attempt=0 result rc status detail yrc
+  while (( attempt < YIELD_TRANSPORT_RETRIES )); do
     set +e
-    result_w="$(yield_check_pod "${WORKER_POD}" 1)"
-    rc_w=$?
+    result="$(pod_exec "${pod}" \
+      "python3 '${CODE_DIR}/opponent_check.py' --mode yield --out-dir '${out}' --run-marker '${marker}' --node-id ${node_id}")"
+    rc=$?
     set -e
-  fi
-  # kubectl/ssh 非协议 rc（非 0/10/20）→ 强制 CHECK_FAILED。
-  if (( rc_m != 0 && rc_m != 10 && rc_m != 20 )); then
-    rc_m=20
-    result="CHECK_FAILED|transport_master"
-  fi
-  if (( rc_w != 0 && rc_w != 10 && rc_w != 20 )); then
-    rc_w=20
-    result_w="CHECK_FAILED|transport_worker"
-  fi
-  local verdict
-  verdict="$(
-    EXP_LOCAL_FOR_YIELD="${EXP_LOCAL}" \
-    YIELD_OUT_M="${result}" YIELD_RC_M="${rc_m}" \
-    YIELD_OUT_W="${result_w}" YIELD_RC_W="${rc_w}" \
-    python3 - <<'PY'
+    {
+      IFS= read -r status || status=""
+      IFS= read -r detail || detail=""
+      IFS= read -r yrc || yrc=""
+    } < <(
+      EXP_LOCAL_FOR_YIELD="${EXP_LOCAL}" \
+      YIELD_OUT="${result}" YIELD_RC="${rc}" \
+      python3 - <<'PY'
 import os, sys
 sys.path.insert(0, os.environ.get("EXP_LOCAL_FOR_YIELD", "."))
-from local_group_guard import classify_yield_check, merge_pod_verdicts
-v = merge_pod_verdicts([
-    classify_yield_check(os.environ.get("YIELD_OUT_M", ""), int(os.environ.get("YIELD_RC_M", "1"))),
-    classify_yield_check(os.environ.get("YIELD_OUT_W", "CLEAR"), int(os.environ.get("YIELD_RC_W", "0"))),
-])
+from local_group_guard import classify_yield_attempt
+a = classify_yield_attempt(os.environ.get("YIELD_OUT", ""), int(os.environ.get("YIELD_RC", "1")))
+if a.transient:
+    print("TRANSIENT")
+    print(a.detail)
+    print("0")
+elif a.verdict:
+    print(a.verdict.status)
+    print(a.verdict.detail)
+    print(str(a.verdict.rc))
+else:
+    print("CHECK_FAILED")
+    print("no_verdict")
+    print("20")
+PY
+    )
+    if [[ -z "${status}" || -z "${yrc}" ]]; then
+      echo "CHECK_FAILED|classify_parse_incomplete pod=${pod} node=${node_id}" >&2
+      printf '%s\n' "CHECK_FAILED|classify_parse_incomplete"
+      return 20
+    fi
+    if [[ "${status}" == "TRANSIENT" ]]; then
+      attempt=$((attempt + 1))
+      echo "YIELD_RETRY attempt=${attempt}/${YIELD_TRANSPORT_RETRIES} pod=${pod} node=${node_id} ${detail}" >&2
+      sleep "${YIELD_TRANSPORT_BACKOFF_S}"
+      continue
+    fi
+    printf '%s\n' "${result}"
+    return "${yrc}"
+  done
+  echo "CHECK_FAILED|transport_exhausted pod=${pod} node=${node_id} attempts=${YIELD_TRANSPORT_RETRIES} last=${detail}" >&2
+  printf '%s\n' "CHECK_FAILED|transport_exhausted"
+  return 20
+}
+
+yield_if_opponent() {
+  local out="$1" marker="$2"
+  local rank pod result rc_m verdict status yrc detail
+  local merge_dir krc i n
+  merge_dir="$(mktemp -d "${TMPDIR:-/tmp}/mspti-yield-merge.XXXXXX")"
+  n=0
+  set +e
+  while read -r rank pod; do
+    [[ -n "${rank}" ]] || continue
+    result="$(yield_check_pod_with_retry "${pod}" "${rank}" "${out}" "${marker}")"
+    rc_m=$?
+    printf '%s' "${rank}" > "${merge_dir}/rank_${n}"
+    printf '%s' "${pod}" > "${merge_dir}/pod_${n}"
+    printf '%s' "${rc_m}" > "${merge_dir}/rc_${n}"
+    printf '%s' "${result}" > "${merge_dir}/stdout_${n}"
+    n=$((n + 1))
+  done < <(pod_map_entries_tsv)
+  set -e
+  verdict="$(
+    EXP_LOCAL_FOR_YIELD="${EXP_LOCAL}" MERGE_DIR="${merge_dir}" POD_COUNT="${n}" \
+    python3 - <<'PY'
+import json, os, sys
+from pathlib import Path
+sys.path.insert(0, os.environ.get("EXP_LOCAL_FOR_YIELD", "."))
+from local_group_guard import merge_fanout_pod_checks
+merge_dir = Path(os.environ["MERGE_DIR"])
+count = int(os.environ.get("POD_COUNT", "0"))
+checks = []
+for i in range(count):
+    checks.append({
+        "rank": int((merge_dir / f"rank_{i}").read_text(encoding="utf-8")),
+        "pod": (merge_dir / f"pod_{i}").read_text(encoding="utf-8"),
+        "rc": int((merge_dir / f"rc_{i}").read_text(encoding="utf-8").strip() or "99"),
+        "stdout": (merge_dir / f"stdout_{i}").read_text(encoding="utf-8", errors="replace"),
+    })
+v = merge_fanout_pod_checks(checks)
 print(v.status)
 print(v.rc)
 print(v.detail)
 PY
   )"
-  local status yrc detail
+  rm -rf "${merge_dir}"
   status="$(sed -n '1p' <<<"${verdict}")"
   yrc="$(sed -n '2p' <<<"${verdict}")"
   detail="$(sed -n '3,$p' <<<"${verdict}")"
@@ -417,12 +702,10 @@ PY
   else
     echo "YIELD_CHECK_FAILED: SSH/kubectl/proc check unsafe; stopping our attempt only" >&2
   fi
-  echo "master: rc=${rc_m} ${result}" >&2
-  echo "worker: rc=${rc_w} ${result_w}" >&2
   echo "detail: ${detail}" >&2
   set +e
   kill_our_attempt "${out}" "${marker:-}"
-  local krc=$?
+  krc=$?
   set -e
   if (( krc != 0 )); then
     echo "CLEANUP_INCOMPLETE after yield status=${status} kill_rc=${krc}" >&2
@@ -662,6 +945,83 @@ echo "[megatron-ab] LOG_DIR=${LOG_DIR}"
 echo "[megatron-ab] ATTEMPTS=${ATTEMPTS}"
 echo "[megatron-ab] 预计：warmup 可选 + 每 attempt 5–12 min；torch flush 可能更长；6 attempts ≈ 1–2h"
 
+# 容量门禁在 GROUP claim / detach 之前；正式模式 fail-closed（无 CAPACITY_JUMP_ONLY）。
+formal_capacity_preflight() {
+  local cap_out="${1:-/tmp/mspti_capacity_${GROUP_ID}.json}"
+  local peak_bytes="${CONTROL_PEAK_BYTES:-0}"
+  local peak_receipt="${CONTROL_PEAK_RECEIPT:-}"
+  if [[ "${FORMAL_MODE}" == "1" ]]; then
+    if [[ -z "${peak_receipt}" ]]; then
+      echo "FATAL: formal mode requires CONTROL_PEAK_RECEIPT from measured_full_six_arm" >&2
+      return 4
+    fi
+    if [[ ! -f "${peak_receipt}" ]]; then
+      echo "FATAL: missing CONTROL_PEAK_RECEIPT=${peak_receipt}" >&2
+      return 4
+    fi
+    peak_bytes="$(python3 -c "import json; print(json.load(open('${peak_receipt}'))['control_peak_bytes'])")"
+  fi
+  mkdir -p "$(dirname "${cap_out}")"
+  local storage_args=(
+    --group-id "${GROUP_ID}"
+    --check-capacity
+    --jump-path /
+    --afs-root "${AFS_ROOT}"
+    --jump-control-parent "${JUMP_CONTROL_PARENT}"
+    --control-peak-bytes "${peak_bytes}"
+    --payload-estimate-bytes "${PAYLOAD_ESTIMATE_BYTES:-84318646878}"
+    --seal-backend "${SEAL_BACKEND}"
+    --code-hash "${CODE_HASH}"
+    --out "${cap_out}"
+  )
+  if [[ -n "${peak_receipt}" ]]; then
+    storage_args+=(--control-peak-receipt "${peak_receipt}")
+  fi
+  if [[ "${FORMAL_MODE}" == "1" ]]; then
+    storage_args+=(--formal-mode)
+  fi
+  if [[ "${FANOUT_PREFLIGHT}" == "1" || "${DRY_RUN}" == "1" || "${FIXTURE_RUN}" == "1" ]]; then
+    storage_args+=(--jump-only)
+  fi
+  if [[ -n "${AFS_CAPACITY_RECEIPT:-}" && -f "${AFS_CAPACITY_RECEIPT}" ]]; then
+    storage_args+=(--mock-afs-avail-bytes "$(python3 -c "import json; print(json.load(open('${AFS_CAPACITY_RECEIPT}'))['afs_avail_bytes'])")")
+    echo "[megatron-ab] AFS_CAPACITY_RECEIPT=${AFS_CAPACITY_RECEIPT} (pod mount; jump overlay excluded)"
+  elif [[ "${FORMAL_MODE}" == "1" && "${FANOUT_PREFLIGHT}" != "1" && "${DRY_RUN}" != "1" && "${FIXTURE_RUN}" != "1" ]]; then
+    echo "FATAL: formal mode requires AFS_CAPACITY_RECEIPT from pod PVC mount" >&2
+    return 4
+  fi
+  python3 "${EXP_LOCAL}/storage_contract.py" "${storage_args[@]}" \
+    || { echo "FATAL: capacity preflight failed (see ${cap_out})" >&2; return 2; }
+  echo "[megatron-ab] CAPACITY_OK receipt=${cap_out}"
+  return 0
+}
+
+set +e
+_cap_dir=""
+for _cand in "${JUMP_CONTROL_PARENT}/.preflight" "${BACKUP_PARENT}/.preflight" "${TMPDIR:-/tmp}/mspti-preflight"; do
+  if mkdir -p "${_cand}" 2>/dev/null; then
+    _cap_dir="${_cand}"
+    break
+  fi
+done
+[[ -n "${_cap_dir}" ]] || _cap_dir="${TMPDIR:-/tmp}/mspti-preflight"
+formal_capacity_preflight "${_cap_dir}/${GROUP_ID}_capacity.json"
+cap_preflight_rc=$?
+set -e
+if (( cap_preflight_rc != 0 )); then
+  echo "FATAL: capacity preflight failed rc=${cap_preflight_rc}" >&2
+  exit "${cap_preflight_rc}"
+fi
+
+set +e
+dataset_gate_preflight
+data_gate_rc=$?
+set -e
+if (( data_gate_rc != 0 )); then
+  echo "FATAL: dataset gate failed rc=${data_gate_rc}" >&2
+  exit "${data_gate_rc}"
+fi
+
 # 任何写盘前：原子 claim GROUP_ID，再单层 mkdir BACKUP/LOG（无 -p）。
 set +e
 claim_local_group_dirs
@@ -677,6 +1037,57 @@ trap '_group_trap_handler INT 130' INT
 trap '_group_trap_handler TERM 143' TERM
 trap '_group_trap_handler EXIT $?' EXIT
 echo "[megatron-ab] local dirs claimed BACKUP_ROOT + LOG_DIR (atomic)"
+if [[ "${DRY_RUN}" == "1" || "${FIXTURE_RUN}" == "1" ]]; then
+  JUMP_CONTROL_PARENT="${BACKUP_ROOT}/.jump_control"
+  JUMP_CONTROL_ROOT="${JUMP_CONTROL_PARENT}/${GROUP_ID}"
+fi
+mkdir -p "${JUMP_CONTROL_ROOT}"
+# Copy pre-claim capacity receipt into jump control tree (already validated).
+if [[ -f "${_cap_dir}/${GROUP_ID}_capacity.json" ]]; then
+  cp -f "${_cap_dir}/${GROUP_ID}_capacity.json" \
+    "${JUMP_CONTROL_ROOT}/capacity_receipt.json"
+fi
+python3 "${EXP_LOCAL}/storage_contract.py" \
+  --group-id "${GROUP_ID}" \
+  --jump-control-parent "${JUMP_CONTROL_PARENT}" \
+  --out "${JUMP_CONTROL_ROOT}/storage_paths.json" \
+  || true
+if [[ "${FORMAL_MODE}" == "1" ]]; then
+  python3 "${EXP_LOCAL}/storage_contract.py" \
+    --group-id "${GROUP_ID}" \
+    --jump-control-parent "${JUMP_CONTROL_PARENT}" \
+    --scan-control-leak \
+    --out "${JUMP_CONTROL_ROOT}/control_leak_scan.json" \
+    || { echo "FATAL: CONTROL_PAYLOAD_LEAK on jump control tree" >&2; exit 2; }
+fi
+
+if [[ "${DRY_RUN}" != "1" && "${FIXTURE_RUN}" != "1" ]]; then
+  remote_side_effect resolve_pod_map || exit $?
+  cp -f "${POD_MAP_FILE}" "${JUMP_CONTROL_ROOT}/pod_map.json" 2>/dev/null || true
+  echo "[megatron-ab] POD_MAP=${POD_MAP_FILE}"
+fi
+
+if [[ "${FANOUT_PREFLIGHT}" == "1" ]]; then
+  echo "[megatron-ab] FANOUT_PREFLIGHT=1 (no training)"
+  remote_side_effect load_formal_artifact_manifest || true
+  # Sync code to master only for preflight import check
+  COPYFILE_DISABLE=1 tar -C "${EXP_LOCAL}" -cf - pod_resolver.py fanout_preflight.py storage_contract.py \
+    | remote_side_effect jump "\$K exec -i -n '${NS}' '${MASTER_POD}' -- bash --noprofile --norc -lc 'mkdir -p ${CODE_DIR} && tar -C ${CODE_DIR} -xf -'" || true
+  export KUBECONFIG="${KUBE}" KUBECTL="${KUBECTL}" NS="${NS}"
+  if ! python3 "${EXP_LOCAL}/fanout_preflight.py" \
+    --pod-map "${POD_MAP_FILE}" \
+    --receipt-dir "${JUMP_CONTROL_ROOT}/fanout_preflight" \
+    --code-dir "${CODE_DIR}" \
+    --parallel "${FANOUT_PARALLEL}" \
+    --wheel-sha256 "${FORMAL_WHEEL_SHA256}" \
+    --so-sha256 "${FORMAL_SO_SHA256}"; then
+    echo "FATAL: FANOUT_PREFLIGHT failed" >&2
+    exit 2
+  fi
+  echo "[megatron-ab] FANOUT_PREFLIGHT_PASS done=${NNODES}/${NNODES}"
+  GROUP_COMPLETE_FLAG=1
+  exit 0
+fi
 
 # Shared plan construction (formal / DRY_RUN / FIXTURE_RUN).
 PLAN_ARGS=(
@@ -732,7 +1143,7 @@ if [[ "${DRY_RUN}" == "1" ]]; then
 import json
 from pathlib import Path
 plan = json.loads(Path("${BACKUP_ROOT}/group_plan.json").read_text())
-assert len(plan["attempts"]) == 6
+assert len(plan["attempts"]) == (1 if plan.get("design_sequence") in ("smoke_normal_v1", "smoke_ours_v1") else 6)
 assert plan.get("plan_hash"), "missing plan_hash"
 print("DRY_RUN_PLAN_HASH", plan["plan_hash"])
 root = Path("${BACKUP_ROOT}")
@@ -786,8 +1197,10 @@ COPYFILE_DISABLE=1 tar -C "${EXP_LOCAL}" -cf - \
   CMakeLists.txt collector.cpp kseg_logic.hpp sync_interpose.cpp workload.py \
   convert_trace.py strict_validate.py provenance.py kill_attempt.py megatron_mspti_hook.py sitecustomize.py \
   run_megatron_node.sh run_node.sh launch_grj.sh launch_megatron_ab.sh launch_megatron_smoke.sh \
+  run_probing_main_pretrain.py smoke_validate_main_path.py \
   analyze_megatron_ab.py ab_plan.py fanout_orchestrator.py local_group_guard.py opponent_check.py \
-  transfer_recovery.py yield_poller.py chunk_pull.py \
+  transfer_recovery.py yield_poller.py chunk_pull.py pod_resolver.py storage_contract.py fanout_preflight.py \
+  afs_seal_mirror.py afs_seal_fixture.py preflight_control_peak.py process_wall_smoke_negatives.py \
   test_kseg_logic.cpp test_collector_logic.cpp test_local.py README.md \
   | if [[ "${JUMP_LOCAL}" == "1" ]]; then
       export KUBECONFIG="${KUBE}"
@@ -799,12 +1212,45 @@ COPYFILE_DISABLE=1 tar -C "${EXP_LOCAL}" -cf - \
         "export KUBECONFIG='${KUBE}'; K='${KUBECTL}'; \$K exec -i -n '${NS}' '${MASTER_POD}' -- bash --noprofile --norc -lc 'mkdir -p ${CODE_DIR} && tar -C ${CODE_DIR} -xf - && chmod +x ${CODE_DIR}/*.sh ${CODE_DIR}/*.py'"
     fi
 
-require_idle_or_invalid "${MASTER_POD}" "pre_start"
-require_idle_or_invalid "${WORKER_POD}" "pre_start"
+require_idle_or_invalid_all "pre_start"
 
-echo "[megatron-ab] build on AFS"
+echo "[megatron-ab] formal wheel/.so from ${FORMAL_BUILD_ROOT}"
+remote_side_effect load_formal_artifact_manifest || exit $?
 pod_exec "${MASTER_POD}" \
-  "source /usr/local/Ascend/cann-8.5.0/set_env.sh; mkdir -p '${CODE_DIR}/build' '${GROUP_DIR}'; g++ -std=c++17 -shared -fPIC -O2 -Wall -Wextra -Wpedantic -I'${CODE_DIR}' '${CODE_DIR}/collector.cpp' -I/usr/local/Ascend/cann-8.5.0/include -L/usr/local/Ascend/cann-8.5.0/lib64 -Wl,-rpath,/usr/local/Ascend/cann-8.5.0/lib64 -lmspti -lpthread -o '${CODE_DIR}/build/libmspti_sync_skeleton.so' >'${GROUP_DIR}/build.log' 2>&1"
+  "set -euo pipefail; \
+   mkdir -p '${CODE_DIR}/build' '${GROUP_DIR}'; \
+   SO_SRC='${FORMAL_BUILD_ROOT}/libmspti_sync_skeleton.so'; \
+   test -f \"\$SO_SRC\" || { echo 'FATAL: missing formal SO' >&2; exit 2; }; \
+   cp -f \"\$SO_SRC\" '${CODE_DIR}/build/libmspti_sync_skeleton.so'; \
+   WH=\$(ls -1 '${FORMAL_BUILD_ROOT}/wheels/'*.whl 2>/dev/null | tail -1); \
+   test -n \"\$WH\" && test -f \"\$WH\" || { echo 'FATAL: missing formal wheel' >&2; exit 2; }; \
+   python3 - <<'PY'
+import hashlib
+from pathlib import Path
+so = Path('${CODE_DIR}/build/libmspti_sync_skeleton.so')
+so_h = hashlib.sha256(so.read_bytes()).hexdigest()
+if so_h != '${FORMAL_SO_SHA256}':
+    raise SystemExit(f'formal SO hash mismatch: {so_h} != ${FORMAL_SO_SHA256}')
+wh = sorted(Path('${FORMAL_BUILD_ROOT}/wheels').glob('*.whl'))[-1]
+wh_h = hashlib.sha256(wh.read_bytes()).hexdigest()
+if wh_h != '${FORMAL_WHEEL_SHA256}':
+    raise SystemExit(f'formal wheel hash mismatch: {wh_h} != ${FORMAL_WHEEL_SHA256}')
+print('FORMAL_HASH_OK', so_h[:16], wh_h[:16], wh.name)
+PY
+   source /root/miniconda3/etc/profile.d/conda.sh && conda activate llm_test && \
+   '${PYBIN}/pip' install --force-reinstall --no-deps \"\$WH\" >>'${GROUP_DIR}/wheel_install.log' 2>&1 && \
+   PROBING=0 '${PYBIN}/python' -c \"import probing; print('WHEEL_INSTALL_OK', probing.__file__)\""
+
+fanout_parallel_exec "set -euo pipefail; \
+  WH=\$(ls -1 '${FORMAL_BUILD_ROOT}/wheels/'*.whl 2>/dev/null | tail -1); \
+  test -n \"\$WH\" && test -f \"\$WH\" || { echo 'FATAL: missing formal wheel on pod __RANK__' >&2; exit 2; }; \
+  source /root/miniconda3/etc/profile.d/conda.sh && conda activate llm_test && \
+  '${PYBIN}/pip' install --force-reinstall --no-deps \"\$WH\" >>'${GROUP_DIR}/wheel_install_rank___RANK__.log' 2>&1 && \
+  PROBING=0 '${PYBIN}/python' -c \"import probing; print('WHEEL_INSTALL_OK', probing.__file__)\"" || {
+  echo "FATAL: wheel install fanout failed" >&2
+  exit 2
+}
+
 pod_exec "${MASTER_POD}" "python3 '${CODE_DIR}/provenance.py' --code-dir '${CODE_DIR}' --out-dir '${GROUP_DIR}' --phase pre"
 pod_exec "${MASTER_POD}" "python3 '${CODE_DIR}/provenance.py' --code-dir '${CODE_DIR}' --out-dir '${GROUP_DIR}' --phase build"
 
@@ -856,6 +1302,10 @@ Path('${GROUP_DIR}/group_config.json').write_text(json.dumps({
   'code_tree_sha16': '${CODE_SHA}',
   'git_status_head': '''${GIT_STATUS}'''.splitlines()[:40],
   'strict': ${STRICT},
+  'formal_build_root': '${FORMAL_BUILD_ROOT}',
+  'formal_wheel_sha256': '${FORMAL_WHEEL_SHA256}',
+  'formal_so_sha256': '${FORMAL_SO_SHA256}',
+  'probing_main_ours': 'adaptive_v1',
   'code_dir': '${CODE_DIR}',
   'code_hash': '${CODE_HASH}',
   'frozen_thresholds': {
@@ -890,15 +1340,12 @@ while IFS=$'\t' read -r attempt_idx ATTEMPT_ID ARM MASTER_PORT RUN_MARKER OUT_DI
   ACTIVE_OUT_DIR="${OUT_DIR}"
   ACTIVE_RUN_MARKER="${RUN_MARKER}"
   ACTIVE_ATTEMPT_ID="${ATTEMPT_ID}"
-  require_idle_or_invalid "${MASTER_POD}" "attempt_pre_start"
-  if [[ "${NNODES}" == "2" ]]; then
-    require_idle_or_invalid "${WORKER_POD}" "attempt_pre_start"
-  fi
+  require_idle_or_invalid_all "attempt_pre_start"
   master_port_preflight "${MASTER_PORT}" "${OUT_DIR}" "${ATTEMPT_ID}"
-  pod_exec "${MASTER_POD}" "mkdir -p '${OUT_DIR}'"
-  if [[ "${NNODES}" == "2" ]]; then
-    pod_exec "${WORKER_POD}" "mkdir -p '${OUT_DIR}'"
-  fi
+  fanout_parallel_exec "mkdir -p '${OUT_DIR}'" || {
+    mark_group_invalid "mkdir_fail" "${ATTEMPT_ID}" "attempt_pre_start"
+    exit 9
+  }
   # Immutable copy/reference of group pre/build provenance into attempt (must exist).
   if ! pod_exec "${MASTER_POD}" "python3 - <<'PY'
 from pathlib import Path
@@ -944,18 +1391,14 @@ PY"
   declare -a launch_pods=()
   fanout_fail=0
   fanout_reason=""
-  pod_exec "${MASTER_POD}" \
-    "env ${COMMON} NODE_RANK=0 setsid nohup '${CODE_DIR}/run_megatron_node.sh' </dev/null >'${OUT_DIR}/launch_0.log' 2>&1 & echo \$!" &
-  launch_pids+=("$!")
-  launch_nodes+=(0)
-  launch_pods+=("${MASTER_POD}")
-  if [[ "${NNODES}" == "2" ]]; then
-    pod_exec "${WORKER_POD}" \
-      "env ${COMMON} NODE_RANK=1 setsid nohup '${CODE_DIR}/run_megatron_node.sh' </dev/null >'${OUT_DIR}/launch_1.log' 2>&1 & echo \$!" &
+  while read -r rank pod; do
+    [[ -n "${rank}" ]] || continue
+    pod_exec "${pod}" \
+      "env ${COMMON} NODE_RANK=${rank} setsid nohup '${CODE_DIR}/run_megatron_node.sh' </dev/null >'${OUT_DIR}/launch_${rank}.log' 2>&1 & echo \$!" &
     launch_pids+=("$!")
-    launch_nodes+=(1)
-    launch_pods+=("${WORKER_POD}")
-  fi
+    launch_nodes+=("${rank}")
+    launch_pods+=("${pod}")
+  done < <(pod_map_entries_tsv)
   for i in "${!launch_pids[@]}"; do
     pid="${launch_pids[$i]}"
     set +e
@@ -999,8 +1442,10 @@ PY"
       echo "attempt stopped: ${reason}" >&2
       krc="${YIELD_KILL_RC:-1}"
       pull_attempt_evidence "${OUT_DIR}" "${ATTEMPT_ID}" best_effort || true
-      mark_group_invalid "${reason}" "${ATTEMPT_ID}" "yield" \
-        "$([[ ${krc} -eq 0 ]] && echo CLEANUP_OK || echo CLEANUP_INCOMPLETE)"
+      if ! ensure_group_invalid_written "${reason}" "${ATTEMPT_ID}" "yield" \
+        "$([[ ${krc} -eq 0 ]] && echo CLEANUP_OK || echo CLEANUP_INCOMPLETE)"; then
+        echo "FATAL: ensure_group_invalid_written failed before yield exit" >&2
+      fi
       exit "${yrc}"
     fi
     snippet="$(pod_exec "${MASTER_POD}" "python3 - <<'PY'
@@ -1051,8 +1496,10 @@ PY" || true)"
       fi
       krc="${YIELD_KILL_RC:-1}"
       pull_attempt_evidence "${OUT_DIR}" "${ATTEMPT_ID}" best_effort || true
-      mark_group_invalid "${reason}" "${ATTEMPT_ID}" "yield" \
-        "$([[ ${krc} -eq 0 ]] && echo CLEANUP_OK || echo CLEANUP_INCOMPLETE)"
+      if ! ensure_group_invalid_written "${reason}" "${ATTEMPT_ID}" "yield" \
+        "$([[ ${krc} -eq 0 ]] && echo CLEANUP_OK || echo CLEANUP_INCOMPLETE)"; then
+        echo "FATAL: ensure_group_invalid_written failed before yield exit" >&2
+      fi
       exit "${yrc}"
     fi
     status="$(pod_exec "${MASTER_POD}" "python3 - <<'PY'
@@ -1061,6 +1508,11 @@ out = Path('${OUT_DIR}')
 nodes = list(range(int('${NNODES}')))
 done = sum(1 for n in nodes if (out / f'node_{n}.done').exists())
 fail = sum(1 for n in nodes if (out / f'node_{n}.fail').exists())
+first_fail = -1
+for n in nodes:
+    if (out / f'node_{n}.fail').exists():
+        first_fail = n
+        break
 last = ''
 for n in reversed(nodes):
     p = out / f'node_{n}.log'
@@ -1072,13 +1524,17 @@ for n in reversed(nodes):
             break
     if last:
         break
-print(f'{done} {fail} {last}')
+print(f'{done} {fail} {first_fail} {last}')
 PY")"
     done_count="$(awk '{print $1}' <<<"${status}")"
     fail_count="$(awk '{print $2}' <<<"${status}")"
-    last="$(awk '{$1=$2=""; sub(/^  */,""); print}' <<<"${status}")"
+    first_fail_node="$(awk '{print $3}' <<<"${status}")"
+    last="$(awk '{$1=$2=$3=""; sub(/^  */,""); print}' <<<"${status}")"
     echo "$(date +%H:%M:%S) ${ATTEMPT_ID} done=${done_count}/${NNODES} fail=${fail_count} ${last}"
     if (( fail_count > 0 )); then
+      if [[ "${first_fail_node}" != "-1" ]]; then
+        echo "FIRST_FAIL_NODE=${first_fail_node} fail=${fail_count}/${NNODES} attempt=${ATTEMPT_ID}" >&2
+      fi
       exit_code=6
       break
     fi
@@ -1109,6 +1565,14 @@ PY")"
     echo "GROUP_INVALID=${GROUP_ID} reason=attempt_fail attempt=${ATTEMPT_ID} exit=${exit_code}" >&2
   fi
 
+  if (( exit_code != 0 )); then
+    echo "SKIP_ATTEMPT_SEAL attempt=${ATTEMPT_ID} exit=${exit_code} (GROUP_INVALID; no seal narrative)" >&2
+    pull_attempt_evidence "${OUT_DIR}" "${ATTEMPT_ID}" best_effort || true
+    echo "FATAL attempt ${ATTEMPT_ID} exit_code=${exit_code}" >&2
+    echo "GROUP_INVALID=${GROUP_ID} reason=attempt_exit attempt=${ATTEMPT_ID}" >&2
+    exit "${exit_code}"
+  fi
+
   END_TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   CONVERT_RC=0
   # 运行前从 immutable group/config 注入 frozen thresholds；缺失直接拒绝
@@ -1126,7 +1590,15 @@ cfg = {
   'train_iters': ${TRAIN_ITERS}, 'capture_megatron_iter': ${CAPTURE_ITER},
   'workload_kind': 'megatron', 'code_dir': '${CODE_DIR}', 'code_hash': '${CODE_HASH}',
   'frozen_thresholds': frozen, 'model': g.get('model'),
+  'formal_wheel_sha256': '${FORMAL_WHEEL_SHA256}',
+  'formal_so_sha256': '${FORMAL_SO_SHA256}',
+  'formal_build_root': '${FORMAL_BUILD_ROOT}',
 }
+if '${ARM}' == 'ours':
+    cfg['granularity_mode'] = 'adaptive_v1'
+    cfg['probing_main'] = True
+    cfg['adapt_min_samples'] = 128
+    cfg['adapt_every'] = 256
 Path('${OUT_DIR}/config.json').write_text(json.dumps(cfg, indent=2, sort_keys=True), encoding='utf-8')
 print('ATTEMPT_FROZEN', frozen)
 PY"
@@ -1144,7 +1616,9 @@ PY"
     if (( CONVERT_RC != 0 )); then
       echo "STRICT convert failed rc=${CONVERT_RC}" >&2
       exit_code=8
-      mark_group_invalid "convert_fail rc=${CONVERT_RC}" "${ATTEMPT_ID}" "convert"
+      set +e
+      ensure_group_invalid_written "convert_fail rc=${CONVERT_RC}" "${ATTEMPT_ID}" "convert"
+      set -e
     fi
   fi
   # Stop all log/exit writes, then final digest → manifest → remote seal.
@@ -1175,15 +1649,25 @@ for p in sorted(out.glob('node_*.launch.json')):
 metas = []
 finalize_complete = True
 reasons = []
-for p in sorted(out.glob('rank_*.mspti_meta.json')):
+for p in sorted(out.glob('rank_*.npu_sync_meta.json')):
     m = json.loads(p.read_text())
     metas.append({k: m.get(k) for k in (
       'rank','finalize_complete','finalize_rc','finalize_reason',
       'raw_kernels','raw_comms','finalize_ms','finalize_flush_ms','finalize_drain_ms',
-      'process_wall_ms')})
+      'process_wall_ms','granularity_mode','adaptive_source')})
     reasons.append(m.get('finalize_reason'))
     if not m.get('finalize_complete', False):
         finalize_complete = False
+if not metas:
+    for p in sorted(out.glob('rank_*.mspti_meta.json')):
+        m = json.loads(p.read_text())
+        metas.append({k: m.get(k) for k in (
+          'rank','finalize_complete','finalize_rc','finalize_reason',
+          'raw_kernels','raw_comms','finalize_ms','finalize_flush_ms','finalize_drain_ms',
+          'process_wall_ms')})
+        reasons.append(m.get('finalize_reason'))
+        if not m.get('finalize_complete', False):
+            finalize_complete = False
 if '${ARM}' != 'ours':
     finalize_complete = True
 pt = out/'provenance_source_tree.json'
@@ -1235,6 +1719,7 @@ manifest = {
   'pgids': pgids,
   'node_launch': node_launch,
   'mspti_meta_summary': metas,
+  'npu_sync_meta_summary': metas,
   'frozen_thresholds': cfg.get('frozen_thresholds'),
   'git_hash': '${GIT_HASH}',
   'code_dir': '${CODE_DIR}',
@@ -1265,53 +1750,57 @@ h = hashlib.sha256((out / 'attempt_manifest.json').read_bytes()).hexdigest()
 print('manifest', out / 'attempt_manifest.json', h[:16], 'finalize_complete', finalize_complete)
 PY"
 
-  if (( exit_code != 0 )); then
-    echo "FATAL attempt ${ATTEMPT_ID} exit_code=${exit_code}" >&2
-    pull_attempt_evidence "${OUT_DIR}" "${ATTEMPT_ID}" best_effort || true
-    mark_group_invalid "attempt_exit=${exit_code}" "${ATTEMPT_ID}" "attempt_exit"
-    echo "GROUP_INVALID=${GROUP_ID} reason=attempt_exit attempt=${ATTEMPT_ID}" >&2
-    exit "${exit_code}"
-  fi
-  # Success: full pullback + independent LOCAL_VERIFIED_SEAL + formal local-anchor accept
+  # Success: AFS sealed mirror verification (authoritative); jump tree is control-only.
   if ! pull_attempt_evidence "${OUT_DIR}" "${ATTEMPT_ID}" required; then
     mark_group_invalid "pull_required_fail" "${ATTEMPT_ID}" "pull"
     exit 12
   fi
-  if ! python3 - <<PY
+  AFS_ATTEMPT_SEAL="${AFS_SEAL_ROOT}/${ATTEMPT_ID}"
+  if ! pod_exec "${MASTER_POD}" "python3 '${CODE_DIR}/afs_seal_mirror.py' \
+    --live-dir '${OUT_DIR}' \
+    --sealed-dir '${AFS_ATTEMPT_SEAL}' \
+    --run-id '${ATTEMPT_ID}' \
+    --live-root '${OUT_DIR}' \
+    --write-seal \
+    --out '${AFS_GROUP_ROOT}/${ATTEMPT_ID}_afs_seal_mirror.json'"; then
+    mark_group_invalid "afs_seal_mirror_fail" "${ATTEMPT_ID}" "afs_seal"
+    exit 12
+  fi
+  if ! pod_exec "${MASTER_POD}" "python3 - <<'PY'
 from pathlib import Path
 import sys
-sys.path.insert(0, "${EXP_LOCAL}")
+sys.path.insert(0, '${CODE_DIR}')
 from strict_validate import validate_attempt_manifest, StrictValidationError
-root = Path("${BACKUP_ROOT}/${ATTEMPT_ID}")
+root = Path('${AFS_ATTEMPT_SEAL}')
 try:
     validate_attempt_manifest(
         root,
-        expected_ranks=int("${EXPECTED_RANKS}"),
-        capture_step=int("${CAPTURE_ITER}"),
-        expected_nodes=int("${NNODES}"),
+        expected_ranks=int('${EXPECTED_RANKS}'),
+        capture_step=int('${CAPTURE_ITER}'),
+        expected_nodes=int('${NNODES}'),
         require_seal=True,
         require_provenance=True,
-        require_local_anchor=True,
+        require_afs_anchor=True,
     )
 except StrictValidationError as exc:
-    print("LOCAL_ANCHOR_FAIL", "${ATTEMPT_ID}", exc, file=sys.stderr)
+    print('AFS_ANCHOR_FAIL', '${ATTEMPT_ID}', exc, file=sys.stderr)
     raise SystemExit(11)
-print("LOCAL_ANCHOR_OK", "${ATTEMPT_ID}")
-PY
-  then
-    mark_group_invalid "local_anchor_or_strict_fail" "${ATTEMPT_ID}" "local_anchor"
+print('AFS_ANCHOR_OK', '${ATTEMPT_ID}')
+PY"; then
+    mark_group_invalid "afs_anchor_or_strict_fail" "${ATTEMPT_ID}" "afs_anchor"
     exit 11
   fi
 done 3< "${BACKUP_ROOT}/group_plan.tsv"
 
-if [[ "${ATTEMPT_ROWS}" -ne 6 ]]; then
+EXPECTED_ATTEMPT_ROWS="$(python3 -c "import json; p=json.load(open('${BACKUP_ROOT}/group_plan.json')); print(len(p['attempts']))")"
+if [[ "${ATTEMPT_ROWS}" -ne "${EXPECTED_ATTEMPT_ROWS}" ]]; then
   mark_group_invalid "plan_attempt_count_mismatch" "" "plan_consume"
-  echo "FATAL: consumed ${ATTEMPT_ROWS} attempts from immutable plan; expected 6" >&2
+  echo "FATAL: consumed ${ATTEMPT_ROWS} attempts from immutable plan; expected ${EXPECTED_ATTEMPT_ROWS}" >&2
   exit 14
 fi
 
-# LOCAL_VERIFIED_SEAL only exists on the Mac pullback tree — run strict analyzer locally.
-echo "[megatron-ab] analyze (local strict; LOCAL_VERIFIED_SEAL is Mac-only)"
+# Strict analyzer reads AFS sealed mirrors; LOCAL_VERIFIED_SEAL is legacy-only.
+echo "[megatron-ab] analyze (strict; AFS_VERIFIED_SEAL authoritative)"
 cp -f "${BACKUP_ROOT}/group_plan.json" "${BACKUP_ROOT}/group_config.json" 2>/dev/null || true
 python3 - <<PY
 import json

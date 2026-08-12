@@ -300,6 +300,41 @@ class KubectlChunkTransport:
 
 
 @dataclass
+class LocalFileChunkTransport:
+    """Stream chunks from local files without loading whole payloads into memory."""
+
+    root: Path
+
+    def stream_chunk(
+        self,
+        remote_root: str,
+        rel: str,
+        offset: int,
+        length: int,
+        local_path: Path,
+        *,
+        timeout_s: Optional[float] = None,
+    ) -> int:
+        del remote_root, timeout_s
+        src = self.root / rel
+        if not src.is_file():
+            raise ChunkTransportError(f"missing local file {src}", rc=2)
+        size = src.stat().st_size
+        if offset < 0 or offset > size:
+            raise ChunkTransportError(f"bad offset {offset} for {rel} size={size}", rc=2)
+        remaining = size - offset
+        want = min(int(length), remaining)
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        with src.open("rb") as fh:
+            fh.seek(offset)
+            data = fh.read(want)
+        if len(data) != want:
+            raise ChunkShortReadError(f"short read {rel}@{offset}: got={len(data)} want={want}")
+        local_path.write_bytes(data)
+        return len(data)
+
+
+@dataclass
 class ScriptedChunkTransport:
     """Fixture transport: per-rel full bytes and/or per-(rel,offset) response sequences."""
 
@@ -789,9 +824,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     p_pull.add_argument("--dest-dir", required=True)
     p_pull.add_argument("--expected-size", type=int, required=True)
     p_pull.add_argument("--expected-sha256", required=True)
-    p_pull.add_argument("--jump", default="ais-cf3e61a5")
+    p_pull.add_argument("--jump", default="afs-cpu")
     p_pull.add_argument(
-        "--kubeconfig", default="/tmp/config-vc-a3-241ceshi-songyiyang.yaml"
+        "--kubeconfig", default="/root/.kube/config-vc-a3-241ceshi-songyiyang.yaml"
     )
     p_pull.add_argument(
         "--kubectl", default="/root/.cache/volcano/kubectl/kubectl"
@@ -804,9 +839,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     p_meta = sub.add_parser("pull-meta", help="Pull small meta files (whole, via 1 chunk)")
     p_meta.add_argument("--remote-root", required=True)
     p_meta.add_argument("--dest-dir", required=True)
-    p_meta.add_argument("--jump", default="ais-cf3e61a5")
+    p_meta.add_argument("--jump", default="afs-cpu")
     p_meta.add_argument(
-        "--kubeconfig", default="/tmp/config-vc-a3-241ceshi-songyiyang.yaml"
+        "--kubeconfig", default="/root/.kube/config-vc-a3-241ceshi-songyiyang.yaml"
     )
     p_meta.add_argument(
         "--kubectl", default="/root/.cache/volcano/kubectl/kubectl"

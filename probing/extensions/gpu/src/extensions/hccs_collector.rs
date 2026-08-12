@@ -23,6 +23,7 @@ use super::backend::npu::hccs::{
 };
 
 use probing_memtable::ring_config;
+use probing_core::env_gate::probing_arm_enabled;
 
 const DEFAULT_SAMPLE_INTERVAL_MS: u64 = 1000;
 
@@ -39,6 +40,9 @@ struct PrevCounters {
 /// - `PROBING_HCCS=on` or positive `PROBING_HCCS_SAMPLE_MS` → enabled
 /// - default **auto**: enabled when NPU backend is present
 pub fn hccs_autostart_interval_ms() -> Option<u64> {
+    if !probing_arm_enabled() {
+        return None;
+    }
     if matches!(
         std::env::var("PROBING_HCCS").ok().as_deref(),
         Some(v) if matches!(v.trim(), "0" | "off" | "false" | "no")

@@ -19,6 +19,8 @@ from typing import Any
 from strict_validate import (
     StrictValidationError,
     read_jsonl_strict,
+    resolve_meta_raw_comms,
+    resolve_meta_raw_kernels,
     validate_attempt_manifest,
     validate_ours_dir,
 )
@@ -459,12 +461,18 @@ def main() -> int:
         float(row["collector_stop_ms"]) for row in meta_rows if row.get("collector_selected")
     ]
 
-    meta_raw_kernels = [
-        int(m["raw_kernels"]) for m in mspti_metas if m.get("raw_kernels") is not None
-    ]
-    meta_raw_comms = [
-        int(m["raw_comms"]) for m in mspti_metas if m.get("raw_comms") is not None
-    ]
+    meta_raw_kernels = []
+    meta_raw_comms = []
+    for m in mspti_metas:
+        try:
+            raw = resolve_meta_raw_kernels(m)
+            if raw is not None:
+                meta_raw_kernels.append(int(raw))
+            comm = resolve_meta_raw_comms(m)
+            if comm is not None:
+                meta_raw_comms.append(int(comm))
+        except StrictValidationError:
+            pass
     def _meta_float(m, *keys):
         for k in keys:
             if m.get(k) is not None:

@@ -6,9 +6,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 EXP_LOCAL="${ROOT}/experiments/mspti_sync_skeleton"
-JUMP="${JUMP:-ais-cf3e61a5}"
-KUBE="${KUBE:-/tmp/config-vc-a3-241ceshi-songyiyang.yaml}"
-KUBECTL="${KUBECTL:-/root/.cache/volcano/kubectl/kubectl}"
+JUMP="${JUMP:-afs-cpu}"
+KUBE="${KUBE:-/root/.kube/config-vc-a3-241ceshi-songyiyang.yaml}"
+KUBECTL="${KUBECTL:-/root/bin/kubectl}"
 NS="${NS:-default}"
 MASTER_POD="${MASTER_POD:-grj-megatron-32card-0716-master-0}"
 WORKER_POD="${WORKER_POD:-grj-megatron-32card-0716-worker-0}"

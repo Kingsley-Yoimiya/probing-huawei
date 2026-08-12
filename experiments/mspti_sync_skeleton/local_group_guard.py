@@ -52,6 +52,10 @@ except ImportError:  # pragma: no cover — same-dir import for bash cwd
         last = lines[-1] if lines else ""
         if not last:
             return YIELD_CHECK_FAILED, RC_YIELD_CHECK_FAILED, "empty_stdout"
+        if last.startswith("CHECK_FAILED"):
+            return YIELD_CHECK_FAILED, RC_YIELD_CHECK_FAILED, last[:500]
+        if last in ("STARTUP", YIELD_CLEAR, "OK"):
+            return YIELD_CLEAR, RC_YIELD_CLEAR, last
         if check_rc == RC_YIELD_CHECK_FAILED:
             return YIELD_CHECK_FAILED, RC_YIELD_CHECK_FAILED, last[:500]
         if check_rc == RC_YIELD_OPPONENT:
@@ -62,12 +66,8 @@ except ImportError:  # pragma: no cover — same-dir import for bash cwd
                 RC_YIELD_CHECK_FAILED,
                 f"opponent_rc_mismatch={last[:200]}",
             )
-        if last in ("STARTUP", YIELD_CLEAR, "OK"):
-            return YIELD_CLEAR, RC_YIELD_CLEAR, last
         if last.startswith(("OPPONENT", "OPP|", "OPP")):
             return YIELD_OPPONENT, RC_YIELD_OPPONENT, last[:500]
-        if last.startswith("CHECK_FAILED"):
-            return YIELD_CHECK_FAILED, RC_YIELD_CHECK_FAILED, last[:500]
         return YIELD_CHECK_FAILED, RC_YIELD_CHECK_FAILED, f"unexpected={last[:200]}"
 
 
@@ -199,7 +199,8 @@ def claim_local_group(
     # Ensure common parents exist (infra only). Leaf BACKUP/LOG still atomic without -p.
     try:
         backup_p.parent.mkdir(parents=True, exist_ok=True)
-        log_p.parent.mkdir(parents=True, exist_ok=True)
+        if log_p.parent.resolve() != backup_p.resolve():
+            log_p.parent.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
         raise LocalGroupClaimError(
             f"CLAIM_ABORTED: parent_mkdir_failed:{exc} (claim kept at {claim_path})",
@@ -298,10 +299,104 @@ class YieldVerdict:
         return self.status == YIELD_CLEAR
 
 
-def classify_yield_check(stdout: str, check_rc: int) -> YieldVerdict:
-    """Map SSH/kubectl/opponent_check result → three-way verdict (fail-closed)."""
+@dataclass(frozen=True)
+class YieldAttempt:
+    """One yield poll: transient transport failures may be retried."""
+
+    verdict: Optional[YieldVerdict]
+    transient: bool = False
+    detail: str = ""
+
+
+def _yield_last_line(stdout: str) -> str:
+    text = (stdout or "").strip()
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    return lines[-1] if lines else ""
+
+
+def is_checker_protocol_stdout(last_line: str) -> bool:
+    """True when stdout looks like opponent_check protocol (not kubectl noise)."""
+    if not last_line:
+        return False
+    if last_line in ("CLEAR", "OK", "STARTUP"):
+        return True
+    return last_line.startswith(("OPPONENT", "OPP|", "OPP", "CHECK_FAILED"))
+
+
+def is_transport_transient_rc(check_rc: int, stdout: str) -> bool:
+    """Only non-protocol kubectl/SSH noise is retriable — never protocol OPPONENT/CLEAR."""
+    last = _yield_last_line(stdout)
+    if is_checker_protocol_stdout(last):
+        return False
+    if check_rc not in (RC_YIELD_CLEAR, RC_YIELD_OPPONENT, RC_YIELD_CHECK_FAILED):
+        return True
+    return not last
+
+
+def classify_yield_attempt(stdout: str, check_rc: int) -> YieldAttempt:
+    """Classify one poll; transient=True → bounded retry, not immediate INVALID."""
+    last = _yield_last_line(stdout)
+    if is_transport_transient_rc(check_rc, stdout):
+        return YieldAttempt(
+            verdict=None,
+            transient=True,
+            detail=f"transport_transient rc={check_rc} last={last[:200] or '<empty>'}",
+        )
     status, rc, detail = classify_transport_stdout(stdout, check_rc)
-    return YieldVerdict(status=status, detail=detail, rc=rc)
+    return YieldAttempt(
+        verdict=YieldVerdict(status=status, detail=detail, rc=rc),
+        transient=False,
+        detail=detail,
+    )
+
+
+def poll_yield_with_retry(
+    checks: list[tuple[str, int]],
+    *,
+    max_attempts: int = 4,
+) -> YieldVerdict:
+    """Retry transient transport failures; fail-closed after budget; OPPONENT never retried."""
+    if max_attempts < 1:
+        max_attempts = 1
+    transient_detail = ""
+    attempts_used = 0
+    for stdout, check_rc in checks:
+        attempts_used += 1
+        attempt = classify_yield_attempt(stdout, check_rc)
+        if attempt.transient:
+            transient_detail = attempt.detail
+            if attempts_used >= max_attempts:
+                break
+            continue
+        assert attempt.verdict is not None
+        return attempt.verdict
+    if transient_detail:
+        return YieldVerdict(
+            YIELD_CHECK_FAILED,
+            detail=(
+                f"transport_exhausted attempts={attempts_used} "
+                f"max={max_attempts} last={transient_detail[:300]}"
+            ),
+            rc=RC_YIELD_CHECK_FAILED,
+        )
+    return YieldVerdict(YIELD_CLEAR, detail="all_clear", rc=RC_YIELD_CLEAR)
+
+
+def classify_yield_check(stdout: str, check_rc: int) -> YieldVerdict:
+    """Map SSH/kubectl/opponent_check result → three-way verdict (fail-closed).
+
+    Single-shot (no retry). For transport-aware polling use classify_yield_attempt /
+    poll_yield_with_retry.
+    """
+    attempt = classify_yield_attempt(stdout, check_rc)
+    if attempt.transient:
+        return YieldVerdict(
+            YIELD_CHECK_FAILED,
+            detail=attempt.detail,
+            rc=RC_YIELD_CHECK_FAILED,
+        )
+    assert attempt.verdict is not None
+    return attempt.verdict
 
 
 def classify_idle_check(stdout: str, check_rc: int) -> YieldVerdict:
@@ -337,7 +432,41 @@ def classify_idle_check(stdout: str, check_rc: int) -> YieldVerdict:
     )
 
 
+def normalize_pod_transport_rc(check_rc: int, stdout: str) -> tuple[int, str]:
+    """Repair yield protocol rc when stdout is authoritative.
+
+    Contract:
+    - Only normalize when ``check_rc`` is already a yield protocol rc (0/10/20).
+    - Non-protocol transport rc (255, ssh exit 1, …) with STARTUP/CLEAR/OK must
+      stay fail-closed — do not treat arbitrary noise as CLEAR.
+    - When protocol stdout disagrees with check_rc==20, pair stdout with the
+      correct protocol rc (CLEAR/OPPONENT) before classify.
+    """
+    last = _yield_last_line(stdout)
+    if check_rc not in (RC_YIELD_CLEAR, RC_YIELD_OPPONENT, RC_YIELD_CHECK_FAILED):
+        if last.startswith("CHECK_FAILED"):
+            return RC_YIELD_CHECK_FAILED, stdout
+        detail = last or f"transport_rc={check_rc}"
+        return RC_YIELD_CHECK_FAILED, f"CHECK_FAILED|{detail}"
+    if last.startswith("CHECK_FAILED"):
+        return RC_YIELD_CHECK_FAILED, stdout
+    if last in ("STARTUP", YIELD_CLEAR, "OK"):
+        return RC_YIELD_CLEAR, stdout
+    if last.startswith(("OPPONENT", "OPP|", "OPP")):
+        if check_rc == RC_YIELD_CHECK_FAILED:
+            return RC_YIELD_OPPONENT, stdout
+        return check_rc, stdout
+    return check_rc, stdout
+
+
+def classify_pod_yield(stdout: str, check_rc: int) -> YieldVerdict:
+    """Classify one pod's bound (stdout, rc) — no cross-pod splicing."""
+    rc, out = normalize_pod_transport_rc(check_rc, stdout)
+    return classify_yield_check(out, rc)
+
+
 def merge_pod_verdicts(verdicts: list[YieldVerdict]) -> YieldVerdict:
+    """Fanout merge: CHECK_FAILED > OPPONENT > CLEAR."""
     for v in verdicts:
         if v.status == YIELD_CHECK_FAILED:
             return v
@@ -345,6 +474,33 @@ def merge_pod_verdicts(verdicts: list[YieldVerdict]) -> YieldVerdict:
         if v.status == YIELD_OPPONENT:
             return v
     return YieldVerdict(YIELD_CLEAR, detail="all_clear", rc=RC_YIELD_CLEAR)
+
+
+def merge_fanout_pod_checks(
+    checks: list[dict[str, Any]],
+) -> YieldVerdict:
+    """Merge per-pod yield checks (each with rank/pod/stdout/rc).
+
+    Each element: {"rank": int, "pod": str, "stdout": str, "rc": int}
+    """
+    verdicts: list[YieldVerdict] = []
+    for item in checks:
+        verdicts.append(
+            classify_pod_yield(str(item.get("stdout", "")), int(item.get("rc", 99)))
+        )
+    merged = merge_pod_verdicts(verdicts)
+    if merged.status == YIELD_CLEAR:
+        return merged
+    # Attach rank/pod context for diagnostics.
+    parts: list[str] = []
+    for item, v in zip(checks, verdicts):
+        if v.status != YIELD_CLEAR:
+            parts.append(
+                f"rank={item.get('rank')} pod={item.get('pod')} "
+                f"status={v.status} rc={item.get('rc')} detail={v.detail[:120]}"
+            )
+    detail = "; ".join(parts) if parts else merged.detail
+    return YieldVerdict(merged.status, detail=detail, rc=merged.rc)
 
 
 # --- Fixtures -------------------------------------------------------------
@@ -674,6 +830,13 @@ def main(argv: Optional[list[str]] = None) -> int:
     p_cls.add_argument("--stdout", default="")
     p_cls.add_argument("--rc", type=int, default=0)
 
+    p_merge = sub.add_parser("merge-fanout-yield", help="Merge N per-pod yield checks")
+    p_merge.add_argument(
+        "--checks-json",
+        required=True,
+        help='JSON list of {"rank", "pod", "stdout", "rc"}',
+    )
+
     args = ap.parse_args(argv)
     if args.cmd == "assert-absent":
         return refuse_or_exit(args.path, label=args.label)
@@ -686,6 +849,14 @@ def main(argv: Optional[list[str]] = None) -> int:
         )
     if args.cmd == "classify-yield":
         v = classify_yield_check(args.stdout, args.rc)
+        print(json.dumps({"status": v.status, "detail": v.detail, "rc": v.rc}, sort_keys=True))
+        return 0 if v.status == YIELD_CLEAR else v.rc
+    if args.cmd == "merge-fanout-yield":
+        checks = json.loads(args.checks_json)
+        if not isinstance(checks, list):
+            print("FATAL: checks-json must be a list", file=sys.stderr)
+            return 2
+        v = merge_fanout_pod_checks(checks)
         print(json.dumps({"status": v.status, "detail": v.detail, "rc": v.rc}, sort_keys=True))
         return 0 if v.status == YIELD_CLEAR else v.rc
     return 2

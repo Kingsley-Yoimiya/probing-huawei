@@ -17,6 +17,8 @@ use super::sampler::host_sampler;
 
 use probing_memtable::ring_config;
 
+use probing_core::env_gate::probing_arm_enabled;
+
 const DEFAULT_SAMPLE_INTERVAL_MS: u64 = 1000;
 
 /// `(chunk_size_bytes, num_chunks)` for CPU mmap rings.
@@ -63,6 +65,9 @@ fn cpu_mmap_ring_config(table: &str) -> (u32, u32) {
 /// - `PROBING_CPU=off` → disabled.
 /// - `PROBING_CPU_SAMPLE_MS=0` → disabled; any positive value overrides interval.
 pub fn autostart_interval_ms() -> Option<u64> {
+    if !probing_arm_enabled() {
+        return None;
+    }
     if matches!(
         std::env::var("PROBING_CPU").ok().as_deref(),
         Some(v) if matches!(v.trim(), "0" | "off" | "false" | "no")

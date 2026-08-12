@@ -3,6 +3,7 @@
 pub mod config;
 pub mod core;
 pub mod diagnostics;
+pub mod env_gate;
 pub mod runtime;
 pub mod signal;
 pub mod storage;

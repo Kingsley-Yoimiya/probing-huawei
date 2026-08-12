@@ -1,5 +1,6 @@
 #include <mspti/mspti.h>
 
+#include "adaptive_logic.hpp"
 #include "kseg_logic.hpp"
 
 #include <algorithm>
@@ -15,6 +16,7 @@
 #include <exception>
 #include <fstream>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <sstream>
@@ -226,6 +228,16 @@ public:
 
     int Start(const char* output_path, int rank, int device_id, uint64_t gap_ns,
               uint64_t reorder_ns, bool enable_capture_now) {
+        mspti_skeleton::AdaptiveConfig config;
+        config.mode = mspti_skeleton::GranularityMode::kStatic;
+        config.static_gap_us = static_cast<uint32_t>(gap_ns / 1000U);
+        return StartWithConfig(output_path, rank, device_id, gap_ns, reorder_ns, config,
+                               enable_capture_now);
+    }
+
+    int StartWithConfig(const char* output_path, int rank, int device_id, uint64_t gap_ns,
+                        uint64_t reorder_ns, const mspti_skeleton::AdaptiveConfig& config,
+                        bool enable_capture_now) {
         std::unique_lock<std::mutex> lock(lifecycle_mu_);
         // Start only from Idle/Finalized; never during Finalizing/Capturing/TerminalFailed.
         if (LoadState() == LifecycleState::Finalizing || LoadState() == LifecycleState::Capturing ||
@@ -248,6 +260,9 @@ public:
         default_device_id_ = device_id;
         gap_ns_ = gap_ns;
         reorder_ns_ = reorder_ns;
+        adaptive_config_ = config;
+        adaptive_telemetry_ = std::make_unique<mspti_skeleton::AdaptiveTelemetry>(config);
+        last_end_ns_.clear();
         max_queue_bytes_ = EnvSize("MSPTI_MAX_QUEUE_BYTES", kDefaultMaxQueueBytes);
         drain_timeout_ms_ = EnvU64("MSPTI_DRAIN_TIMEOUT_MS", kDefaultDrainTimeoutMs);
         const char* run_id = std::getenv("RUN_ID");
@@ -694,6 +709,23 @@ public:
         }
     }
 
+    int CopyAdaptiveTelemetryJson(char* buffer, size_t buffer_size, size_t* out_len) const {
+        const std::string json = BuildAdaptiveTelemetryJson();
+        if (out_len != nullptr) {
+            *out_len = json.size();
+        }
+        if (buffer == nullptr || buffer_size == 0) {
+            return json.empty() ? 0 : 1;
+        }
+        if (json.size() + 1 > buffer_size) {
+            return 2;
+        }
+        std::memcpy(buffer, json.c_str(), json.size() + 1);
+        return 0;
+    }
+
+    const mspti_skeleton::AdaptiveConfig& adaptive_config() const { return adaptive_config_; }
+
     void RecordThinSync(const char* function_name, uint64_t start_ns, uint64_t end_ns,
                         uintptr_t stream_token) {
         // Hold active-call until return so Finalize cannot write DROP mid-record.
@@ -876,6 +908,9 @@ private:
         }
         segments_.clear();
         step_boundaries_.clear();
+        last_end_ns_.clear();
+        adaptive_telemetry_.reset();
+        adaptive_config_ = mspti_skeleton::AdaptiveConfig{};
         allocation_drops_.store(0);
         queue_drops_.store(0);
         parse_errors_.store(0);
@@ -1548,6 +1583,84 @@ private:
         }
     }
 
+    uint64_t EffectiveGapNs(uint64_t stream_key,
+                            mspti_skeleton::StreamAdaptiveState* stream_state) const {
+        if (adaptive_config_.mode == mspti_skeleton::GranularityMode::kAdaptiveV1 &&
+            stream_state != nullptr) {
+            return stream_state->EffectiveThresholdNs();
+        }
+        (void)stream_key;
+        return gap_ns_;
+    }
+
+    std::string BuildAdaptiveTelemetryJson() const {
+        if (adaptive_telemetry_ == nullptr) {
+            return "{}";
+        }
+        const auto& telemetry = *adaptive_telemetry_;
+        const char* mode =
+            adaptive_config_.mode == mspti_skeleton::GranularityMode::kAdaptiveV1 ? "adaptive_v1"
+                                                                                   : "static";
+        std::ostringstream out;
+        out << "{"
+            << "\"abi_version\":" << mspti_skeleton::kAdaptiveAbiVersion << ","
+            << "\"granularity_mode\":\"" << mode << "\","
+            << "\"initial_gap_us\":" << telemetry.initial_gap_us() << ","
+            << "\"final_gap_us\":" << telemetry.FinalGapUs() << ","
+            << "\"target_kseg_ratio\":" << adaptive_config_.target_kseg_ratio << ","
+            << "\"adapt_min_samples\":" << adaptive_config_.adapt_min_samples << ","
+            << "\"adapt_every\":" << adaptive_config_.adapt_every << ","
+            << "\"adaptive_gap_min_us\":" << adaptive_config_.gap_min_us << ","
+            << "\"adaptive_gap_max_us\":" << adaptive_config_.gap_max_us << ","
+            << "\"threshold_updates\":" << telemetry.ThresholdUpdates() << ","
+            << "\"total_raw_kernels\":" << telemetry.TotalRawKernels() << ","
+            << "\"total_kseg\":" << telemetry.TotalKseg() << ","
+            << "\"actual_ratio\":" << telemetry.ActualRatio() << ","
+            << "\"streams\":[";
+        bool first_stream = true;
+        std::vector<uint64_t> keys;
+        keys.reserve(telemetry.streams().size());
+        for (const auto& entry : telemetry.streams()) {
+            keys.push_back(entry.first);
+        }
+        std::sort(keys.begin(), keys.end());
+        for (uint64_t key : keys) {
+            const auto& stream = telemetry.streams().at(key);
+            if (!first_stream) {
+                out << ',';
+            }
+            first_stream = false;
+            const double ratio = stream.raw_kernels() == 0
+                                     ? 0.0
+                                     : static_cast<double>(stream.kseg_count()) /
+                                           static_cast<double>(stream.raw_kernels());
+            out << "{"
+                << "\"device_id\":" << stream.device_id() << ","
+                << "\"stream_id\":" << stream.stream_id() << ","
+                << "\"raw_kernels\":" << stream.raw_kernels() << ","
+                << "\"kseg_count\":" << stream.kseg_count() << ","
+                << "\"ratio\":" << ratio << ","
+                << "\"final_threshold_us\":" << stream.EffectiveThresholdUs() << ","
+                << "\"threshold_updates\":" << stream.threshold_updates() << ","
+                << "\"positive_gaps\":" << stream.positive_gaps() << "}";
+        }
+        out << "],\"threshold_history\":[";
+        bool first_hist = true;
+        for (const auto& entry : telemetry.threshold_history()) {
+            if (!first_hist) {
+                out << ',';
+            }
+            first_hist = false;
+            out << "{"
+                << "\"raw_index\":" << entry.raw_index << ","
+                << "\"device_id\":" << entry.device_id << ","
+                << "\"stream_id\":" << entry.stream_id << ","
+                << "\"threshold_us\":" << entry.threshold_us << "}";
+        }
+        out << "]}";
+        return out.str();
+    }
+
     void ProcessRaw(const RawEvent& raw) {
         const uint64_t key = StreamKey(raw.device_id, raw.stream_id);
         const int64_t inferred_step = InferStep(raw.start_ns, raw.step);
@@ -1572,18 +1685,51 @@ private:
             return;
         }
 
+        uint64_t gap_us = 0;
+        const auto prev_end_it = last_end_ns_.find(key);
+        if (prev_end_it != last_end_ns_.end() && raw.start_ns > prev_end_it->second) {
+            gap_us = (raw.start_ns - prev_end_it->second) / 1000U;
+        }
+
+        mspti_skeleton::StreamAdaptiveState* stream_state = nullptr;
+        if (adaptive_telemetry_ != nullptr) {
+            stream_state = &adaptive_telemetry_->StreamState(raw.device_id, raw.stream_id);
+            if (gap_us > 0) {
+                stream_state->ObservePositiveGap(static_cast<uint32_t>(gap_us));
+            }
+        }
+
+        const uint64_t threshold_ns = EffectiveGapNs(key, stream_state);
+
         // 禁止在 FlushSegment(erase) 后继续写旧 map 引用（悬空 → heap 破坏 → double free）。
         {
             auto it = segments_.find(key);
             if (it != segments_.end() &&
-                it->second.TryMerge(raw.start_ns, raw.end_ns, inferred_step, gap_ns_)) {
+                it->second.TryMerge(raw.start_ns, raw.end_ns, inferred_step, threshold_ns)) {
+                if (stream_state != nullptr) {
+                    const uint32_t updates_before = stream_state->threshold_updates();
+                    stream_state->OnRawKernel();
+                    if (stream_state->threshold_updates() > updates_before) {
+                        adaptive_telemetry_->NoteThresholdUpdate(raw_kernel_count_.load(),
+                                                                 *stream_state);
+                    }
+                }
+                last_end_ns_[key] = raw.end_ns;
                 return;
             }
         }
         FlushSegment(key, raw.device_id, raw.stream_id);
         auto& fresh = segments_[key];
         fresh = mspti_skeleton::KsegAccumulator{};
-        (void)fresh.TryMerge(raw.start_ns, raw.end_ns, inferred_step, gap_ns_);
+        (void)fresh.TryMerge(raw.start_ns, raw.end_ns, inferred_step, threshold_ns);
+        if (stream_state != nullptr) {
+            const uint32_t updates_before = stream_state->threshold_updates();
+            stream_state->OnRawKernel();
+            if (stream_state->threshold_updates() > updates_before) {
+                adaptive_telemetry_->NoteThresholdUpdate(raw_kernel_count_.load(), *stream_state);
+            }
+        }
+        last_end_ns_[key] = raw.end_ns;
     }
 
     int64_t InferStep(uint64_t timestamp_ns, int64_t fallback) const {
@@ -1615,6 +1761,9 @@ private:
         event.flags =
             "kernel_names=dropped;source=mspti_kernel_activity;time_domain=device;"
             "active_ns=interval_union";
+        if (adaptive_telemetry_ != nullptr) {
+            adaptive_telemetry_->StreamState(device, stream).RecordKseg();
+        }
         Emit(event);
         segments_.erase(it);
     }
@@ -1719,6 +1868,9 @@ private:
     int default_device_id_ = -1;
     uint64_t gap_ns_ = 50000;
     uint64_t reorder_ns_ = 1000000;
+    mspti_skeleton::AdaptiveConfig adaptive_config_{};
+    std::unique_ptr<mspti_skeleton::AdaptiveTelemetry> adaptive_telemetry_;
+    std::unordered_map<uint64_t, uint64_t> last_end_ns_;
     std::atomic<int64_t> current_step_{-1};
     uint64_t sequence_ = 0;
     uint64_t max_seen_ns_ = 0;
@@ -1767,6 +1919,58 @@ int mspti_skeleton_start_gated(const char* output_path, int rank, int device_id,
     } catch (...) {
         return 99;
     }
+}
+
+__attribute__((visibility("default")))
+int mspti_skeleton_start_gated_v2(
+    const char* output_path, int rank, int device_id, uint64_t gap_ns, uint64_t reorder_ns,
+    int32_t granularity_mode, double target_kseg_ratio, int32_t adapt_min_samples,
+    int32_t adapt_every, int32_t adaptive_gap_min_us, int32_t adaptive_gap_max_us) noexcept {
+    try {
+        if (output_path == nullptr) {
+            return 1;
+        }
+        if (granularity_mode != 0 && granularity_mode != 1) {
+            return 40;
+        }
+        if (!(target_kseg_ratio > 0.0 && target_kseg_ratio < 1.0)) {
+            return 41;
+        }
+        if (adapt_min_samples < 1 || adapt_every < 1) {
+            return 42;
+        }
+        if (adaptive_gap_min_us < 0 || adaptive_gap_max_us < adaptive_gap_min_us) {
+            return 43;
+        }
+        mspti_skeleton::AdaptiveConfig config;
+        config.mode = granularity_mode == 1 ? mspti_skeleton::GranularityMode::kAdaptiveV1
+                                            : mspti_skeleton::GranularityMode::kStatic;
+        config.static_gap_us = static_cast<uint32_t>(gap_ns / 1000U);
+        config.target_kseg_ratio = target_kseg_ratio;
+        config.adapt_min_samples = static_cast<uint32_t>(adapt_min_samples);
+        config.adapt_every = static_cast<uint32_t>(adapt_every);
+        config.gap_min_us = static_cast<uint32_t>(adaptive_gap_min_us);
+        config.gap_max_us = static_cast<uint32_t>(adaptive_gap_max_us);
+        return Collector::Instance().StartWithConfig(
+            output_path, rank, device_id, gap_ns, reorder_ns, config, false);
+    } catch (...) {
+        return 99;
+    }
+}
+
+__attribute__((visibility("default")))
+int mspti_skeleton_adaptive_json(char* buffer, size_t buffer_size,
+                                 size_t* out_len) noexcept {
+    try {
+        return Collector::Instance().CopyAdaptiveTelemetryJson(buffer, buffer_size, out_len);
+    } catch (...) {
+        return 99;
+    }
+}
+
+__attribute__((visibility("default")))
+int mspti_skeleton_adaptive_abi_version() noexcept {
+    return mspti_skeleton::kAdaptiveAbiVersion;
 }
 
 __attribute__((visibility("default")))

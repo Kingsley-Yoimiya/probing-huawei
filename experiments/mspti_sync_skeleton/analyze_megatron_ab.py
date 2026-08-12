@@ -7,12 +7,22 @@ from strict_validate import StrictValidationError, validate_attempt_manifest
 
 import argparse
 import json
+import math
 import re
 import statistics
 import sys
 from pathlib import Path
 from typing import Any
 
+
+# Frozen REPLAN: one-shot legacy proxy for sealed GROUP missing collector process_wall_ms.
+LEGACY_PROXY_GROUP_IDS = frozenset({"20260809_192117-megatron-ab-formal6x20"})
+ANALYZER_DERIVATION_VERSION = "20260810_steady_exclude_10_11"
+STEADY_WINDOW = (5, 20)
+VOLUME_RATIO_MIN = 10.0
+STEADY_SLOWDOWN_MEDIAN_MAX_PCT = 5.0
+STEADY_SLOWDOWN_SINGLE_MAX_PCT = 8.0
+E2E_SLOWDOWN_MEDIAN_MAX_PCT = 10.0
 
 ITER_RE = re.compile(
     r"iteration\s+(\d+)/\s*\d+.*?elapsed time per iteration \(ms\):\s*([0-9.]+)",
@@ -45,6 +55,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Override capture megatron iter (default: from group_config)",
     )
+    p.add_argument(
+        "--allow-legacy-process-wall-proxy",
+        action="store_true",
+        help=(
+            "Audited one-shot: allow manifest e2e proxy for process_wall_ms only on "
+            "frozen legacy GROUP allowlist (192117)"
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -67,8 +85,15 @@ def discover_attempts(group_dir: Path) -> list[Path]:
     return attempts
 
 
-def analyze_group(group_dir: Path, *, strict: bool, capture_iter: int | None = None) -> dict[str, Any]:
+def analyze_group(
+    group_dir: Path,
+    *,
+    strict: bool,
+    capture_iter: int | None = None,
+    allow_legacy_process_wall_proxy: bool = False,
+) -> dict[str, Any]:
     group_dir = Path(group_dir)
+    group_id = _group_id_from_dir(group_dir)
     if not group_dir.is_dir():
         raise FileNotFoundError(f"group dir does not exist: {group_dir}")
 
@@ -175,7 +200,16 @@ def analyze_group(group_dir: Path, *, strict: bool, capture_iter: int | None = N
     errors: list[str] = []
     for attempt_dir in attempts:
         try:
-            results.append(analyze_attempt(attempt_dir, int(cap), model, strict))
+            results.append(
+                analyze_attempt(
+                    attempt_dir,
+                    int(cap),
+                    model,
+                    strict,
+                    group_id=group_id,
+                    allow_legacy_process_wall_proxy=allow_legacy_process_wall_proxy,
+                )
+            )
         except Exception as exc:  # noqa: BLE001 — surface per-attempt then fail group
             errors.append(f"{attempt_dir.name}: {exc}")
 
@@ -198,8 +232,14 @@ def analyze_group(group_dir: Path, *, strict: bool, capture_iter: int | None = N
 
     summary = {
         "group_dir": str(group_dir),
+        "group_id": group_id,
         "strict": strict,
         "capture_megatron_iter": int(cap),
+        "steady_exclude_iters": sorted(_steady_exclude_iters(int(cap))),
+        "steady_window_iters": list(STEADY_WINDOW),
+        "analyzer_derivation_version": ANALYZER_DERIVATION_VERSION,
+        "allow_legacy_process_wall_proxy": allow_legacy_process_wall_proxy,
+        "legacy_proxy_allowlist": sorted(LEGACY_PROXY_GROUP_IDS),
         "attempt_count": len(results),
         "attempts": results,
         "by_arm": {
@@ -209,6 +249,7 @@ def analyze_group(group_dir: Path, *, strict: bool, capture_iter: int | None = N
             }
             for arm, items in by_arm.items()
         },
+        "qualifying_gates": compute_qualifying_gates(results),
         "status": "PASS" if strict else "OK",
     }
 
@@ -216,6 +257,8 @@ def analyze_group(group_dir: Path, *, strict: bool, capture_iter: int | None = N
         f"# Megatron AB SUMMARY — {group_dir.name}",
         "",
         f"- strict: {strict}",
+        f"- analyzer_derivation_version: {ANALYZER_DERIVATION_VERSION}",
+        f"- steady_exclude_iters: {summary['steady_exclude_iters']}",
         f"- attempts: {len(results)}",
         f"- capture_megatron_iter: {cap}",
         "",
@@ -276,6 +319,164 @@ def dir_size(path: Path) -> int:
     return total
 
 
+def _manifest_max_e2e_wall_ms(manifest: dict[str, Any]) -> float | None:
+    """Max node monotonic e2e from attempt manifest (same口径 as launchers)."""
+    e2e = manifest.get("e2e_wall_ms")
+    if e2e is not None:
+        return float(e2e)
+    node_e2e = [
+        float(v.get("e2e_wall_ms"))
+        for v in (manifest.get("node_launch") or {}).values()
+        if isinstance(v, dict) and v.get("e2e_wall_ms") is not None
+    ]
+    return max(node_e2e) if node_e2e else None
+
+
+def _group_id_from_dir(group_dir: Path) -> str:
+    return group_dir.name
+
+
+def _steady_exclude_iters(capture_iter: int) -> set[int]:
+    """Pre-registered steady window excludes capture step and the following iter."""
+    return {int(capture_iter), int(capture_iter) + 1}
+
+
+def _resolve_process_wall_ms(
+    meta: dict[str, Any],
+    manifest: dict[str, Any],
+    *,
+    group_id: str,
+    allow_legacy_process_wall_proxy: bool,
+) -> tuple[float | None, str | None, dict[str, Any] | None]:
+    """Resolve collector process wall for tail_tax.
+
+  Default strict: missing ``meta.process_wall_ms`` fails closed.  Legacy manifest e2e
+  proxy is allowed only for frozen allowlist GROUPs with an explicit audited CLI flag.
+    """
+    raw = meta.get("process_wall_ms")
+    if raw is not None:
+        val = float(raw)
+        if math.isfinite(val) and val >= 0:
+            return val, "meta.process_wall_ms", None
+    if not allow_legacy_process_wall_proxy:
+        return None, None, None
+    if group_id not in LEGACY_PROXY_GROUP_IDS:
+        return None, None, {
+            "legacy_proxy_denied": True,
+            "reason": "group_not_on_legacy_proxy_allowlist",
+            "group_id": group_id,
+        }
+    proxy = _manifest_max_e2e_wall_ms(manifest)
+    if proxy is not None and proxy > 0:
+        return (
+            proxy,
+            "manifest_e2e_wall_ms_proxy",
+            {
+                "legacy_proxy_exception": True,
+                "group_id": group_id,
+                "note": "not_collector_measured; manifest e2e upper-bound proxy only",
+            },
+        )
+    return None, None, {
+        "legacy_proxy_denied": True,
+        "reason": "manifest_e2e_wall_ms_missing",
+        "group_id": group_id,
+    }
+
+
+def _attempt_by_name(results: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    return {str(r.get("attempt_id") or r.get("name")): r for r in results}
+
+
+def compute_qualifying_gates(results: list[dict[str, Any]]) -> dict[str, Any]:
+    """Pre-registered volume/steady/e2e gates from attempt-level metrics."""
+    by_name = _attempt_by_name(results)
+    volume_pairs: list[dict[str, Any]] = []
+    for torch_id, ours_id in (("attempt_03_torch", "attempt_02_ours"), ("attempt_04_torch", "attempt_05_ours")):
+        torch_a = by_name.get(torch_id) or {}
+        ours_a = by_name.get(ours_id) or {}
+        torch_bytes = int((torch_a.get("trace") or {}).get("profiler_dir_bytes_sum") or torch_a.get("raw_bytes") or 0)
+        ours_bytes = int(ours_a.get("raw_bytes") or 0)
+        ratio = (torch_bytes / ours_bytes) if ours_bytes > 0 else None
+        volume_pairs.append(
+            {
+                "torch_attempt": torch_id,
+                "ours_attempt": ours_id,
+                "torch_bytes": torch_bytes,
+                "ours_bytes": ours_bytes,
+                "ratio": ratio,
+                "pass": ratio is not None and ratio >= VOLUME_RATIO_MIN,
+            }
+        )
+
+    normal_steady = [
+        float(x["steady_p50_ms"])
+        for x in results
+        if x.get("arm") == "normal" and x.get("steady_p50_ms") is not None
+    ]
+    ours_steady = [
+        float(x["steady_p50_ms"])
+        for x in results
+        if x.get("arm") == "ours" and x.get("steady_p50_ms") is not None
+    ]
+    normal_e2e = [
+        float(x["e2e_wall_ms"])
+        for x in results
+        if x.get("arm") == "normal" and x.get("e2e_wall_ms") is not None
+    ]
+    ours_e2e = [
+        float(x["e2e_wall_ms"])
+        for x in results
+        if x.get("arm") == "ours" and x.get("e2e_wall_ms") is not None
+    ]
+    normal_steady_med = statistics.median(normal_steady) if normal_steady else None
+    ours_steady_med = statistics.median(ours_steady) if ours_steady else None
+    normal_e2e_med = statistics.median(normal_e2e) if normal_e2e else None
+    ours_e2e_med = statistics.median(ours_e2e) if ours_e2e else None
+
+    steady_slowdowns = [
+        pct(ours_val, normal_steady_med)
+        for ours_val in ours_steady
+        if normal_steady_med is not None
+    ]
+    steady_slowdowns = [v for v in steady_slowdowns if v is not None]
+    e2e_slowdowns = [
+        pct(ours_val, normal_e2e_med) for ours_val in ours_e2e if normal_e2e_med is not None
+    ]
+    e2e_slowdowns = [v for v in e2e_slowdowns if v is not None]
+    steady_med = statistics.median(steady_slowdowns) if steady_slowdowns else None
+    steady_max = max(steady_slowdowns) if steady_slowdowns else None
+    e2e_med = statistics.median(e2e_slowdowns) if e2e_slowdowns else None
+
+    volume_pass = all(p["pass"] for p in volume_pairs) if volume_pairs else False
+    steady_pass = (
+        steady_med is not None
+        and steady_max is not None
+        and steady_med <= STEADY_SLOWDOWN_MEDIAN_MAX_PCT
+        and steady_max <= STEADY_SLOWDOWN_SINGLE_MAX_PCT
+    )
+    e2e_pass = e2e_med is not None and e2e_med <= E2E_SLOWDOWN_MEDIAN_MAX_PCT
+
+    return {
+        "volume_pairs": volume_pairs,
+        "volume_pass": volume_pass,
+        "steady_slowdown_pct_median": steady_med,
+        "steady_slowdown_pct_max_single": steady_max,
+        "steady_pass": steady_pass,
+        "e2e_slowdown_pct_median": e2e_med,
+        "e2e_pass": e2e_pass,
+        "gate_512_pass": volume_pass and steady_pass and e2e_pass,
+        "thresholds": {
+            "volume_ratio_min": VOLUME_RATIO_MIN,
+            "steady_slowdown_median_max_pct": STEADY_SLOWDOWN_MEDIAN_MAX_PCT,
+            "steady_slowdown_single_max_pct": STEADY_SLOWDOWN_SINGLE_MAX_PCT,
+            "e2e_slowdown_median_max_pct": E2E_SLOWDOWN_MEDIAN_MAX_PCT,
+        },
+        "reference_normal_steady_p50_ms": normal_steady_med,
+        "reference_normal_e2e_ms_median": normal_e2e_med,
+    }
+
+
 def parse_megatron_log(path: Path) -> dict[str, Any]:
     text = path.read_text(errors="replace") if path.exists() else ""
     steps: dict[int, float] = {}
@@ -303,15 +504,22 @@ def analyze_attempt(
     capture_iter: int,
     model: dict[str, Any],
     strict: bool,
+    *,
+    group_id: str = "",
+    allow_legacy_process_wall_proxy: bool = False,
 ) -> dict[str, Any]:
     manifest_path = attempt_dir / "attempt_manifest.json"
     manifest = {}
     if manifest_path.exists():
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     arm = manifest.get("arm") or attempt_dir.name.rsplit("_", 1)[-1]
-    candidates = [attempt_dir / "node_1.log", attempt_dir / "node_0.log"]
+    candidates = sorted(attempt_dir.glob("node_*.log"), key=lambda p: p.stat().st_size, reverse=True)
+    if not candidates:
+        candidates = [attempt_dir / "node_0.log"]
     parsed = {"steps_ms": {}, "tflops": {}, "has_loss_line": False, "log": ""}
     for log in candidates:
+        if not log.is_file():
+            continue
         cur = parse_megatron_log(log)
         if len(cur["steps_ms"]) > len(parsed["steps_ms"]):
             parsed = cur
@@ -320,9 +528,8 @@ def analyze_attempt(
     gbs = float(model.get("gbs", 64))
     seq = float(model.get("seq", 4096))
     world = float(model.get("world_size", 32))
-    # CaptureEnd 不 Flush：不再把 capture_iter+1 标成 flush_slot 并排除。
-    # normal/ours/torch 统一 warmup/统计窗口；尾税（finalize/export）单列。
-    exclude = {capture_iter}  # 仅观测步本身可单独列出；steady 仍可用含/不含两套
+    # Pre-registered steady window: iterations 5–20 excluding capture and capture+1.
+    exclude = _steady_exclude_iters(capture_iter)
     wall_ms = sum(steps[i] for i in ordered) if ordered else None
     steady_ids = [i for i in ordered if 5 <= i <= 20 and i not in exclude]
     steady_all_ids = [i for i in ordered if 5 <= i <= 20]
@@ -433,15 +640,25 @@ def analyze_attempt(
             "drop_count": counters.get("drop_count"),
             "pass": counters.get("pass"),
         }
-        meta = attempt_dir / "rank_0000.mspti_meta.json"
+        meta = attempt_dir / "rank_0000.npu_sync_meta.json"
+        if not meta.exists():
+            meta = attempt_dir / "rank_0000.mspti_meta.json"
         if meta.exists():
             m = json.loads(meta.read_text(encoding="utf-8"))
+            out["npu_sync_meta_rank0"] = m
             out["mspti_meta_rank0"] = m
+            proc_wall, proc_src, proxy_disclosure = _resolve_process_wall_ms(
+                m,
+                manifest,
+                group_id=group_id or _group_id_from_dir(attempt_dir.parent),
+                allow_legacy_process_wall_proxy=allow_legacy_process_wall_proxy,
+            )
             out["tail_tax"] = {
                 "finalize_total_ms": m.get("finalize_total_ms", m.get("finalize_ms")),
                 "finalize_flush_ms": m.get("finalize_flush_ms"),
                 "finalize_drain_ms": m.get("finalize_drain_ms"),
-                "process_wall_ms": m.get("process_wall_ms"),
+                "process_wall_ms": proc_wall,
+                "process_wall_ms_source": proc_src,
                 "capture_begin_ms": m.get("capture_begin_ms"),
                 "capture_end_ms": m.get("capture_end_ms"),
                 "convert_trace_write_ms": counters.get("convert_trace_write_ms") or counters.get("convert_export_wall_ms"),
@@ -449,9 +666,11 @@ def analyze_attempt(
                 "convert_export_wall_ms": counters.get("convert_trace_write_ms") or counters.get("convert_export_wall_ms"),
                 "finalize_reason": m.get("finalize_reason"),
             }
+            if proxy_disclosure:
+                out["tail_tax"]["legacy_proxy_disclosure"] = proxy_disclosure
             # smoke: fields present and non-negative
             for k, v in out["tail_tax"].items():
-                if k == "finalize_reason":
+                if k in ("finalize_reason", "process_wall_ms_source", "legacy_proxy_disclosure"):
                     continue
                 if v is None or float(v) < 0:
                     if strict:
@@ -587,7 +806,12 @@ def main(argv: list[str] | None = None) -> int:
         strict = True
         group = args.strict
     try:
-        summary = analyze_group(Path(group), strict=strict, capture_iter=args.capture_iter)
+        summary = analyze_group(
+            Path(group),
+            strict=strict,
+            capture_iter=args.capture_iter,
+            allow_legacy_process_wall_proxy=args.allow_legacy_process_wall_proxy,
+        )
     except FileNotFoundError as exc:
         print(f"ANALYZE_FAIL: {exc}", file=sys.stderr)
         return 2

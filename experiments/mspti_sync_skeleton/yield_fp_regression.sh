@@ -7,11 +7,12 @@
 set -euo pipefail
 
 EXP_LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-JUMP="${JUMP:-ais-cf3e61a5}"
-KUBE="${KUBE:-/tmp/config-vc-a3-241ceshi-songyiyang.yaml}"
-KUBECTL="${KUBECTL:-/root/.cache/volcano/kubectl/kubectl}"
+JUMP="${JUMP:-afs-cpu}"
+KUBE="${KUBE:-/root/.kube/config-vc-a3-241ceshi-songyiyang.yaml}"
+KUBECTL="${KUBECTL:-/root/bin/kubectl}"
 NS="${NS:-default}"
-MASTER_POD="${MASTER_POD:-grj-megatron-32card-0716-master-0}"
+JOB_NAME="${JOB_NAME:-yjr-mspti-256-r7-20260811}"
+MASTER_POD="${MASTER_POD:-${JOB_NAME}-master-0}"
 
 NNODES=1
 NPROC=2
@@ -27,7 +28,8 @@ CODE_DIR="${AFS_ROOT}/probing-huawei/experiments/mspti_sync_skeleton-yield-fp"
 BACKUP_ROOT="/Users/yinjinrun/Codespace/myportal/results/huawei-a3-32/mspti-sync-skeleton/yield-regression/${RUN_ID}"
 LOG_DIR="/Users/yinjinrun/Codespace/myportal/logs/mspti-yield-fp-${RUN_ID}"
 MASTER_PORT="${MASTER_PORT:-38221}"
-DATA_PATH="${DATA_PATH:-/afs-a3-weight-share/enwiki/enwiki20230101/enwiki20230101-00000_text_document}"
+# pjlab-new (pvc-5gnm2) 无 /afs-a3-weight-share/enwiki；自有 shard 在 yinjinrun.p-huawei/data。
+DATA_PATH="${DATA_PATH:-/afs-a3-weight-share/yinjinrun.p-huawei/data/enwiki20230101/enwiki20230101-00000_text_document}"
 CACHE="${CACHE:-/afs-a3-weight-share/yinjinrun.p-huawei/megatron-data-cache}"
 YIELD_INTERVAL_S="${YIELD_INTERVAL_S:-0.15}"
 WAIT_TIMEOUT_S="${WAIT_TIMEOUT_S:-900}"
@@ -36,6 +38,8 @@ mkdir -p "${LOG_DIR}" "${BACKUP_ROOT}"
 exec > >(tee -a "${LOG_DIR}/launcher.log") 2>&1
 
 echo "=== YIELD_FP_REGRESSION RUN_ID=${RUN_ID} ==="
+echo "JOB_NAME=${JOB_NAME} MASTER_POD=${MASTER_POD}"
+echo "DATA_PATH=${DATA_PATH}"
 echo "OUT_DIR=${OUT_DIR}"
 echo "BACKUP_ROOT=${BACKUP_ROOT}"
 echo "DURATION_ESTIMATE: 1n2r×2iter normal ~3-10min + fixture B/C <1min"
@@ -92,13 +96,29 @@ cleanup_ours() {
 
 echo "[sync] code -> ${CODE_DIR}"
 COPYFILE_DISABLE=1 tar -C "${EXP_LOCAL}" -cf - \
-  opponent_check.py kill_attempt.py run_megatron_node.sh local_group_guard.py yield_poller.py \
+  opponent_check.py kill_attempt.py run_megatron_node.sh local_group_guard.py yield_poller.py preflight_dataset_gate.py \
   | ssh -o ConnectTimeout=30 "${JUMP}" \
     "export KUBECONFIG='${KUBE}'; K='${KUBECTL}'; \$K exec -i -n '${NS}' '${MASTER_POD}' -- bash --noprofile --norc -lc 'mkdir -p ${CODE_DIR} && tar -C ${CODE_DIR} -xf - && chmod +x ${CODE_DIR}/*.sh ${CODE_DIR}/*.py'"
 
 idle_check
 
 pod_exec "${MASTER_POD}" "mkdir -p '${OUT_DIR}' '${CACHE}'"
+
+echo "[DATA_GATE] pod=${MASTER_POD} data_path=${DATA_PATH}"
+DATA_GATE_OUT="${BACKUP_ROOT}/data_gate.json"
+set +e
+GATE_LOG="$(pod_exec "${MASTER_POD}" \
+  "python3 '${CODE_DIR}/preflight_dataset_gate.py' --data-path '${DATA_PATH}' --out '${OUT_DIR}/data_gate.json'")"
+GATE_RC=$?
+set -e
+echo "${GATE_LOG}" | tee "${LOG_DIR}/data_gate.log"
+pod_exec "${MASTER_POD}" "cat '${OUT_DIR}/data_gate.json'" >"${DATA_GATE_OUT}" 2>/dev/null || true
+if [[ "${GATE_RC}" -ne 0 ]] || ! grep -q '"DATA_OK": "PASS"' "${DATA_GATE_OUT}" 2>/dev/null; then
+  echo "FATAL: DATA_GATE FAIL rc=${GATE_RC} — refuse A arm (see ${DATA_GATE_OUT})" >&2
+  exit 12
+fi
+echo "DATA_OK=PASS receipt=${DATA_GATE_OUT}"
+
 pod_exec "${MASTER_POD}" "python3 - <<'PY'
 import json
 from pathlib import Path

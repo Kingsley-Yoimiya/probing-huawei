@@ -149,6 +149,22 @@ def megatron_hook():
         pass
 
 
+def npu_sync_skeleton_hook():
+    """Arm the Ascend MSPTI sync-skeleton capture — opt-in, no-op otherwise.
+
+    Must run before CANN/NPU initialization, which is why it hangs off the
+    ``torch`` import hook rather than a later training callback.
+    """
+    try:
+        from probing.profiling.npu_sync import maybe_start
+
+        maybe_start()
+    except Exception:
+        logging.getLogger(__name__).debug(
+            "npu sync skeleton autostart skipped", exc_info=True
+        )
+
+
 _hook_registered = False
 
 
@@ -164,6 +180,7 @@ def init():
 
     collective_hook()
     megatron_hook()
+    npu_sync_skeleton_hook()
     try:
         from probing.crash import install
 

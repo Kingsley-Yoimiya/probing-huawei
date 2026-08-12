@@ -220,9 +220,27 @@ skills:
   - comm_bottleneck
   - nccl_culprit_victim
   path: watchdog_timeout/steps.yaml
+- id: npu_sync_skeleton
+  category: distributed
+  priority: 9
+  description: Ascend NPU sync skeleton — kernel gap, collective and host-wait breakdown
+  tables:
+  - python.npu_sync_capture
+  - python.npu_sync_skeleton
+  - global.python.npu_sync_skeleton
+  - global.python.npu_sync_capture
+  pages:
+  - training
+  - cluster
+  - analytics
+  related:
+  - comm_bottleneck
+  - slow_rank
+  - training_hang
+  path: npu_sync_skeleton/steps.yaml
 - id: sre_triage
   category: sre
-  priority: 9
+  priority: 10
   entry: true
   description: SRE first-response triage for distributed training incidents
   tables:

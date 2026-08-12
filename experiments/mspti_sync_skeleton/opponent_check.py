@@ -56,12 +56,32 @@ STATUS_CLEAR = "CLEAR"
 STATUS_OPPONENT = "OPPONENT"
 STATUS_CHECK_FAILED = "CHECK_FAILED"
 
-TRAIN_NEEDLES = (
+# Training entry points only — never bare ``megatron`` (matches ``megatron-ab`` paths).
+TRAIN_ENTRY_MARKERS = (
     "torchrun",
     "pretrain_gpt.py",
-    "pretrain",
-    "megatron",
+    "pretrain_gpt",
     "mspti_sync_skeleton/workload.py",
+)
+
+# Control-plane / checker commands that must never classify as training.
+_CONTROL_PLANE_TOKENS = (
+    "opponent_check.py",
+    "kill_attempt.py",
+    "yield_poller.py",
+    "kubectl",
+    " fanout",
+)
+
+# Fanout / kubectl launch wrappers (Ascend source + torchrun) before RUN_MARKER
+# propagates into child environ — r6 a03 false-positive class.
+_OWN_LAUNCH_PATH_MARKERS = (
+    "run_megatron_node.sh",
+    "mspti_sync_skeleton",
+    "/usr/local/ascend",
+    "set_env.sh",
+    "ascend-toolkit",
+    "miniconda3",
 )
 
 # Global fixture map for environ/starttime probes (tests / --fixture-environ-json).
@@ -117,15 +137,71 @@ def _is_zombie_state(state: str) -> bool:
     return bool(state) and state[0].upper() == "Z"
 
 
-def _looks_train(args: str) -> bool:
+def _is_control_plane_command(args: str) -> bool:
+    """Exclude find/kubectl/checker/control wrappers from train detection."""
     low = args.lower()
+    if any(tok in low for tok in _CONTROL_PLANE_TOKENS):
+        return True
+    if "awk" in low:
+        return True
+    # ``find /path/.../megatron-ab/...`` is evidence polling, not training.
+    if re.search(r"(?:^|\s)find(?:\s|$)", args):
+        return True
+    if re.search(r"\bbash\s+(?:--noprofile\s+)?(?:--norc\s+)?-lc\s+find\b", low):
+        return True
+    return False
+
+
+def _is_bash_lc_wrapper(args: str) -> bool:
+    low = args.lower()
+    return bool(re.search(r"\bbash\s+(?:--noprofile\s+)?(?:--norc\s+)?-lc\b", low))
+
+
+def _is_own_launch_wrapper(args: str) -> bool:
+    """Fanout/kubectl or node bootstrap wrappers — not foreign training.
+
+    Bare ``bash -lc`` alone is never sufficient: Ascend-wrapped foreign torchrun
+    must remain classifiable as OPPONENT without validated_tree / bootstrap PGID.
+    """
+    if _is_control_plane_command(args):
+        return False
+    if not _looks_train(args):
+        return False
+    low = args.lower()
+    if "run_megatron_node" in low:
+        return True
+    if "setsid" in low and "torchrun" in low:
+        return True
+    if any(tok in low for tok in _OWN_LAUNCH_PATH_MARKERS):
+        return True
+    return False
+
+
+def _is_foreign_pretrain_row(args: str) -> bool:
+    """Stable foreign pretrain — OPPONENT unless ownership proven elsewhere."""
+    low = args.lower()
+    # Our fanout entry scripts only; do not treat generic Ascend/bash -lc as own.
+    if "run_megatron_node" in low or "mspti_sync_skeleton" in low:
+        return False
+    if "pretrain_gpt" in low:
+        return True
+    return bool(re.search(r"(?:^|\s)(?:python3?\s+)?[^\s/]*pretrain[^\s]*\.py(?:\s|$)", args))
+
+
+def _looks_train(args: str) -> bool:
+    """True only for real training executables — not path segments containing megatron."""
     if "[torchrun]" in args:
         return False
-    if "awk" in low or "bash --noprofile" in low:
+    if _is_control_plane_command(args):
         return False
-    if "opponent_check.py" in low:
-        return False
-    return any(n in low for n in TRAIN_NEEDLES)
+    low = args.lower()
+    for marker in TRAIN_ENTRY_MARKERS:
+        if marker in low:
+            return True
+    # Other Megatron pretrain scripts: require ``*.py`` invocation, not directory names.
+    if re.search(r"(?:^|\s)(?:python3?\s+)?[^\s/]*pretrain[^\s]*\.py(?:\s|$)", args):
+        return True
+    return False
 
 
 def _errno_name(num: Optional[int]) -> str:
@@ -340,12 +416,16 @@ def validate_live_seeds(
     *,
     marker: str = "",
     out_dir: str = "",
+    trust_bare_live: bool = False,
 ) -> set[int]:
     """Keep only live seeds. Prefer starttime match; bare seeds need marker/outdir.
 
     Bare seeds without recorded starttime are kept only when the live process still
     carries our RUN_MARKER or OUT_DIR — they bootstrap the current marker tree and
     must not claim a reused PID as own solely by number.
+
+    When ``trust_bare_live`` (yield startup window), a live bare seed from our
+    fanout ``node_*.pgid`` bootstrap is trusted without marker/outdir evidence.
     """
     live: set[int] = set()
     for pid, expected_st in seed_records:
@@ -356,6 +436,9 @@ def validate_live_seeds(
             if st_val is not None and int(expected_st) != int(st_val):
                 # PID reuse — do not treat as own.
                 continue
+            live.add(pid)
+            continue
+        if trust_bare_live:
             live.add(pid)
             continue
         # No recorded starttime: require live marker/outdir evidence.
@@ -369,6 +452,47 @@ def validate_live_seeds(
             live.add(pid)
             continue
     return live
+
+
+def bootstrap_pgids_for_seeds(
+    live_seeds: set[int],
+    rows: Iterable[tuple[int, int, str, str]],
+    probes: list["RowProbe"],
+) -> set[int]:
+    """PGIDs of live fanout seeds — TorchElastic bootstrap before marker propagates."""
+    pgids: set[int] = set()
+    row_pgid = {pid: pgid for pid, pgid, _, _ in rows}
+    for pid in live_seeds:
+        if pid in row_pgid:
+            pgids.add(row_pgid[pid])
+        for rp in probes:
+            if rp.pid == pid:
+                pgids.add(rp.pgid)
+    return pgids
+
+
+def _is_startup_unmarked_own(
+    rp: RowProbe,
+    *,
+    validated_tree: set[int],
+    bootstrap_pgids: set[int],
+    has_seeds: bool,
+) -> bool:
+    """Own train row without RUN_MARKER/OUT_DIR during fanout/torch bootstrap."""
+    if not has_seeds:
+        return False
+    if rp.has_marker or rp.has_out_dir:
+        return False
+    if _is_foreign_pretrain_row(rp.args):
+        return False
+    if rp.pid in validated_tree:
+        return True
+    low = rp.args.lower()
+    if rp.pgid in bootstrap_pgids and (
+        _is_own_launch_wrapper(rp.args) or "torchrun" in low
+    ):
+        return True
+    return False
 
 
 def expand_our_tree(seeds: set[int]) -> set[int]:
@@ -614,12 +738,19 @@ def run_yield(
 
     out_s = str(out_dir)
     # Phase 0: validate live seeds (starttime / marker) → PPID closure.
-    live_seeds = validate_live_seeds(seed_records, marker=marker, out_dir=out_s)
+    live_seeds = validate_live_seeds(
+        seed_records,
+        marker=marker,
+        out_dir=out_s,
+        trust_bare_live=True,
+    )
     validated_tree = expand_our_tree(live_seeds)
 
     # Phase 1: probe all train rows once; identify own + collect own_pgids.
     probes = probe_train_rows(rows, marker=marker, out_s=out_s)
+    bootstrap_pgids = bootstrap_pgids_for_seeds(live_seeds, rows, probes)
     own_pgids: set[int] = set()
+    startup_only = False
 
     for rp in probes:
         if rp.environ.status == ProbeStatus.STALE:
@@ -636,6 +767,16 @@ def run_yield(
             rp.ownership = "own"
             # PGID ownership only from live row with marker/outdir/validated-tree evidence.
             own_pgids.add(rp.pgid)
+            continue
+        if _is_startup_unmarked_own(
+            rp,
+            validated_tree=validated_tree,
+            bootstrap_pgids=bootstrap_pgids,
+            has_seeds=bool(live_seeds),
+        ):
+            rp.ownership = "own"
+            own_pgids.add(rp.pgid)
+            startup_only = True
 
     # Phase 2: classify with own_pgids; never re-read environ.
     opponents: list[str] = []
@@ -660,6 +801,13 @@ def run_yield(
         return emit(STATUS_CHECK_FAILED, ";".join(errors))
     if opponents:
         return emit(STATUS_OPPONENT, ";".join(opponents))
+    marked_own = any(
+        rp.ownership == "own" and (rp.has_marker or rp.has_out_dir)
+        for rp in probes
+    )
+    if startup_only and not marked_own:
+        print("STARTUP")
+        return RC_CLEAR
     return emit(STATUS_CLEAR)
 
 
@@ -672,18 +820,20 @@ def classify_transport_stdout(stdout: str, check_rc: int) -> tuple[str, int, str
     last = lines[-1] if lines else ""
     if not last:
         return STATUS_CHECK_FAILED, RC_CHECK_FAILED, "empty_stdout"
+    # Structured checker success lines outrank transport rc mismatch (kubectl may
+    # surface rc=20 while opponent_check printed STARTUP/CLEAR during fanout).
+    if last.startswith("CHECK_FAILED"):
+        return STATUS_CHECK_FAILED, RC_CHECK_FAILED, last[:500]
+    if last == "STARTUP" or last == STATUS_CLEAR or last == "OK":
+        return STATUS_CLEAR, RC_CLEAR, last
     if check_rc == RC_CHECK_FAILED:
         return STATUS_CHECK_FAILED, RC_CHECK_FAILED, last[:500]
     if check_rc == RC_OPPONENT:
         if last.startswith("OPPONENT") or last.startswith("OPP|") or last.startswith("OPP"):
             return STATUS_OPPONENT, RC_OPPONENT, last[:500]
         return STATUS_CHECK_FAILED, RC_CHECK_FAILED, f"opponent_rc_mismatch={last[:200]}"
-    if last == "STARTUP" or last == STATUS_CLEAR or last == "OK":
-        return STATUS_CLEAR, RC_CLEAR, last
     if last.startswith("OPPONENT") or last.startswith("OPP|") or last.startswith("OPP"):
         return STATUS_OPPONENT, RC_OPPONENT, last[:500]
-    if last.startswith("CHECK_FAILED"):
-        return STATUS_CHECK_FAILED, RC_CHECK_FAILED, last[:500]
     return STATUS_CHECK_FAILED, RC_CHECK_FAILED, f"unexpected_stdout={last[:200]}"
 
 

@@ -81,6 +81,13 @@ C API：`mspti_skeleton_finalize()`；统计见 `mspti_skeleton_last_finalize_st
 
 旧 raw-buffer / step Flush 方案已 **superseded**；以本 README 与 collector.cpp 为准。
 
+## Probing 主路径
+
+同一套 C API 与落盘契约已接入 `python/probing/profiling/npu_sync/`（默认关闭，
+表 `python.npu_sync_skeleton` / `python.npu_sync_capture`）。本目录仍可独立运行，
+且仍是 collector.cpp、封存协议与 A/B 编排的真相源。启用方式与边界见
+[`PROBING_INTEGRATION.md`](PROBING_INTEGRATION.md)。
+
 ## 运行
 
 脚本默认先检查借用 pod 没有活 `torchrun` / Megatron / 对方训练。双节点启动并行提交，
