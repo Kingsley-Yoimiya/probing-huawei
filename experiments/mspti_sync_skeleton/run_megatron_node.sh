@@ -133,6 +133,77 @@ PY
     export MSPTI_COLLECTOR_SO_SHA256_LOADED="${SO_HASH_LOADED}"
     PRETRAIN_SCRIPT="${CODE_DIR}/run_probing_main_pretrain.py"
     ;;
+  legacy_mspti)
+    # 独立 MSPTI 真相源：不启用 Probing 主路径，不在 capture end 注入同步。
+    : "${SEALED_SO:?legacy_mspti requires SEALED_SO}"
+    : "${SEALED_SO_SHA256:?legacy_mspti requires SEALED_SO_SHA256}"
+    if [[ ! -f "${SEALED_SO}" || -L "${SEALED_SO}" ]]; then
+      echo "FATAL: sealed collector missing or symlink: ${SEALED_SO}" >&2
+      exit 13
+    fi
+    SO_HASH_LOADED="$(sha256sum "${SEALED_SO}" | awk '{print $1}')"
+    if [[ "${SO_HASH_LOADED}" != "${SEALED_SO_SHA256}" ]]; then
+      echo "FATAL: sealed collector hash mismatch" >&2
+      exit 13
+    fi
+    case "$(basename "${SEALED_SO}")" in
+      libmspti_sync_skeleton.so."${SEALED_SO_SHA256}") ;;
+      *) echo "FATAL: collector filename is not content-addressed" >&2; exit 13 ;;
+    esac
+    mkdir -p "${OUT_DIR}/sealed_bins"
+    cp -f "${SEALED_SO}" "${OUT_DIR}/sealed_bins/$(basename "${SEALED_SO}")"
+    chmod a-w "${OUT_DIR}/sealed_bins/$(basename "${SEALED_SO}")"
+    SEALED_SO="${OUT_DIR}/sealed_bins/$(basename "${SEALED_SO}")"
+    if [[ "${HCCL_ISSUED_LEDGER:-0}" == "1" ]]; then
+      : "${HCCL_ISSUED_LEDGER_SO:?legacy_mspti HCCL ledger requires sealed SO}"
+      : "${HCCL_ISSUED_LEDGER_SO_SHA256:?legacy_mspti HCCL ledger requires SO hash}"
+      if [[ ! -f "${HCCL_ISSUED_LEDGER_SO}" || -L "${HCCL_ISSUED_LEDGER_SO}" ]]; then
+        echo "FATAL: sealed HCCL issued ledger missing or symlink" >&2
+        exit 13
+      fi
+      HCCL_LEDGER_HASH_LOADED="$(sha256sum "${HCCL_ISSUED_LEDGER_SO}" | awk '{print $1}')"
+      if [[ "${HCCL_LEDGER_HASH_LOADED}" != "${HCCL_ISSUED_LEDGER_SO_SHA256}" ]]; then
+        echo "FATAL: sealed HCCL issued ledger hash mismatch" >&2
+        exit 13
+      fi
+      case "$(basename "${HCCL_ISSUED_LEDGER_SO}")" in
+        libhccl_issued_ledger.so."${HCCL_ISSUED_LEDGER_SO_SHA256}") ;;
+        *) echo "FATAL: HCCL issued ledger filename is not content-addressed" >&2; exit 13 ;;
+      esac
+      cp -f "${HCCL_ISSUED_LEDGER_SO}" \
+        "${OUT_DIR}/sealed_bins/$(basename "${HCCL_ISSUED_LEDGER_SO}")"
+      chmod a-w "${OUT_DIR}/sealed_bins/$(basename "${HCCL_ISSUED_LEDGER_SO}")"
+      HCCL_ISSUED_LEDGER_SO="${OUT_DIR}/sealed_bins/$(basename "${HCCL_ISSUED_LEDGER_SO}")"
+      EXTRA_ENV+=(
+        HCCL_ISSUED_LEDGER=1
+        HCCL_ISSUED_LEDGER_OUT_DIR="${OUT_DIR}"
+        HCCL_ISSUED_LEDGER_SO_SHA256="${HCCL_ISSUED_LEDGER_SO_SHA256}"
+        LD_PRELOAD="${HCCL_ISSUED_LEDGER_SO}${LD_PRELOAD:+:${LD_PRELOAD}}"
+      )
+      export HCCL_ISSUED_LEDGER_SO_SHA256_LOADED="${HCCL_LEDGER_HASH_LOADED}"
+    fi
+    EXTRA_ENV+=(
+      MSPTI_SKELETON=1
+      MSPTI_OUT_DIR="${OUT_DIR}"
+      MSPTI_COLLECTOR_LIB="${SEALED_SO}"
+      MSPTI_COLLECTOR_SO_SHA256="${SEALED_SO_SHA256}"
+      MSPTI_CAPTURE_MEGATRON_ITER="${CAPTURE_ITER}"
+      MSPTI_CAPTURE_RANKS="${MSPTI_CAPTURE_RANKS:-all}"
+      MSPTI_GAP_US="${MSPTI_GAP_US:-50}"
+      MSPTI_REORDER_US="${MSPTI_REORDER_US:-1000}"
+      MSPTI_MAX_QUEUE_BYTES="${MSPTI_MAX_QUEUE_BYTES:-134217728}"
+      MSPTI_DRAIN_TIMEOUT_MS="${MSPTI_DRAIN_TIMEOUT_MS:-30000}"
+      PROBING=0
+      PROBING_NPU_SYNC_SKELETON=0
+      PROBING_GPU=off
+      PROBING_CPU=off
+      PROBING_HCCS=off
+      PYTHONPATH="${CODE_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
+      PYTHONNOUSERSITE=1
+    )
+    export MSPTI_COLLECTOR_LIB_RESOLVED="${SEALED_SO}"
+    export MSPTI_COLLECTOR_SO_SHA256_LOADED="${SO_HASH_LOADED}"
+    ;;
   torch)
     EXTRA_ENV+=(MSPTI_SKELETON=0 PROBING=0 PROBING_NPU_SYNC_SKELETON=0 PROBING_GPU=off PROBING_CPU=off PROBING_HCCS=off)
     PROFILE_ARGS+=(
@@ -230,6 +301,8 @@ ALLOW = {
     "MSPTI_COLLECTOR_SO_SHA256",
     "MSPTI_CAPTURE_MEGATRON_ITER",
     "MSPTI_CAPTURE_RANKS",
+    "MSPTI_GAP_US",
+    "MSPTI_REORDER_US",
     "MSPTI_MAX_QUEUE_BYTES",
     "MSPTI_DRAIN_TIMEOUT_MS",
     "PROBING",
@@ -264,6 +337,7 @@ ALLOW = {
     "OUT_DIR",
     "CODE_DIR",
     "PYTHONPATH",
+    "PYTHONNOUSERSITE",
     "LD_LIBRARY_PATH",
     "CUDA_DEVICE_MAX_CONNECTIONS",
     "WORLD_SIZE",

@@ -1194,13 +1194,14 @@ jump "\$K exec -i -n '${NS}' '${MASTER_POD}' -- bash --noprofile --norc -lc 'mkd
 
 echo "[megatron-ab] sync code (incl. opponent_check) before idle/yield gates"
 COPYFILE_DISABLE=1 tar -C "${EXP_LOCAL}" -cf - \
-  CMakeLists.txt collector.cpp kseg_logic.hpp sync_interpose.cpp workload.py \
+  CMakeLists.txt collector.cpp adaptive_logic.hpp buffer_audit.hpp kseg_logic.hpp sync_interpose.cpp workload.py \
   convert_trace.py strict_validate.py provenance.py kill_attempt.py megatron_mspti_hook.py sitecustomize.py \
   run_megatron_node.sh run_node.sh launch_grj.sh launch_megatron_ab.sh launch_megatron_smoke.sh \
   run_probing_main_pretrain.py smoke_validate_main_path.py \
   analyze_megatron_ab.py ab_plan.py fanout_orchestrator.py local_group_guard.py opponent_check.py \
   transfer_recovery.py yield_poller.py chunk_pull.py pod_resolver.py storage_contract.py fanout_preflight.py \
   afs_seal_mirror.py afs_seal_fixture.py preflight_control_peak.py process_wall_smoke_negatives.py \
+  buffer_audit.py test_buffer_audit.cpp test_buffer_audit.py \
   test_kseg_logic.cpp test_collector_logic.cpp test_local.py README.md \
   | if [[ "${JUMP_LOCAL}" == "1" ]]; then
       export KUBECONFIG="${KUBE}"

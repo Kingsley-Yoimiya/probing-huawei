@@ -126,10 +126,10 @@ check_idle "${WORKER_POD}" || fail_stop 3 "opponent_worker"
 
 echo "[sync] mspti_sync_skeleton -> ${CODE_DIR}"
 COPYFILE_DISABLE=1 tar -C "${EXP_LOCAL}" -cf - \
-  CMakeLists.txt collector.cpp kseg_logic.hpp sync_interpose.cpp workload.py \
+  CMakeLists.txt collector.cpp adaptive_logic.hpp buffer_audit.hpp kseg_logic.hpp sync_interpose.cpp workload.py \
   convert_trace.py strict_validate.py provenance.py kill_attempt.py megatron_mspti_hook.py \
   sitecustomize.py run_megatron_node.sh run_node.sh launch_grj.sh \
-  smoke_validate_main_path.py opponent_check.py run_probing_main_pretrain.py sitecustomize.py README.md \
+  buffer_audit.py smoke_validate_main_path.py opponent_check.py run_probing_main_pretrain.py sitecustomize.py README.md \
   | ssh -o ConnectTimeout=30 "${JUMP}" \
     "export KUBECONFIG='${KUBE}'; K='${KUBECTL}'; \$K exec -i -n '${NS}' '${MASTER_POD}' -- bash --noprofile --norc -lc 'mkdir -p ${CODE_DIR} && tar -C ${CODE_DIR} -xf - && chmod +x ${CODE_DIR}/*.sh ${CODE_DIR}/*.py'"
 

@@ -203,10 +203,11 @@ fi
 
 echo "[smoke] sync+build (content-addressed)"
 COPYFILE_DISABLE=1 tar -C "${EXP_LOCAL}" -cf - \
-  CMakeLists.txt collector.cpp kseg_logic.hpp sync_interpose.cpp workload.py \
+  CMakeLists.txt collector.cpp adaptive_logic.hpp buffer_audit.hpp kseg_logic.hpp sync_interpose.cpp workload.py \
   convert_trace.py strict_validate.py provenance.py kill_attempt.py megatron_mspti_hook.py sitecustomize.py \
   run_megatron_node.sh run_node.sh launch_grj.sh launch_megatron_ab.sh \
-  launch_megatron_smoke.sh analyze_megatron_ab.py ab_plan.py fanout_orchestrator.py test_kseg_logic.cpp test_local.py \
+  launch_megatron_smoke.sh analyze_megatron_ab.py ab_plan.py fanout_orchestrator.py \
+  buffer_audit.py test_buffer_audit.cpp test_buffer_audit.py test_kseg_logic.cpp test_local.py \
   test_collector_logic.cpp README.md \
   | ssh -o ConnectTimeout=30 "${JUMP}" \
     "export KUBECONFIG='${KUBE}'; K='${KUBECTL}'; \$K exec -i -n '${NS}' '${MASTER_POD}' -- bash --noprofile --norc -lc 'mkdir -p ${CODE_DIR} && tar -C ${CODE_DIR} -xf - && chmod +x ${CODE_DIR}/*.sh ${CODE_DIR}/*.py'"

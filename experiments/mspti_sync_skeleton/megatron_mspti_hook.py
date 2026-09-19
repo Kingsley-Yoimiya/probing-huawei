@@ -170,6 +170,7 @@ class _GatedCollector:
                 f"[mspti_skeleton] capture_end incomplete rc={rc} "
                 f"incomplete={self.incomplete} gate_ms={self.capture_end_ms} "
                 f"peak_queue_bytes={self.peak_queue_bytes}",
+                file=sys.stderr,
                 flush=True,
             )
 
@@ -196,6 +197,7 @@ class _GatedCollector:
                     f"complete={self.finalize_complete} incomplete={self.incomplete} "
                     f"flush_ms={self.finalize_flush_ms} drain_ms={self.finalize_drain_ms} "
                     f"raw_kernel={self.raw_kernel_count} raw_comm={self.raw_comm_count}",
+                    file=sys.stderr,
                     flush=True,
                 )
             else:
@@ -204,6 +206,7 @@ class _GatedCollector:
                     f"flush_ms={self.finalize_flush_ms} "
                     f"drain_ms={self.finalize_drain_ms} "
                     f"raw_kernel={self.raw_kernel_count} raw_comm={self.raw_comm_count}",
+                    file=sys.stderr,
                     flush=True,
                 )
             return rc
@@ -250,9 +253,52 @@ class _GatedCollector:
         )
 
 
+class _HcclIssuedLedger:
+    """Lifecycle bridge to the independent LD_PRELOAD HCCL issued-work ledger."""
+
+    def __init__(self) -> None:
+        self.lib = ctypes.CDLL(None)
+        try:
+            self.lib.hccl_issued_ledger_begin.argtypes = [ctypes.c_int64]
+            self.lib.hccl_issued_ledger_begin.restype = ctypes.c_int
+            self.lib.hccl_issued_ledger_end.argtypes = [ctypes.c_int64]
+            self.lib.hccl_issued_ledger_end.restype = ctypes.c_int
+            self.lib.hccl_issued_ledger_finalize.argtypes = []
+            self.lib.hccl_issued_ledger_finalize.restype = ctypes.c_int
+        except AttributeError as exc:
+            raise RuntimeError(
+                "HCCL issued ledger symbols missing from LD_PRELOAD process"
+            ) from exc
+        self.begun = False
+        self.ended = False
+        self.finalized = False
+        self.finalize_rc: Optional[int] = None
+
+    def begin(self, step: int) -> None:
+        rc = int(self.lib.hccl_issued_ledger_begin(step))
+        if rc != 0:
+            raise RuntimeError(f"hccl_issued_ledger_begin failed: rc={rc}")
+        self.begun = True
+
+    def end(self, step: int) -> None:
+        rc = int(self.lib.hccl_issued_ledger_end(step))
+        if rc != 0:
+            raise RuntimeError(f"hccl_issued_ledger_end failed: rc={rc}")
+        self.ended = True
+
+    def finalize(self) -> int:
+        if self.finalized:
+            return int(self.finalize_rc or 0)
+        rc = int(self.lib.hccl_issued_ledger_finalize())
+        self.finalize_rc = rc
+        self.finalized = True
+        return rc
+
+
 _STATE: dict[str, Any] = {
     "installed": False,
     "collector": None,
+    "hccl_ledger": None,
     "target_iter": 10,
     "captured": False,
     "patch_done": False,
@@ -286,10 +332,23 @@ def _read_curr_iteration() -> Optional[int]:
 
 def _finalize_collector(reason: str) -> None:
     collector: Optional[_GatedCollector] = _STATE.get("collector")
-    if collector is None:
+    hccl_ledger: Optional[_HcclIssuedLedger] = _STATE.get("hccl_ledger")
+    if collector is None and hccl_ledger is None:
         return
-    print(f"[mspti_skeleton] finalize via {reason}", flush=True)
-    collector.finalize(reason)
+    print(f"[mspti_skeleton] finalize via {reason}", file=sys.stderr, flush=True)
+    ledger_rc = 0
+    if hccl_ledger is not None:
+        ledger_rc = hccl_ledger.finalize()
+        if ledger_rc != 0:
+            print(
+                f"[mspti_skeleton] HCCL issued ledger finalize failed rc={ledger_rc}",
+                file=sys.stderr,
+                flush=True,
+            )
+    if collector is not None:
+        if ledger_rc != 0:
+            collector.armed_fail = True
+        collector.finalize(reason)
 
 
 def _train_iters() -> Optional[int]:
@@ -315,6 +374,7 @@ def _wrap_train_step(orig: Callable[..., Any]) -> Callable[..., Any]:
         curr = _read_curr_iteration()
         logged_after = None if curr is None else curr + 1
         collector: Optional[_GatedCollector] = _STATE["collector"]
+        hccl_ledger: Optional[_HcclIssuedLedger] = _STATE["hccl_ledger"]
         do_capture = (
             collector is not None
             and not _STATE["captured"]
@@ -323,10 +383,18 @@ def _wrap_train_step(orig: Callable[..., Any]) -> Callable[..., Any]:
         )
         if do_capture:
             assert collector is not None
-            collector.begin(target)
+            if hccl_ledger is not None:
+                hccl_ledger.begin(target)
+            try:
+                collector.begin(target)
+            except BaseException:
+                if hccl_ledger is not None and hccl_ledger.begun and not hccl_ledger.ended:
+                    hccl_ledger.end(target)
+                raise
             print(
                 f"[mspti_skeleton] capture_begin megatron_iter={target} "
                 f"curr_iteration={curr}",
+                file=sys.stderr,
                 flush=True,
             )
         try:
@@ -335,12 +403,15 @@ def _wrap_train_step(orig: Callable[..., Any]) -> Callable[..., Any]:
             _STATE["train_step_calls"] = int(_STATE.get("train_step_calls", 0)) + 1
             if do_capture and collector is not None:
                 collector.end(target)
+                if hccl_ledger is not None:
+                    hccl_ledger.end(target)
                 _STATE["captured"] = True
                 print(
                     f"[mspti_skeleton] capture_end megatron_iter={target} "
                     f"begin_ms={collector.capture_begin_ms} "
                     f"end_ms={collector.capture_end_ms} "
                     f"(gate only; finalize deferred)",
+                    file=sys.stderr,
                     flush=True,
                 )
             # 基于真实 train_iters / 调用计数：最后一个 train_step 完整返回后显式 Finalize。
@@ -395,7 +466,11 @@ def _try_patch_attr(module_name: str, attr: str, wrapper: Callable, flag: str) -
     if getattr(fn, flag, False):
         return True
     setattr(mod, attr, wrapper(fn))
-    print(f"[mspti_skeleton] patched {module_name}.{attr}", flush=True)
+    print(
+        f"[mspti_skeleton] patched {module_name}.{attr}",
+        file=sys.stderr,
+        flush=True,
+    )
     return True
 
 
@@ -493,7 +568,11 @@ def _install_import_hook() -> None:
                         _ensure_patches()
                         break
         except Exception as exc:  # noqa: BLE001
-            print(f"[mspti_skeleton] import-hook patch err: {exc!r}", flush=True)
+            print(
+                f"[mspti_skeleton] import-hook patch err: {exc!r}",
+                file=sys.stderr,
+                flush=True,
+            )
         return mod
 
     builtins.__import__ = _hooked_import  # type: ignore[assignment]
@@ -512,7 +591,11 @@ def install() -> None:
     if _STATE["installed"] or not _env_truthy("MSPTI_SKELETON"):
         return
     if not _is_training_worker():
-        print("[mspti_skeleton] skip non-training process", flush=True)
+        print(
+            "[mspti_skeleton] skip non-training process",
+            file=sys.stderr,
+            flush=True,
+        )
         _STATE["installed"] = True
         return
     rank = int(os.environ["RANK"])
@@ -525,9 +608,15 @@ def install() -> None:
             raise RuntimeError("MSPTI_COLLECTOR_LIB is required when MSPTI_SKELETON=1")
         collector = _GatedCollector(lib, out_dir, rank, local_rank)
         _STATE["collector"] = collector
+        if _env_truthy("HCCL_ISSUED_LEDGER"):
+            _STATE["hccl_ledger"] = _HcclIssuedLedger()
         # atexit 仅兜底；正式主路径必须显式 Finalize。
         atexit.register(_finalize_collector, "atexit")
-        print(f"[mspti_skeleton] collector start_gated rank={rank}", flush=True)
+        print(
+            f"[mspti_skeleton] collector start_gated rank={rank}",
+            file=sys.stderr,
+            flush=True,
+        )
     _install_import_hook()
     if not _ensure_patches():
         threading.Thread(target=_poll_patches, name="mspti-patch", daemon=True).start()
@@ -535,5 +624,6 @@ def install() -> None:
     print(
         f"[mspti_skeleton] installed rank={rank} selected={int(_rank_selected())} "
         f"target_iter={_STATE['target_iter']}",
+        file=sys.stderr,
         flush=True,
     )

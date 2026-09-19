@@ -236,9 +236,8 @@ yield_if_opponent() {
     n=$((n + 1))
     node_id=$((node_id + 1))
   done
-  read -r status yrc detail < <(
-    EXP_LOCAL_FOR_YIELD="${EXP_LOCAL}" MERGE_DIR="${merge_dir}" POD_COUNT="${n}" \
-    python3 - <<'PY'
+  EXP_LOCAL_FOR_YIELD="${EXP_LOCAL}" MERGE_DIR="${merge_dir}" POD_COUNT="${n}" \
+    python3 - >"${merge_dir}/verdict" <<'PY'
 import os, sys
 from pathlib import Path
 sys.path.insert(0, os.environ.get("EXP_LOCAL_FOR_YIELD", "."))
@@ -256,7 +255,7 @@ for i in range(count):
 v = merge_fanout_pod_checks(checks)
 print(v.status, v.rc, v.detail)
 PY
-  )
+  read -r status yrc detail <"${merge_dir}/verdict"
   rm -rf "${merge_dir}"
   if [[ "${status}" == "CLEAR" ]]; then
     YIELD_STATUS="CLEAR"
@@ -340,11 +339,12 @@ echo "[mspti] LOCAL_BACKUP=${BACKUP_ROOT} LOG_DIR=${LOG_DIR} (atomic claim)"
 
 echo "[mspti] 同步完整目录到内容寻址 CODE_DIR=${CODE_DIR}"
 COPYFILE_DISABLE=1 tar -C "${EXP_LOCAL}" -cf - \
-  CMakeLists.txt collector.cpp kseg_logic.hpp sync_interpose.cpp workload.py \
+  CMakeLists.txt collector.cpp adaptive_logic.hpp buffer_audit.hpp kseg_logic.hpp sync_interpose.cpp workload.py \
   convert_trace.py strict_validate.py provenance.py kill_attempt.py megatron_mspti_hook.py \
   sitecustomize.py run_node.sh run_megatron_node.sh launch_grj.sh \
   launch_megatron_ab.sh launch_megatron_smoke.sh analyze_megatron_ab.py ab_plan.py \
   fanout_orchestrator.py local_group_guard.py opponent_check.py \
+  buffer_audit.py test_buffer_audit.cpp test_buffer_audit.py \
   test_kseg_logic.cpp test_collector_logic.cpp test_local.py README.md \
   | ssh "${JUMP}" \
     "export KUBECONFIG='${KUBE}'; K='${KUBECTL}'; \$K exec -i -n '${NS}' '${MASTER_POD}' -- bash --noprofile --norc -lc 'mkdir -p ${CODE_DIR} && tar -C ${CODE_DIR} -xf - && chmod +x ${CODE_DIR}/*.sh ${CODE_DIR}/*.py'"

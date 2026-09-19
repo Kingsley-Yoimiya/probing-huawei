@@ -249,13 +249,43 @@ def validate_rank_rows(
     *,
     expected_rank: int,
     capture_step: int,
+    capture_window_steps: int = 1,
     meta: Optional[dict[str, Any]] = None,
     min_raw_kernels: Optional[int] = None,
     min_comm: Optional[int] = None,
     min_kseg: int = 1,
     require_explicit_finalize: bool = True,
+    max_activity_duration_ns: int = 60_000_000_000,
 ) -> dict[str, Any]:
     kinds = Counter(str(r["kind"]) for r in rows)
+    malformed_intervals = []
+    for row in rows:
+        if row.get("kind") not in {"KSEG", "COMM", "P2P"}:
+            continue
+        start_ns = int(row.get("start_ns", 0))
+        end_ns = int(row.get("end_ns", 0))
+        duration_ns = end_ns - start_ns
+        if (
+            start_ns <= 0
+            or end_ns < start_ns
+            or duration_ns > max_activity_duration_ns
+        ):
+            malformed_intervals.append(
+                {
+                    "kind": row.get("kind"),
+                    "seq": row.get("seq"),
+                    "stream_id": row.get("stream_id"),
+                    "correlation_id": row.get("correlation_id"),
+                    "start_ns": start_ns,
+                    "end_ns": end_ns,
+                    "duration_ns": duration_ns,
+                }
+            )
+    if malformed_intervals:
+        raise StrictValidationError(
+            f"rank{expected_rank}: malformed activity intervals="
+            f"{malformed_intervals[:4]} total={len(malformed_intervals)}"
+        )
     begins = [
         r
         for r in rows
@@ -272,10 +302,14 @@ def validate_rank_rows(
             f"rank{expected_rank}: begin/end STEP must be exactly once "
             f"(begin={len(begins)} end={len(ends)})"
         )
-    if int(begins[0]["step"]) != capture_step or int(ends[0]["step"]) != capture_step:
+    begin_step = int(begins[0]["step"])
+    end_step = int(ends[0]["step"])
+    want_end = capture_step + int(capture_window_steps) - 1
+    if begin_step != capture_step or end_step != want_end:
         raise StrictValidationError(
-            f"rank{expected_rank}: capture step mismatch "
-            f"begin={begins[0]['step']} end={ends[0]['step']} want={capture_step}"
+            f"rank{expected_rank}: capture window mismatch "
+            f"begin={begin_step} end={end_step} "
+            f"want begin={capture_step} end={want_end} (steps={capture_window_steps})"
         )
     if len(drops) != 1:
         raise StrictValidationError(f"rank{expected_rank}: need exactly one DROP row")
@@ -443,6 +477,7 @@ def validate_ours_dir(
     *,
     expected_ranks: int = 32,
     capture_step: int = 10,
+    capture_window_steps: int = 1,
     require_meta: bool = True,
     min_raw_kernels: Optional[int] = None,
     min_comm: Optional[int] = None,
@@ -502,6 +537,7 @@ def validate_ours_dir(
                 rows,
                 expected_rank=rank,
                 capture_step=capture_step,
+                capture_window_steps=capture_window_steps,
                 meta=meta,
                 min_raw_kernels=min_raw_kernels,
                 min_comm=min_comm,

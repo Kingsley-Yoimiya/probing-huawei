@@ -25,6 +25,32 @@ CANN 8.5.0 的 `mspti_cbid.h` 没有 Event/Notify/stream-wait Callback ID，因�
 `SWAIT`，也不通过猜测 ABI 伪造依赖边。MSPTI 同样没有公开内部 drop counter；
 `DROP=0` 只表示 collector 可见路径无丢失。
 
+每个被选 rank 在 native finalize 完成回调 drain、worker join、骨架文件关闭和 buffer
+释放后，另写 v2 `rank_XXXX.buffer_audit.json`。其热路径只使用 atomic 计数和定长 POD，
+不在 MSPTI callback 内写文件。除 request/complete/inflight 和各处理阶段计数外，v2 还记录：
+
+- 最多 4096 个 buffer 的有界 ledger：request id、脱敏 pointer token、复用代次、请求/有效
+  字节、callback wall、KERNEL/COMM/unknown 数量、首尾 correlation/timestamp，以及
+  `msptiActivityGetNextRecord` 终止码；超出容量显式计数并 fail-closed。
+- parsed/enqueued/worker/processed/emitted 五阶段、分 KERNEL/COMM 的可交换
+  `count/xor64/sum64` 内容指纹，worker 重排不影响比较。
+- `before_disable`、`after_flush`、`before_free` 三个生命周期快照；`before_free` 必须已静默。
+- 最多 16 条 timestamp 异常样例、`valid_while_stopping` 和 callback wall 总量/最大值。
+
+validator 会独立重算守恒、ledger 与指纹关系，并
+按 selected-rank 精确集合只读汇总为 attempt 级 `buffer_audit.json`；被选 rank 缺文件或
+未选 rank 多文件均 fail-closed。超过 `MSPTI_AUDIT_MAX_DURATION_NS`（默认 1 小时）、零
+timestamp 或 `end < start` 只做观测标记，不改变采集/重排语义。
+
+本地不依赖 CANN 的最小检查：
+
+```bash
+c++ -std=c++17 -O2 experiments/mspti_sync_skeleton/test_buffer_audit.cpp \
+  -o /tmp/mspti_buffer_audit_test && /tmp/mspti_buffer_audit_test
+python3 experiments/mspti_sync_skeleton/test_buffer_audit.py
+experiments/mspti_sync_skeleton/tests/test_collector_stub_compile.sh
+```
+
 ## 架构
 
 MSPTI `OnBufferCompleted` **在回调内**调用 `msptiActivityGetNextRecord`，深拷贝为
@@ -129,7 +155,7 @@ NNODES=2 NPROC=16 CAPTURE_RANKS=all STEPS=2 \
   MASTER_PORT=29934 experiments/mspti_sync_skeleton/launch_grj.sh
 ```
 
-脚本会生成 `rank_XXXX.skeleton.jsonl`、每 rank trace、`cluster.trace.json`、
+脚本会生成 `rank_XXXX.skeleton.jsonl`、`rank_XXXX.buffer_audit.json`、每 rank trace、`cluster.trace.json`、
 `counters.json`、`SUMMARY.md`、配置、环境与完整日志，并立即回拉：
 
 ```text

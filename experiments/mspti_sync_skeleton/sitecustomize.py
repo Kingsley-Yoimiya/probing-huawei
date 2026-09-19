@@ -18,7 +18,11 @@ if _mspti:
 
         install()
     except Exception as exc:  # noqa: BLE001
-        print(f"[mspti_skeleton] sitecustomize install failed: {exc!r}", flush=True)
+        print(
+            f"[mspti_skeleton] sitecustomize install failed: {exc!r}",
+            file=sys.stderr,
+            flush=True,
+        )
         raise
 
 if _probing_main and os.environ.get("LOCAL_RANK") is not None:
@@ -34,6 +38,7 @@ if _probing_main and os.environ.get("LOCAL_RANK") is not None:
             print(
                 f"[probing_main_sitecustomize] armed before torch: "
                 f"rank={collector.rank} out={collector.skeleton_path}",
+                file=sys.stderr,
                 flush=True,
             )
 

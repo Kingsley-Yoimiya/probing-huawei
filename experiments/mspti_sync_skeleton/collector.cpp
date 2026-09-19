@@ -1,6 +1,7 @@
 #include <mspti/mspti.h>
 
 #include "adaptive_logic.hpp"
+#include "buffer_audit.hpp"
 #include "kseg_logic.hpp"
 
 #include <algorithm>
@@ -24,7 +25,6 @@
 #include <thread>
 #include <time.h>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -36,6 +36,8 @@ constexpr size_t kBufferSize = 8U * 1024U * 1024U;
 constexpr size_t kDefaultMaxQueueBytes = 128U * 1024U * 1024U;  // 128 MiB / process
 constexpr size_t kEventApproxBytes = 4096U;
 constexpr uint64_t kDefaultDrainTimeoutMs = 12000;
+constexpr uint64_t kDefaultMalformedDurationNs =
+    60ULL * 60ULL * 1000ULL * 1000ULL * 1000ULL;
 
 uint64_t NowNs() {
     timespec ts{};
@@ -132,6 +134,23 @@ struct RawEvent {
     std::string op;
     std::string comm_name;
     std::string flags;
+};
+
+mspti_skeleton::AuditRawKind AuditKind(const RawEvent& raw) noexcept {
+    return raw.type == RawType::kCommunication
+               ? mspti_skeleton::AuditRawKind::kCommunication
+               : mspti_skeleton::AuditRawKind::kKernel;
+}
+
+uint64_t AuditContentHash(const RawEvent& raw) noexcept {
+    return mspti_skeleton::ContentHash(
+        AuditKind(raw), raw.start_ns, raw.end_ns, raw.device_id, raw.stream_id,
+        raw.correlation_id, raw.count, raw.bytes);
+}
+
+struct OutstandingBufferMeta {
+    mspti_skeleton::BufferLedgerHandle audit;
+    uint64_t reuse_generation = 0;
 };
 
 struct WorkItem {
@@ -257,6 +276,7 @@ public:
             return 2;
         }
         rank_ = rank;
+        audit_path_ = mspti_skeleton::BufferAuditPathForOutput(output_path);
         default_device_id_ = device_id;
         gap_ns_ = gap_ns;
         reorder_ns_ = reorder_ns;
@@ -265,6 +285,8 @@ public:
         last_end_ns_.clear();
         max_queue_bytes_ = EnvSize("MSPTI_MAX_QUEUE_BYTES", kDefaultMaxQueueBytes);
         drain_timeout_ms_ = EnvU64("MSPTI_DRAIN_TIMEOUT_MS", kDefaultDrainTimeoutMs);
+        audit_max_duration_ns_ =
+            EnvU64("MSPTI_AUDIT_MAX_DURATION_NS", kDefaultMalformedDurationNs);
         const char* run_id = std::getenv("RUN_ID");
         run_id_ = run_id == nullptr ? "" : run_id;
         char host[256] = {};
@@ -461,6 +483,10 @@ public:
         // Disable 失败 ⇒ MSPTI 仍可能回调：立即 TerminalFailed process-lifetime leak，
         // 不得继续 flush / stop worker / close / free / unsubscribe。
         {
+            buffer_audit_.NoteLifecycleSnapshot(
+                mspti_skeleton::AuditLifecyclePoint::kBeforeDisable, NowNs(),
+                inflight_buffers_.load(), static_cast<uint64_t>(active_calls_.load()),
+                worker_busy_.load());
             const int disable_rc = DisableActivitiesLocked();
             if (disable_rc != 0) {
                 EnterTerminalFailedLocked(disable_rc);
@@ -485,6 +511,10 @@ public:
             flush_thread_ok = false;
         }
         last_finalize_flush_ms_ = (NowNs() - flush_t0) / 1e6;
+        buffer_audit_.NoteLifecycleSnapshot(
+            mspti_skeleton::AuditLifecyclePoint::kAfterFlush, NowNs(),
+            inflight_buffers_.load(), static_cast<uint64_t>(active_calls_.load()),
+            worker_busy_.load());
         if (!flush_thread_ok) {
             incomplete_.store(true);
             life.lock();
@@ -638,9 +668,18 @@ public:
         {
             std::lock_guard<std::mutex> lock(lifecycle_mu_);
             if (!intentional_buffer_leak_) {
+                buffer_audit_.NoteLifecycleSnapshot(
+                    mspti_skeleton::AuditLifecyclePoint::kBeforeFree, NowNs(),
+                    inflight_buffers_.load(),
+                    static_cast<uint64_t>(active_calls_.load()), worker_busy_.load());
                 FreeAllBuffersLocked();
             }
         }
+
+        // Instrumentation sidecar is emitted only after activity callbacks, worker,
+        // skeleton output, and buffer ownership have all reached their terminal state.
+        // Failure is detected fail-closed by the attempt validator's exact inventory.
+        (void)WriteBufferAudit();
 
         if (incomplete_.load() || io_errors_.load() > 0 || allocation_drops_.load() > 0 ||
             queue_drops_.load() > 0 || parse_errors_.load() > 0 ||
@@ -879,6 +918,7 @@ private:
             }
         }
         buffer_pool_.clear();
+        buffer_generations_.clear();
         // outstanding intentionally retained
     }
 
@@ -890,12 +930,14 @@ private:
             }
         }
         buffer_pool_.clear();
-        for (uint8_t* p : outstanding_buffers_) {
+        for (const auto& entry : outstanding_buffers_) {
+            uint8_t* p = entry.first;
             if (p != nullptr) {
                 std::free(p);
             }
         }
         outstanding_buffers_.clear();
+        buffer_generations_.clear();
         inflight_buffers_.store(0);
     }
 
@@ -907,6 +949,7 @@ private:
             pending_.pop();
         }
         segments_.clear();
+        segment_fingerprints_.clear();
         step_boundaries_.clear();
         last_end_ns_.clear();
         adaptive_telemetry_.reset();
@@ -918,6 +961,7 @@ private:
         raw_kernel_count_.store(0);
         raw_communication_count_.store(0);
         emitted_count_.store(0);
+        buffer_audit_.Reset();
         incomplete_.store(false);
         last_incomplete_.store(false);
         last_capture_gate_ms_ = 0;
@@ -948,6 +992,7 @@ private:
         StoreState(LifecycleState::Idle);
         run_id_.clear();
         host_.clear();
+        audit_path_.clear();
         rank_ = -1;
         default_device_id_ = -1;
         FreeAllBuffersLocked();
@@ -1123,6 +1168,8 @@ private:
         *size = 0;
         *max_records = 0;
         uint8_t* ptr = nullptr;
+        bool outstanding_inserted = false;
+        bool inflight_incremented = false;
         try {
             {
                 std::lock_guard<std::mutex> block(buffer_pool_mu_);
@@ -1143,25 +1190,48 @@ private:
             {
                 std::lock_guard<std::mutex> block(buffer_pool_mu_);
                 try {
-                    if (!outstanding_buffers_.insert(ptr).second) {
+                    const auto inserted = outstanding_buffers_.emplace(
+                        ptr, OutstandingBufferMeta{});
+                    if (!inserted.second) {
                         allocation_drops_.fetch_add(1);
                         incomplete_.store(true);
                         std::free(ptr);
                         return;
                     }
+                    outstanding_inserted = true;
+                    uint64_t& generation = buffer_generations_[ptr];
+                    ++generation;
+                    const uint64_t inflight_after = inflight_buffers_.fetch_add(1) + 1;
+                    inflight_incremented = true;
+                    const auto handle = buffer_audit_.BeginBufferRequest(
+                        ptr, generation, kBufferSize, NowNs(), inflight_after);
+                    inserted.first->second = OutstandingBufferMeta{handle, generation};
                 } catch (...) {
+                    if (outstanding_inserted) {
+                        outstanding_buffers_.erase(ptr);
+                    }
+                    if (inflight_incremented) {
+                        inflight_buffers_.fetch_sub(1);
+                        inflight_incremented = false;
+                    }
                     allocation_drops_.fetch_add(1);
                     incomplete_.store(true);
                     std::free(ptr);
                     return;
                 }
             }
-            inflight_buffers_.fetch_add(1);
             *buffer = ptr;
             *size = kBufferSize;
             *max_records = 0;
         } catch (...) {
             if (ptr != nullptr) {
+                if (outstanding_inserted || inflight_incremented) {
+                    std::lock_guard<std::mutex> block(buffer_pool_mu_);
+                    outstanding_buffers_.erase(ptr);
+                    if (inflight_incremented) {
+                        inflight_buffers_.fetch_sub(1);
+                    }
+                }
                 std::free(ptr);
             }
             allocation_drops_.fetch_add(1);
@@ -1172,9 +1242,54 @@ private:
         }
     }
 
+    void AuditTimestamp(mspti_skeleton::AuditRawKind raw_kind, uint32_t activity_kind,
+                        const RawEvent& event, uint64_t buffer_complete_seq,
+                        const uint8_t* buffer, const msptiActivity* record,
+                        size_t valid_size) noexcept {
+        const bool malformed = event.start_ns == 0 || event.end_ns == 0 ||
+                               event.end_ns < event.start_ns ||
+                               (event.end_ns >= event.start_ns &&
+                                event.end_ns - event.start_ns > audit_max_duration_ns_);
+        if (!malformed) {
+            return;
+        }
+        mspti_skeleton::MalformedTimestampSample sample;
+        sample.raw_kind = static_cast<uint32_t>(raw_kind);
+        sample.activity_kind = activity_kind;
+        sample.buffer_complete_seq = buffer_complete_seq;
+        const uintptr_t base = reinterpret_cast<uintptr_t>(buffer);
+        const uintptr_t address = reinterpret_cast<uintptr_t>(record);
+        if (address >= base && address - base < valid_size) {
+            sample.record_offset = address - base;
+        }
+        sample.valid_size = valid_size;
+        sample.start_ns = event.start_ns;
+        sample.end_ns = event.end_ns;
+        sample.correlation_id = event.correlation_id;
+        sample.count = event.count;
+        sample.device_id = event.device_id;
+        sample.stream_id = event.stream_id;
+        buffer_audit_.NoteMalformedTimestamp(sample);
+    }
+
     // Complete：校验 size；scope guard 保证每路径 free 原 buffer、outstanding 移除、
     // inflight 递减、notify。callback 边界 catch(...)，异常变 parse/allocation drop，不跨 C ABI。
     void OnBufferCompleted(uint8_t* buffer, size_t size, size_t valid_size) {
+        buffer_audit_.NoteBufferCompleteCallback();
+        mspti_skeleton::BufferLedgerHandle ledger_handle;
+        struct CallbackWallGuard {
+            mspti_skeleton::BufferAuditCounters* audit = nullptr;
+            const mspti_skeleton::BufferLedgerHandle* handle = nullptr;
+            uint64_t start_ns = 0;
+            ~CallbackWallGuard() noexcept {
+                if (audit != nullptr) {
+                    audit->NoteCallbackWall(
+                        handle == nullptr ? mspti_skeleton::BufferLedgerHandle{} : *handle,
+                        NowNs() - start_ns);
+                }
+            }
+        } callback_wall{&buffer_audit_, &ledger_handle, NowNs()};
+
         struct CompleteGuard {
             Collector* self = nullptr;
             uint8_t* buffer = nullptr;
@@ -1241,7 +1356,12 @@ private:
             bool owned = false;
             {
                 std::lock_guard<std::mutex> block(buffer_pool_mu_);
-                owned = outstanding_buffers_.erase(buffer) > 0;
+                const auto it = outstanding_buffers_.find(buffer);
+                if (it != outstanding_buffers_.end()) {
+                    ledger_handle = it->second.audit;
+                    outstanding_buffers_.erase(it);
+                    owned = true;
+                }
             }
             CompleteGuard guard{this, buffer, owned, false, false};
 
@@ -1250,27 +1370,42 @@ private:
                 incomplete_.store(true);
                 return;
             }
+            const uint64_t buffer_complete_seq =
+                buffer_audit_.NoteOwnedBufferComplete(
+                    ledger_handle, size, valid_size, NowNs());
             if (size == 0 || valid_size > size) {
+                buffer_audit_.NoteLedgerTerminal(
+                    ledger_handle, mspti_skeleton::kGetNextInvalidBuffer, 0);
                 parse_errors_.fetch_add(1);
                 incomplete_.store(true);
                 // guard frees (not recycle)
                 return;
             }
 
+            if (stopping_.load() && valid_size > 0) {
+                buffer_audit_.NoteValidWhileStopping();
+            }
+            uint64_t get_next_calls = 0;
             if (!stopping_.load() && valid_size > 0) {
                 msptiActivity* record = nullptr;
                 while (true) {
                     const msptiResult result =
                         msptiActivityGetNextRecord(buffer, valid_size, &record);
+                    ++get_next_calls;
                     if (result == MSPTI_ERROR_MAX_LIMIT_REACHED) {
+                        buffer_audit_.NoteLedgerTerminal(
+                            ledger_handle, static_cast<int32_t>(result), get_next_calls);
                         break;
                     }
                     if (result != MSPTI_SUCCESS || record == nullptr) {
+                        buffer_audit_.NoteLedgerTerminal(
+                            ledger_handle, static_cast<int32_t>(result), get_next_calls);
                         parse_errors_.fetch_add(1);
                         incomplete_.store(true);
                         break;
                     }
                     if (record->kind == MSPTI_ACTIVITY_KIND_KERNEL) {
+                        buffer_audit_.NoteParsed(mspti_skeleton::AuditRawKind::kKernel);
                         auto* kernel = reinterpret_cast<msptiActivityKernel*>(record);
                         RawEvent event;
                         event.type = RawType::kKernel;
@@ -1280,6 +1415,16 @@ private:
                         event.stream_id = kernel->ds.streamId;
                         event.correlation_id = kernel->correlationId;
                         event.step = current_step_.load();
+                        buffer_audit_.NoteLedgerRecord(
+                            ledger_handle, mspti_skeleton::AuditRawKind::kKernel,
+                            event.correlation_id, event.start_ns, event.end_ns);
+                        buffer_audit_.NoteContent(
+                            mspti_skeleton::AuditContentStage::kParsed,
+                            mspti_skeleton::AuditRawKind::kKernel,
+                            AuditContentHash(event));
+                        AuditTimestamp(mspti_skeleton::AuditRawKind::kKernel,
+                                       static_cast<uint32_t>(record->kind), event,
+                                       buffer_complete_seq, buffer, record, valid_size);
                         if (!EnqueueRaw(std::move(event))) {
                             queue_drops_.fetch_add(1);
                             incomplete_.store(true);
@@ -1287,6 +1432,8 @@ private:
                             raw_kernel_count_.fetch_add(1);
                         }
                     } else if (record->kind == MSPTI_ACTIVITY_KIND_COMMUNICATION) {
+                        buffer_audit_.NoteParsed(
+                            mspti_skeleton::AuditRawKind::kCommunication);
                         auto* communication =
                             reinterpret_cast<msptiActivityCommunication*>(record);
                         RawEvent event;
@@ -1306,20 +1453,41 @@ private:
                         event.comm_name = SafeString(communication->commName);
                         event.flags =
                             "source=mspti_communication_activity;time_domain=device";
+                        buffer_audit_.NoteLedgerRecord(
+                            ledger_handle,
+                            mspti_skeleton::AuditRawKind::kCommunication,
+                            event.correlation_id, event.start_ns, event.end_ns);
+                        buffer_audit_.NoteContent(
+                            mspti_skeleton::AuditContentStage::kParsed,
+                            mspti_skeleton::AuditRawKind::kCommunication,
+                            AuditContentHash(event));
+                        AuditTimestamp(mspti_skeleton::AuditRawKind::kCommunication,
+                                       static_cast<uint32_t>(record->kind), event,
+                                       buffer_complete_seq, buffer, record, valid_size);
                         if (!EnqueueRaw(std::move(event))) {
                             queue_drops_.fetch_add(1);
                             incomplete_.store(true);
                         } else {
                             raw_communication_count_.fetch_add(1);
                         }
+                    } else {
+                        buffer_audit_.NoteParsedUnknown();
+                        buffer_audit_.NoteLedgerUnknown(ledger_handle);
                     }
                 }
+            } else {
+                buffer_audit_.NoteLedgerTerminal(
+                    ledger_handle, mspti_skeleton::kGetNextNotCalled, 0);
             }
             guard.recycled = true;
         } catch (const std::bad_alloc&) {
+            buffer_audit_.NoteLedgerTerminal(
+                ledger_handle, mspti_skeleton::kGetNextException, 0);
             allocation_drops_.fetch_add(1);
             incomplete_.store(true);
         } catch (...) {
+            buffer_audit_.NoteLedgerTerminal(
+                ledger_handle, mspti_skeleton::kGetNextException, 0);
             parse_errors_.fetch_add(1);
             incomplete_.store(true);
         }
@@ -1378,11 +1546,18 @@ private:
     }
 
     bool EnqueueRaw(RawEvent raw) {
+        const auto kind = AuditKind(raw);
+        const uint64_t content_hash = AuditContentHash(raw);
         WorkItem item;
         item.type = ItemType::kRaw;
         item.accounted_bytes = ApproxRawBytes(raw);
         item.raw = std::move(raw);
-        return EnqueueItem(std::move(item));
+        const bool accepted = EnqueueItem(std::move(item));
+        if (accepted) {
+            buffer_audit_.NoteContent(
+                mspti_skeleton::AuditContentStage::kEnqueued, kind, content_hash);
+        }
+        return accepted;
     }
 
     bool EnqueueEvent(ItemType type, Event event) {
@@ -1397,9 +1572,11 @@ private:
     bool EnqueueItem(WorkItem item) {
         std::lock_guard<std::mutex> lock(queue_mu_);
         if (stopping_.load()) {
+            NoteQueueRejected(item);
             return false;
         }
         if (queue_bytes_ + item.accounted_bytes > max_queue_bytes_) {
+            NoteQueueRejected(item);
             return false;
         }
         queue_bytes_ += item.accounted_bytes;
@@ -1409,6 +1586,17 @@ private:
         queue_.push_back(std::move(item));
         queue_cv_.notify_one();
         return true;
+    }
+
+    void NoteQueueRejected(const WorkItem& item) noexcept {
+        if (item.type != ItemType::kRaw) {
+            buffer_audit_.NoteQueueRejectedOther();
+            return;
+        }
+        buffer_audit_.NoteQueueRejected(
+            item.raw.type == RawType::kCommunication
+                ? mspti_skeleton::AuditRawKind::kCommunication
+                : mspti_skeleton::AuditRawKind::kKernel);
     }
 
     bool IsQuiescentLocked() const {
@@ -1489,6 +1677,244 @@ private:
         return true;
     }
 
+    bool WriteBufferAudit() const {
+        if (audit_path_.empty()) {
+            return false;
+        }
+        const mspti_skeleton::BufferAuditSnapshot audit = buffer_audit_.Snapshot();
+        const uint64_t enqueued_kernel = raw_kernel_count_.load();
+        const uint64_t enqueued_comm = raw_communication_count_.load();
+        const uint64_t inflight_final = inflight_buffers_.load();
+        const mspti_skeleton::BufferAuditConservation conservation =
+            mspti_skeleton::CheckBufferAuditConservation(
+                audit, enqueued_kernel, enqueued_comm, inflight_final);
+        const bool activity_integrity_ok =
+            conservation.all_ok && audit.malformed_timestamp_count == 0;
+        const char* bool_text[2] = {"false", "true"};
+
+        std::ostringstream json;
+        json << "{\n"
+             << "  \"schema_version\": 2,\n"
+             << "  \"instrumentation\": \"mspti_buffer_audit_v2\",\n"
+             << "  \"run_id\": \"" << JsonEscape(run_id_) << "\",\n"
+             << "  \"rank\": " << rank_ << ",\n"
+             << "  \"malformed_duration_threshold_ns\": "
+             << audit_max_duration_ns_ << ",\n"
+             << "  \"counters\": {\n"
+             << "    \"buffer_request_count\": " << audit.buffer_request_count << ",\n"
+             << "    \"buffer_complete_callback_count\": "
+             << audit.buffer_complete_callback_count << ",\n"
+             << "    \"buffer_complete_count\": " << audit.buffer_complete_count << ",\n"
+             << "    \"inflight\": " << inflight_final << ",\n"
+             << "    \"inflight_final\": " << inflight_final << ",\n"
+             << "    \"max_inflight\": " << audit.max_inflight << ",\n"
+             << "    \"parsed_kernel\": " << audit.parsed_kernel << ",\n"
+             << "    \"parsed_comm\": " << audit.parsed_comm << ",\n"
+             << "    \"parsed_unknown\": " << audit.parsed_unknown << ",\n"
+             << "    \"enqueued_kernel\": " << enqueued_kernel << ",\n"
+             << "    \"enqueued_comm\": " << enqueued_comm << ",\n"
+             << "    \"queue_rejected_kernel\": "
+             << audit.queue_rejected_kernel << ",\n"
+             << "    \"queue_rejected_comm\": " << audit.queue_rejected_comm << ",\n"
+             << "    \"queue_rejected_other\": " << audit.queue_rejected_other << ",\n"
+             << "    \"queue_rejected_total\": "
+             << (audit.queue_rejected_kernel + audit.queue_rejected_comm +
+                 audit.queue_rejected_other)
+             << ",\n"
+             << "    \"worker_consumed_kernel\": "
+             << audit.worker_consumed_kernel << ",\n"
+             << "    \"worker_consumed_comm\": " << audit.worker_consumed_comm << ",\n"
+             << "    \"processed_kernel\": " << audit.processed_kernel << ",\n"
+             << "    \"processed_comm\": " << audit.processed_comm << ",\n"
+             << "    \"emitted_total\": " << audit.emitted_total << ",\n"
+             << "    \"emitted_comm\": " << audit.emitted_comm << ",\n"
+             << "    \"emitted_kseg\": " << audit.emitted_kseg << ",\n"
+             << "    \"emitted_kseg_raw_count\": "
+             << audit.emitted_kseg_raw_count << ",\n"
+             << "    \"valid_while_stopping\": " << audit.valid_while_stopping << ",\n"
+             << "    \"callback_wall_total_ns\": "
+             << audit.callback_wall_total_ns << ",\n"
+             << "    \"callback_wall_max_ns\": " << audit.callback_wall_max_ns << ",\n"
+             << "    \"malformed_timestamp_count\": "
+             << audit.malformed_timestamp_count << ",\n"
+             << "    \"malformed_sample_count\": "
+             << audit.malformed_sample_count << ",\n"
+             << "    \"ledger_capacity\": "
+             << mspti_skeleton::kBufferLedgerCapacity << ",\n"
+             << "    \"ledger_entry_count\": " << audit.ledger_entry_count << ",\n"
+             << "    \"ledger_completed_count\": "
+             << audit.ledger_completed_count << ",\n"
+             << "    \"ledger_overflow_count\": "
+             << audit.ledger_overflow_count << "\n"
+             << "  },\n"
+             << "  \"conservation\": {\n"
+             << "    \"request_complete_balanced\": "
+             << bool_text[conservation.request_complete_balanced] << ",\n"
+             << "    \"kernel_parse_queue_balanced\": "
+             << bool_text[conservation.kernel_parse_queue_balanced] << ",\n"
+             << "    \"kernel_worker_balanced\": "
+             << bool_text[conservation.kernel_worker_balanced] << ",\n"
+             << "    \"kernel_process_balanced\": "
+             << bool_text[conservation.kernel_process_balanced] << ",\n"
+             << "    \"kernel_emit_balanced\": "
+             << bool_text[conservation.kernel_emit_balanced] << ",\n"
+             << "    \"comm_parse_queue_balanced\": "
+             << bool_text[conservation.comm_parse_queue_balanced] << ",\n"
+             << "    \"comm_worker_balanced\": "
+             << bool_text[conservation.comm_worker_balanced] << ",\n"
+             << "    \"comm_process_balanced\": "
+             << bool_text[conservation.comm_process_balanced] << ",\n"
+             << "    \"comm_emit_balanced\": "
+             << bool_text[conservation.comm_emit_balanced] << ",\n"
+             << "    \"unknown_kind_zero\": "
+             << bool_text[conservation.unknown_kind_zero] << ",\n"
+             << "    \"valid_while_stopping_zero\": "
+             << bool_text[conservation.valid_while_stopping_zero] << ",\n"
+             << "    \"inflight_final_zero\": "
+             << bool_text[conservation.inflight_final_zero] << ",\n"
+             << "    \"ledger_complete_balanced\": "
+             << bool_text[conservation.ledger_complete_balanced] << ",\n"
+             << "    \"ledger_no_overflow\": "
+             << bool_text[conservation.ledger_no_overflow] << ",\n"
+             << "    \"fingerprint_all_ok\": "
+             << bool_text[conservation.fingerprint_all_ok] << ",\n"
+             << "    \"lifecycle_snapshots_complete\": "
+             << bool_text[conservation.lifecycle_snapshots_complete] << ",\n"
+             << "    \"lifecycle_ordered\": "
+             << bool_text[conservation.lifecycle_ordered] << ",\n"
+             << "    \"before_free_quiescent\": "
+             << bool_text[conservation.before_free_quiescent] << ",\n"
+             << "    \"all_ok\": " << bool_text[conservation.all_ok] << "\n"
+             << "  },\n"
+             << "  \"activity_integrity_ok\": " << bool_text[activity_integrity_ok]
+             << ",\n"
+             << "  \"malformed_timestamp_samples\": [";
+        for (size_t i = 0; i < audit.malformed_sample_count; ++i) {
+            const auto& sample = audit.malformed_samples[i];
+            json << (i == 0 ? "\n" : ",\n")
+                 << "    {\"raw_kind\": " << sample.raw_kind
+                 << ", \"activity_kind\": " << sample.activity_kind
+                 << ", \"buffer_complete_seq\": " << sample.buffer_complete_seq
+                 << ", \"record_offset\": " << sample.record_offset
+                 << ", \"valid_size\": " << sample.valid_size
+                 << ", \"start_ns\": " << sample.start_ns
+                 << ", \"end_ns\": " << sample.end_ns
+                 << ", \"duration_ns\": "
+                 << (sample.end_ns >= sample.start_ns ? sample.end_ns - sample.start_ns : 0)
+                 << ", \"correlation_id\": " << sample.correlation_id
+                 << ", \"count\": " << sample.count
+                 << ", \"device_id\": " << sample.device_id
+                 << ", \"stream_id\": " << sample.stream_id << "}";
+        }
+        json << (audit.malformed_sample_count == 0 ? "],\n" : "\n  ],\n");
+
+        static const char* const stage_names[] = {
+            "parsed", "enqueued", "worker", "processed", "emitted"};
+        static const char* const kind_names[] = {"kernel", "communication"};
+        json << "  \"fingerprints\": {\n";
+        for (size_t stage = 0; stage < mspti_skeleton::kAuditContentStageCount;
+             ++stage) {
+            json << "    \"" << stage_names[stage] << "\": {";
+            for (size_t kind = 0; kind < mspti_skeleton::kAuditRawKindCount; ++kind) {
+                const auto& fingerprint = audit.fingerprints[stage][kind];
+                json << (kind == 0 ? "" : ", ") << "\"" << kind_names[kind]
+                     << "\": {\"count\": " << fingerprint.count
+                     << ", \"xor64\": " << fingerprint.xor64
+                     << ", \"sum64\": " << fingerprint.sum64 << "}";
+            }
+            json << "}" << (stage + 1 == mspti_skeleton::kAuditContentStageCount
+                                  ? "\n"
+                                  : ",\n");
+        }
+        json << "  },\n";
+
+        static const char* const lifecycle_names[] = {
+            "before_disable", "after_flush", "before_free"};
+        json << "  \"lifecycle_snapshots\": {\n";
+        for (size_t index = 0; index < mspti_skeleton::kAuditLifecyclePointCount;
+             ++index) {
+            const auto& snapshot = audit.lifecycle_snapshots[index];
+            json << "    \"" << lifecycle_names[index] << "\": {"
+                 << "\"captured\": " << bool_text[snapshot.captured]
+                 << ", \"monotonic_ns\": " << snapshot.monotonic_ns
+                 << ", \"buffer_requests\": " << snapshot.buffer_requests
+                 << ", \"buffer_complete_callbacks\": "
+                 << snapshot.buffer_complete_callbacks
+                 << ", \"owned_buffer_completes\": "
+                 << snapshot.owned_buffer_completes
+                 << ", \"inflight\": " << snapshot.inflight
+                 << ", \"parsed_kernel\": " << snapshot.parsed_kernel
+                 << ", \"parsed_comm\": " << snapshot.parsed_comm
+                 << ", \"worker_kernel\": " << snapshot.worker_kernel
+                 << ", \"worker_comm\": " << snapshot.worker_comm
+                 << ", \"processed_kernel\": " << snapshot.processed_kernel
+                 << ", \"processed_comm\": " << snapshot.processed_comm
+                 << ", \"emitted_comm\": " << snapshot.emitted_comm
+                 << ", \"emitted_kernel_raw\": "
+                 << snapshot.emitted_kernel_raw
+                 << ", \"active_calls\": " << snapshot.active_calls
+                 << ", \"worker_busy\": " << bool_text[snapshot.worker_busy]
+                 << "}" << (index + 1 == mspti_skeleton::kAuditLifecyclePointCount
+                                  ? "\n"
+                                  : ",\n");
+        }
+        json << "  },\n";
+
+        json << "  \"buffer_ledger\": [";
+        for (size_t i = 0; i < audit.ledger_entry_count; ++i) {
+            const auto& entry = audit.buffer_ledger[i];
+            json << (i == 0 ? "\n" : ",\n")
+                 << "    {\"request_id\": " << entry.request_id
+                 << ", \"pointer_token\": " << entry.pointer_token
+                 << ", \"reuse_generation\": " << entry.reuse_generation
+                 << ", \"request_monotonic_ns\": "
+                 << entry.request_monotonic_ns
+                 << ", \"complete_monotonic_ns\": "
+                 << entry.complete_monotonic_ns
+                 << ", \"requested_size\": " << entry.requested_size
+                 << ", \"completion_size\": " << entry.completion_size
+                 << ", \"valid_size\": " << entry.valid_size
+                 << ", \"callback_wall_ns\": " << entry.callback_wall_ns
+                 << ", \"get_next_calls\": " << entry.get_next_calls
+                 << ", \"get_next_terminal_code\": "
+                 << entry.get_next_terminal_code
+                 << ", \"kernel_records\": " << entry.kernel_records
+                 << ", \"comm_records\": " << entry.comm_records
+                 << ", \"unknown_records\": " << entry.unknown_records
+                 << ", \"first_kind\": " << entry.first_kind
+                 << ", \"last_kind\": " << entry.last_kind
+                 << ", \"first_correlation_id\": "
+                 << entry.first_correlation_id
+                 << ", \"last_correlation_id\": "
+                 << entry.last_correlation_id
+                 << ", \"first_start_ns\": " << entry.first_start_ns
+                 << ", \"first_end_ns\": " << entry.first_end_ns
+                 << ", \"last_start_ns\": " << entry.last_start_ns
+                 << ", \"last_end_ns\": " << entry.last_end_ns
+                 << ", \"completed\": " << bool_text[entry.completed] << "}";
+        }
+        json << (audit.ledger_entry_count == 0 ? "]\n" : "\n  ]\n") << "}\n";
+
+        const std::string tmp_path = audit_path_ + ".tmp";
+        std::ofstream audit_output(tmp_path, std::ios::out | std::ios::trunc);
+        if (!audit_output.is_open()) {
+            return false;
+        }
+        audit_output << json.str();
+        audit_output.flush();
+        const bool write_ok = audit_output.good();
+        audit_output.close();
+        if (!write_ok || audit_output.fail()) {
+            std::remove(tmp_path.c_str());
+            return false;
+        }
+        if (std::rename(tmp_path.c_str(), audit_path_.c_str()) != 0) {
+            std::remove(tmp_path.c_str());
+            return false;
+        }
+        return true;
+    }
+
     void WorkerLoop() {
         // Entire thread entry catch: priority_queue/map/string/I/O/alloc → worker_failure
         // TerminalFailed + wake Finalize waiters. Never std::terminate from here.
@@ -1515,6 +1941,11 @@ private:
                 }
 
                 if (item.type == ItemType::kRaw) {
+                    const auto kind = AuditKind(item.raw);
+                    buffer_audit_.NoteWorkerConsumed(kind);
+                    buffer_audit_.NoteContent(
+                        mspti_skeleton::AuditContentStage::kWorker, kind,
+                        AuditContentHash(item.raw));
                     PushRaw(std::move(item.raw));
                 } else if (item.type == ItemType::kBarrier) {
                     DrainPending(true);
@@ -1662,6 +2093,12 @@ private:
     }
 
     void ProcessRaw(const RawEvent& raw) {
+        const auto audit_kind = AuditKind(raw);
+        const uint64_t content_hash = AuditContentHash(raw);
+        buffer_audit_.NoteProcessed(audit_kind);
+        buffer_audit_.NoteContent(
+            mspti_skeleton::AuditContentStage::kProcessed, audit_kind,
+            content_hash);
         const uint64_t key = StreamKey(raw.device_id, raw.stream_id);
         const int64_t inferred_step = InferStep(raw.start_ns, raw.step);
         if (raw.type == RawType::kCommunication) {
@@ -1681,7 +2118,11 @@ private:
             event.op = raw.op;
             event.comm_name = raw.comm_name;
             event.flags = raw.flags;
-            Emit(event);
+            if (Emit(event)) {
+                buffer_audit_.NoteContent(
+                    mspti_skeleton::AuditContentStage::kEmitted, audit_kind,
+                    content_hash);
+            }
             return;
         }
 
@@ -1714,6 +2155,8 @@ private:
                                                                  *stream_state);
                     }
                 }
+                mspti_skeleton::AddFingerprint(
+                    &segment_fingerprints_[key], content_hash);
                 last_end_ns_[key] = raw.end_ns;
                 return;
             }
@@ -1722,6 +2165,7 @@ private:
         auto& fresh = segments_[key];
         fresh = mspti_skeleton::KsegAccumulator{};
         (void)fresh.TryMerge(raw.start_ns, raw.end_ns, inferred_step, threshold_ns);
+        mspti_skeleton::AddFingerprint(&segment_fingerprints_[key], content_hash);
         if (stream_state != nullptr) {
             const uint32_t updates_before = stream_state->threshold_updates();
             stream_state->OnRawKernel();
@@ -1764,7 +2208,16 @@ private:
         if (adaptive_telemetry_ != nullptr) {
             adaptive_telemetry_->StreamState(device, stream).RecordKseg();
         }
-        Emit(event);
+        const bool emitted = Emit(event);
+        const auto fingerprint_it = segment_fingerprints_.find(key);
+        if (emitted && fingerprint_it != segment_fingerprints_.end()) {
+            buffer_audit_.MergeContent(
+                mspti_skeleton::AuditContentStage::kEmitted,
+                mspti_skeleton::AuditRawKind::kKernel, fingerprint_it->second);
+        }
+        if (fingerprint_it != segment_fingerprints_.end()) {
+            segment_fingerprints_.erase(fingerprint_it);
+        }
         segments_.erase(it);
     }
 
@@ -1780,16 +2233,16 @@ private:
         }
     }
 
-    void Emit(const Event& event) {
+    bool Emit(const Event& event) {
         std::lock_guard<std::mutex> elock(emit_mu_);
-        EmitUnlocked(event);
+        return EmitUnlocked(event);
     }
 
-    void EmitUnlocked(const Event& event) {
+    bool EmitUnlocked(const Event& event) {
         if (!output_.is_open()) {
             io_errors_.fetch_add(1);
             incomplete_.store(true);
-            return;
+            return false;
         }
         output_ << "{\"run_id\":\"" << JsonEscape(run_id_) << "\","
                 << "\"rank\":" << rank_ << ","
@@ -1814,9 +2267,15 @@ private:
         if (!output_.good()) {
             io_errors_.fetch_add(1);
             incomplete_.store(true);
-            return;
+            return false;
         }
         emitted_count_.fetch_add(1);
+        buffer_audit_.NoteEmittedTotal();
+        if (event.kind == "COMM" || event.kind == "P2P") {
+            buffer_audit_.NoteEmittedComm();
+        } else if (event.kind == "KSEG") {
+            buffer_audit_.NoteEmittedKseg(event.count);
+        }
         const bool boundary =
             event.kind == "STEP" || event.kind == "DROP" || (emitted_count_.load() % 256U == 0U);
         if (boundary) {
@@ -1824,8 +2283,10 @@ private:
             if (!output_.good()) {
                 io_errors_.fetch_add(1);
                 incomplete_.store(true);
+                return false;
             }
         }
+        return true;
     }
 
     std::mutex emit_mu_;
@@ -1851,7 +2312,8 @@ private:
     std::atomic<uint64_t> inflight_buffers_{0};
     std::mutex buffer_pool_mu_;
     std::vector<uint8_t*> buffer_pool_;
-    std::unordered_set<uint8_t*> outstanding_buffers_;
+    std::unordered_map<uint8_t*, OutstandingBufferMeta> outstanding_buffers_;
+    std::unordered_map<uint8_t*, uint64_t> buffer_generations_;
     std::atomic<bool> worker_busy_{false};
     std::atomic<bool> stopping_{false};
     std::atomic<bool> worker_exited_{false};
@@ -1864,10 +2326,12 @@ private:
     std::ofstream output_;
     std::string run_id_;
     std::string host_;
+    std::string audit_path_;
     int rank_ = -1;
     int default_device_id_ = -1;
     uint64_t gap_ns_ = 50000;
     uint64_t reorder_ns_ = 1000000;
+    uint64_t audit_max_duration_ns_ = kDefaultMalformedDurationNs;
     mspti_skeleton::AdaptiveConfig adaptive_config_{};
     std::unique_ptr<mspti_skeleton::AdaptiveTelemetry> adaptive_telemetry_;
     std::unordered_map<uint64_t, uint64_t> last_end_ns_;
@@ -1876,6 +2340,8 @@ private:
     uint64_t max_seen_ns_ = 0;
     std::priority_queue<RawEvent, std::vector<RawEvent>, RawLater> pending_;
     std::unordered_map<uint64_t, mspti_skeleton::KsegAccumulator> segments_;
+    std::unordered_map<uint64_t, mspti_skeleton::ContentFingerprintSnapshot>
+        segment_fingerprints_;
     std::vector<std::pair<uint64_t, int64_t>> step_boundaries_;
 
     std::atomic<uint64_t> allocation_drops_{0};
@@ -1887,6 +2353,7 @@ private:
     std::atomic<uint64_t> raw_kernel_count_{0};
     std::atomic<uint64_t> raw_communication_count_{0};
     std::atomic<uint64_t> emitted_count_{0};
+    mspti_skeleton::BufferAuditCounters buffer_audit_;
     std::atomic<bool> incomplete_{false};
 
     double last_capture_gate_ms_ = 0;
